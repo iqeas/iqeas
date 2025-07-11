@@ -40,6 +40,7 @@ export const uploadFileHandler = async (req, res) => {
     );
   }
 };
+
 export async function getFiles(req, res) {
   try {
     const { id: userId, role } = req.user;
