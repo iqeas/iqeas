@@ -21,36 +21,100 @@ export async function getUploadedFilesByRolePaginated(
   const limit = Math.max(Number(size), 1);
   const offset = Math.max((Number(page) - 1) * limit, 0);
 
-  let baseWhereClause = "";
-  let countWhereClause = "";
-  let params = [userId, limit, offset];
-  let countParams = [userId];
-  let searchCondition = "";
-  console.log(searchQuery);
+  let baseWhere = "";
+  let joinClause = "";
+  let queryParams = [];
+  let countParams = [];
+
+  let searchClause = "";
   if (searchQuery) {
-    searchCondition = `AND uf.label ILIKE $4`;
-    params.push(`%${searchQuery}%`);
+    searchClause = ` AND uf.label ILIKE $${queryParams.length + 2}`;
   }
 
-  if (role === "rfq") {
-    baseWhereClause = `WHERE uf.uploaded_by_id = $1`;
-    countWhereClause = `WHERE uploaded_by_id = $1`;
-  } else if (role === "estimation") {
-    baseWhereClause = `
-      WHERE uf.uploaded_by_id = $1
-        OR uf.uploaded_by_id IN (
-          SELECT id FROM users WHERE role = 'rfq'
+  switch (role) {
+    case "rfq":
+      baseWhere = `WHERE uf.uploaded_by_id = $1${searchClause}`;
+      queryParams = [userId];
+      countParams = [userId];
+      break;
+
+    case "estimation":
+      baseWhere = `
+        WHERE (uf.uploaded_by_id = $1
+           OR uf.uploaded_by_id IN (SELECT id FROM users WHERE role = 'rfq'))
+        ${searchClause}
+      `;
+      queryParams = [userId];
+      countParams = [userId];
+      break;
+
+    case "pm":
+      baseWhere = `
+        WHERE uf.id IN (
+          SELECT uploaded_file_id
+          FROM projects_uploaded_files puf
+          JOIN projects p ON puf.project_id = p.id
+          WHERE p.leader_id = $1
         )
-    `;
-    countWhereClause = `
-      WHERE uploaded_by_id = $1
-        OR uploaded_by_id IN (
-          SELECT id FROM users WHERE role = 'rfq'
+        ${searchClause}
+      `;
+      queryParams = [userId];
+      countParams = [userId];
+      break;
+
+    case "working":
+      baseWhere = `
+        WHERE uf.id IN (
+          SELECT uploaded_file_id FROM tasks_uploaded_files tu
+          JOIN tasks t ON tu.task_id = t.id
+          WHERE t.assigned_individual_id = $1
+          UNION
+          SELECT uploaded_file_id FROM deliveries_uploaded_files du
+          JOIN deliveries d ON du.delivery_id = d.id
+          WHERE d.user_id = $1
         )
-    `;
-  } else {
-    throw new Error("Unauthorized role");
+        ${searchClause}
+      `;
+      queryParams = [userId];
+      countParams = [userId];
+      break;
+
+    case "documenting":
+      baseWhere = `
+        WHERE (uf.uploaded_by_id = $1
+          OR uf.id IN (
+            SELECT uploaded_file_id
+            FROM tasks_uploaded_files tu
+            JOIN tasks t ON tu.task_id = t.id
+            WHERE t.assigned_team_id IN (
+              SELECT team_id FROM teams_users WHERE user_id = $1
+            )
+          ))
+        ${searchClause}
+      `;
+      queryParams = [userId];
+      countParams = [userId];
+      break;
+
+    case "admin":
+      baseWhere = searchQuery ? `WHERE uf.label ILIKE $1` : "";
+      queryParams = searchQuery ? [`%${searchQuery}%`] : [];
+      countParams = queryParams;
+      break;
+
+    default:
+      throw new Error("Unauthorized role");
   }
+
+  // Add search param if applicable
+  if (searchQuery && role !== "admin") {
+    const q = `%${searchQuery}%`;
+    queryParams.push(q);
+    countParams.push(q);
+  }
+
+  // Add pagination params
+  queryParams.push(limit, offset);
 
   const query = `
     SELECT 
@@ -61,22 +125,21 @@ export async function getUploadedFilesByRolePaginated(
       ) AS uploaded_by
     FROM uploaded_files uf
     LEFT JOIN users u ON uf.uploaded_by_id = u.id
-    ${baseWhereClause}
-    ${searchCondition}
+    ${baseWhere}
     ORDER BY uf.created_at DESC
-    LIMIT $2 OFFSET $3
+    LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}
   `;
 
   const countQuery = `
     SELECT COUNT(*) AS total
-    FROM uploaded_files
-    ${countWhereClause}
+    FROM uploaded_files uf
+    ${baseWhere}
   `;
 
-  const result = await pool.query(query, params);
+  const result = await pool.query(query, queryParams);
   const countResult = await pool.query(countQuery, countParams);
 
-  const total = parseInt(countResult.rows[0].total, 10);
+  const total = parseInt(countResult.rows[0]?.total || 0, 10);
   const totalPages = Math.ceil(total / limit);
 
   return {
@@ -84,6 +147,9 @@ export async function getUploadedFilesByRolePaginated(
     pagination: {
       total,
       totalPages,
+      currentPage: Number(page),
+      pageSize: limit,
+      remainingPages: Math.max(totalPages - page, 0),
     },
   };
 }

@@ -40,26 +40,30 @@ export const uploadFileHandler = async (req, res) => {
     );
   }
 };
+
 export async function getFiles(req, res) {
   try {
     const { id: userId, role } = req.user;
-    const { page = 1, size = 10, query="" } = req.query;
+    const { page = 1, size = 10, query = "" } = req.query;
 
     const result = await getUploadedFilesByRolePaginated(
       userId,
       role,
-      page,
-      size,
-      query
+      parseInt(page, 10),
+      parseInt(size, 10),
+      query.trim()
     );
 
     res.status(200).json({
-      data: result,
       status_code: 200,
       detail: "Files fetched successfully",
+      data: result,
     });
   } catch (error) {
     console.error("Error fetching files:", error.message);
-    res.status(500).json({ error: "Failed to fetch files" });
+    res.status(500).json({
+      status_code: 500,
+      error: "Failed to fetch files",
+    });
   }
 }
