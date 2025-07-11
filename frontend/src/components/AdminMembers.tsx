@@ -55,6 +55,7 @@ export default function AdminMembers() {
     members: [],
     leader_id: "",
     active: true,
+    role: "working",
   });
   const [editTeamId, setEditTeamId] = useState(null);
   const [showMembersDropdown, setShowMembersDropdown] = useState(false);
@@ -159,6 +160,7 @@ export default function AdminMembers() {
       leader_id: parseInt(teamFormData.leader_id),
       users: JSON.stringify(teamFormData.members.map((id) => parseInt(id))),
       active: teamFormData.active,
+      role: teamFormData.role,
     };
 
     const response = await makeApiCall(
@@ -241,6 +243,7 @@ export default function AdminMembers() {
       leader_id: parseInt(teamFormData.leader_id),
       users: JSON.stringify(teamFormData.members.map((id) => parseInt(id))),
       active: teamFormData.active,
+      role: teamFormData.role,
     };
     const response = await makeApiCall(
       "patch",
@@ -296,8 +299,15 @@ export default function AdminMembers() {
             members: team.users.map((u) => u.id.toString()),
             leader_id: team.leader_id?.toString() || "",
             active: team.active ?? true,
+            role: team.role || "working",
           }
-        : { title: "", members: [], leader_id: "", active: true }
+        : {
+            title: "",
+            members: [],
+            leader_id: "",
+            active: true,
+            role: "working",
+          }
     );
   };
   // Delete user
@@ -663,6 +673,25 @@ export default function AdminMembers() {
               />
             </div>
             <div className="md:col-span-1">
+              <label className="block text-xs font-medium mb-1">
+                Team Role
+              </label>
+              <Select
+                value={teamFormData.role}
+                onValueChange={(value) =>
+                  setTeamFormData((f) => ({ ...f, role: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="working">Working</SelectItem>
+                  <SelectItem value="pm">PM</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-1">
               <Button
                 type="submit"
                 className="w-full"
@@ -690,6 +719,7 @@ export default function AdminMembers() {
                 <th className="p-2 text-left">Title</th>
                 <th className="p-2 text-left">Members</th>
                 <th className="p-2 text-left">Leader</th>
+                <th className="p-2 text-left">Role</th>
                 <th className="p-2 text-center">Active</th>
                 <th className="p-2 text-center">Actions</th>
               </tr>
@@ -702,6 +732,7 @@ export default function AdminMembers() {
                     {t.users.map((item) => item.name).join(", ")}
                   </td>
                   <td className="p-2">{t.leader.name}</td>
+                  <td className="p-2">{t.role === "pm" ? "PM" : "Working"}</td>
                   <td className="p-2 text-center">
                     <Switch
                       checked={t.active}

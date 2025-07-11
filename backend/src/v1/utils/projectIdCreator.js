@@ -14,7 +14,7 @@ export const generateProjectId = async () => {
 
   const result = await pool.query(latestQuery);
   let nextNumber = 1;
-
+  console.log(result.rows[0]);
   if (result.rows.length > 0) {
     const latestId = result.rows[0].project_id; // e.g. "PRJ-012-24"
     const numberPart = latestId.split("-")[1]; // "012"
@@ -26,6 +26,6 @@ export const generateProjectId = async () => {
 
   const formattedNumber = String(nextNumber).padStart(3, "0");
   const createdProjectId = `${prefix}-${formattedNumber}-${yearSuffix}`;
-
+  console.log(createdProjectId);
   return createdProjectId;
 };

@@ -63,13 +63,14 @@ CREATE TABLE projects (
     client_name VARCHAR(100) NOT NULL,
     client_company VARCHAR(100) NOT NULL,
     location VARCHAR(100) NOT NULL,
-    project_type VARCHAR(50) NOT NULL CHECK (project_type IN ('pipeline', 'plant', 'Maintenance', 'other')),
-    priority VARCHAR(20) NOT NULL CHECK (priority IN ('high', 'medium', 'low')),
+    project_type VARCHAR(50) NOT NULL ,
+    priority VARCHAR(20) NOT NULL ,
     contact_person VARCHAR(100) NOT NULL,
     contact_person_phone VARCHAR(15),
     contact_person_email VARCHAR(255),
     notes TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'under_review', 'approved', 'rejected', 'completed')),
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',
+    estimation_status VARCHAR(30) DEFAULT 'draft',
     send_to_estimation BOOLEAN DEFAULT FALSE NOT NULL
 );
 
@@ -79,6 +80,20 @@ CREATE TABLE projects_uploaded_files (
     PRIMARY KEY (project_id, uploaded_file_id)
 );
 
+CREATE TABLE project_rejections (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    note TEXT NOT NULL
+);
+
+CREATE TABLE project_rejection_uploaded_files (
+    project_rejection_id INTEGER NOT NULL REFERENCES project_rejections(id) ON DELETE CASCADE,
+    uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
+    PRIMARY KEY (project_rejection_id, uploaded_file_id)
+);
 -- =====================
 -- PROJECT MORE INFO
 -- =====================
@@ -113,9 +128,10 @@ CREATE TABLE estimations (
     approval_date DATE,
     approved BOOLEAN DEFAULT FALSE NOT NULL,
     sent_to_pm BOOLEAN DEFAULT FALSE NOT NULL,
-    forward_to_id INTEGER REFERENCES users(id),
     notes TEXT,
-    updates TEXT
+    updates TEXT,
+    forward_type VARCHAR(10) CHECK (forward_type IN ('user', 'team')),
+    forward_id INTEGER
 );
 
 CREATE TABLE estimations_uploaded_files (
@@ -124,6 +140,12 @@ CREATE TABLE estimations_uploaded_files (
     PRIMARY KEY (estimation_id, uploaded_file_id)
 );
 
+CREATE TABLE estimation_clarification_logs (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    estimation_id INTEGER NOT NULL REFERENCES estimations(id) ON DELETE CASCADE,
+    clarification TEXT NOT NULL
+);
 -- =====================
 -- PROJECT TIMELINES 
 -- =====================

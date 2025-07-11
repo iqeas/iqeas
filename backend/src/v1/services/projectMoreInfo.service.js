@@ -1,5 +1,4 @@
 import pool from "../config/db.js";
-
 export async function createProjectMoreInfo({
   project_id,
   notes,
@@ -13,6 +12,10 @@ export async function createProjectMoreInfo({
     [project_id, notes, enquiry]
   );
 
+  const inserted = result.rows[0];
+  const insertedId = inserted.id;
+
+  // Validate uploaded_file_ids
   if (uploaded_file_ids.length > 0) {
     const { rows: existingFiles } = await pool.query(
       `SELECT id FROM uploaded_files WHERE id = ANY($1)`,
@@ -26,14 +29,41 @@ export async function createProjectMoreInfo({
     const insertPromises = uploaded_file_ids.map((fileId) =>
       pool.query(
         `INSERT INTO project_more_info_uploaded_files (project_more_info_id, uploaded_file_id)
-         VALUES ($1, $2)`,
-        [id, fileId]
+        VALUES ($1, $2)`,
+        [insertedId, fileId]
       )
     );
     await Promise.all(insertPromises);
   }
 
-  return result.rows[0];
+  // Return the enriched inserted row with uploaded files
+  const enriched = await pool.query(
+    `
+    SELECT 
+      pm.id,
+      pm.notes,
+      pm.enquiry,
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', uf.id,
+              'file', uf.file,
+              'label', uf.label
+            )
+          )
+          FROM project_more_info_uploaded_files pmuf
+          JOIN uploaded_files uf ON pmuf.uploaded_file_id = uf.id
+          WHERE pmuf.project_more_info_id = pm.id
+        ), '[]'::json
+      ) AS uploaded_files
+    FROM project_more_info pm
+    WHERE pm.id = $1
+    `,
+    [insertedId]
+  );
+
+  return enriched.rows[0];
 }
 
 

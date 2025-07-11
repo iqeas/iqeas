@@ -2,7 +2,10 @@ import {
   createProject,
   updateProjectPartial,
   getProjectByPagination,
-  getProjectsSentToEstimation,
+  createProjectUploadedFile,
+  getRFQCardData,
+  getProjectsEstimationProjects,
+  getEstimationCardData,
 } from "../services/projects.service.js";
 
 import { formatResponse } from "../utils/response.js";
@@ -10,7 +13,16 @@ import { formatResponse } from "../utils/response.js";
 export const createNewProject = async (req, res) => {
   try {
     const userId = req.user.id; // Assuming user ID is in req.user
-    const project = await createProject({...req.body,user_id: userId});
+    const { uploaded_files } = req.body;
+
+    const project = await createProject({
+      ...req.body,
+      user_id: userId,
+      status: req.body.send_to_estimation ? "estimating" : "draft",
+    });
+    if (uploaded_files && uploaded_files.length > 0) {
+      await createProjectUploadedFile(project.id, uploaded_files);
+    }
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
@@ -31,7 +43,9 @@ export const createNewProject = async (req, res) => {
 export const patchProject = async (req, res) => {
   const { id } = req.params;
   const fieldsToUpdate = req.body;
-
+  if (fieldsToUpdate.send_to_estimation) {
+    fieldsToUpdate.status = "estimating";
+  }
   if (!id) {
     return res
       .status(400)
@@ -72,12 +86,15 @@ export async function getProjectsPaginatedController(req, res) {
     const size = parseInt(req.query.size) || 10;
 
     const data = await getProjectByPagination(page, size);
-
+    const cardData = await getRFQCardData();
     res.status(200).json(
       formatResponse({
         statusCode: 200,
         detail: "Project fetched sucessfully",
-        data: data,
+        data: {
+          projects: data,
+          cards: cardData,
+        },
       })
     );
   } catch (error) {
@@ -86,18 +103,23 @@ export async function getProjectsPaginatedController(req, res) {
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
-      console.error("Error fetching projects:", error.message);
+    console.error("Error fetching projects:", error.message);
   }
 }
 
 export const getEstimationProjects = async (req, res) => {
   try {
-    const projects = await getProjectsSentToEstimation();
+    // edit-needed i will pase page and size from query params and alse search as query
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+    const query = req.query.search || "";
+    const projects = await getProjectsEstimationProjects();
+    const cards = await getEstimationCardData();
     return res.status(200).json(
       formatResponse({
         statusCode: 200,
         detail: "Projects sent to estimation fetched successfully",
-        data: projects,
+        data: {total_pages : 10, projects, cards},
       })
     );
   } catch (error) {
