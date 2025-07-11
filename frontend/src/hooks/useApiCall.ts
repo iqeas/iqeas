@@ -46,7 +46,7 @@ export const useAPICall = () => {
         method: method,
         data: data,
         headers: header,
-        url: endpoint,
+        url: method.toLowerCase() === "get" ? `${endpoint}` : endpoint,
       });
       const responseJson = response.data;
       responseData = {

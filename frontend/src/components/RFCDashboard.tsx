@@ -37,7 +37,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { IRFCProject } from "@/types/apiTypes";
 import ShowFile from "./ShowFile";
 import toast from "react-hot-toast";
-import { validateProjectForm } from "@/utils/validation";
+import {
+  validateProjectForm,
+  validateRequiredFields,
+} from "@/utils/validation";
+import Loading from "./atomic/Loading";
+import test from "node:test";
 
 function generateProjectId() {
   return `PRJ-${new Date().getFullYear()}-${Math.floor(
@@ -58,7 +63,44 @@ const initialForm = {
   contactEmail: "",
   notes: "",
   priority: "medium",
-  deadline: "",
+};
+
+// Add helper functions for badge color
+const getPriorityBadgeProps = (priority: string) => {
+  switch (priority?.toLowerCase()) {
+    case "high":
+      return { variant: "destructive" as const };
+    case "medium":
+      return { variant: "secondary" as const };
+    case "low":
+      return {
+        variant: "outline" as const,
+        className: "border-gray-400 text-gray-600",
+      };
+    default:
+      return { variant: "default" as const };
+  }
+};
+
+const getStatusBadgeProps = (status: string) => {
+  if (!status) return { variant: "default" as const };
+  switch (status.toLowerCase()) {
+    case "rejected":
+      return { variant: "destructive" as const };
+    case "completed":
+      return {
+        variant: "secondary" as const,
+        className: "bg-green-100 text-green-800 border-green-300",
+      };
+    case "estimating":
+    case "ready for estimation":
+      return {
+        variant: "secondary" as const,
+        className: "bg-blue-100 text-blue-800 border-blue-300",
+      };
+    default:
+      return { variant: "outline" as const, className: "capitalize" };
+  }
 };
 
 export const RFCDashboard = () => {
@@ -71,62 +113,33 @@ export const RFCDashboard = () => {
   const [formStep, setFormStep] = useState(1);
   const [sendToEstimation, setSendToEstimation] = useState(false);
   const [detailsProject, setDetailsProject] = useState(null);
-  const [updateText, setUpdateText] = useState("");
   const [moreInfoProject, setMoreInfoProject] = useState(null);
-  const [moreInfoFiles, setMoreInfoFiles] = useState([
-    { label: "", file: null },
-  ]);
-  const [moreInfoNotes, setMoreInfoNotes] = useState("");
-  const [moreInfoEnquiry, setMoreInfoEnquiry] = useState("");
+  const [moreInfoForm, setMoreInfoForm] = useState({
+    files: [{ label: "", file: null }],
+    notes: "",
+    enquiry: "",
+  });
+  const [cards, setCards] = useState({
+    active_projects: 0,
+    read_for_estimation: 0,
+  });
 
   useEffect(() => {
     // Fetch initial projects data from API
     const fetchProjects = async () => {
       const response = await makeApiCall(
         "get",
-        API_ENDPOINT.GET_ALL_PROJECTS,
+        API_ENDPOINT.GET_ALL_RFQ_PROJECTS,
         {},
         "application/json",
         authToken,
         "fetchProjects"
       );
-      if (response && response.status === 200 && Array.isArray(response.data)) {
-        // Add mock uploaded_files and add_more_infos for demo
-        const demoProjects = response.data.map((p, idx) => ({
-          ...p,
-          uploaded_files: [
-            { label: "BOQ", id: 1, file: "/public/placeholder.svg" },
-            { label: "Layout", id: 2, file: "/public/placeholder.svg" },
-          ],
-          add_more_infos: [
-            {
-              note: "Client sent additional clarifications.",
-              uploaded_files: [
-                {
-                  label: "Clarification Doc",
-                  id: 3,
-                  file: "/public/placeholder.svg",
-                },
-              ],
-            },
-            {
-              note: "Site visit photos uploaded.",
-              uploaded_files: [
-                {
-                  label: "Site Photo 1",
-                  id: 4,
-                  file: "/public/placeholder.svg",
-                },
-                {
-                  label: "Site Photo 2",
-                  id: 5,
-                  file: "/public/placeholder.svg",
-                },
-              ],
-            },
-          ],
-        }));
-        setProjects(demoProjects);
+      if (response.status === 200) {
+        setProjects(response.data.projects);
+        setCards(response.data.cards);
+      } else {
+        toast.error("failed to fetch projects");
       }
     };
     fetchProjects();
@@ -190,11 +203,15 @@ export const RFCDashboard = () => {
   const submitProject = async (sendToEstimationNow = false) => {
     const missing = validateProjectForm(form);
     if (missing.length > 0) {
-      toast.error(`Missing required field: ${missing[0]}`)
+      toast.error(`Missing required field: ${missing[0]}`);
       return;
     }
+    // if (!(form.uploadedFiles.length > 0 && form.uploadedFiles[0].file !=null)){
+    //   return toast.error("Please attach at least one")
+    // }
     // Upload all files in form.uploadedFiles
     const uploadedFileIds = [];
+
     for (const uf of form.uploadedFiles) {
       if (uf.file) {
         const uploaded = await uploadFile(uf.file, uf.label);
@@ -206,9 +223,6 @@ export const RFCDashboard = () => {
         }
       }
     }
-    // Optionally update local state for preview (if needed)
-    // setForm((f) => ({ ...f, uploadedFiles: [] }));
-    // Prepare data for project creation
     const data = {
       name: form.name,
       client_name: form.clientName,
@@ -232,6 +246,22 @@ export const RFCDashboard = () => {
       authToken,
       "createProject"
     );
+    if (response.status == 201) {
+      setProjects([response.data, ...projects]);
+      if (response.data.send_to_estimation) {
+        setCards({
+          ...cards,
+          active_projects: cards.active_projects + 1,
+        });
+      } else {
+        setCards({
+          ...cards,
+          read_for_estimation: cards.read_for_estimation + 1,
+        });
+      }
+    } else {
+      toast.error("Failed to create project");
+    }
     setShowForm(false);
     setSendToEstimation(false);
   };
@@ -279,61 +309,90 @@ export const RFCDashboard = () => {
   // Add handlers for more info modal
   const handleMoreInfoFileChange = (idx, e) => {
     const file = e.target.files[0] || null;
-    setMoreInfoFiles((files) =>
-      files.map((uf, i) => (i === idx ? { ...uf, file } : uf))
-    );
+    setMoreInfoForm((form) => ({
+      ...form,
+      files: form.files.map((uf, i) => (i === idx ? { ...uf, file } : uf)),
+    }));
   };
   const handleMoreInfoLabelChange = (idx, e) => {
     const label = e.target.value;
-    setMoreInfoFiles((files) =>
-      files.map((uf, i) => (i === idx ? { ...uf, label } : uf))
-    );
+    setMoreInfoForm((form) => ({
+      ...form,
+      files: form.files.map((uf, i) => (i === idx ? { ...uf, label } : uf)),
+    }));
   };
   const addMoreInfoFileInput = () => {
-    setMoreInfoFiles((files) => [...files, { label: "", file: null }]);
+    setMoreInfoForm((form) => ({
+      ...form,
+      files: [...form.files, { label: "", file: null }],
+    }));
   };
   const removeMoreInfoFileInput = (idx) => {
-    setMoreInfoFiles((files) => files.filter((_, i) => i !== idx));
+    setMoreInfoForm((form) => ({
+      ...form,
+      files: form.files.filter((_, i) => i !== idx),
+    }));
   };
-  const submitMoreInfo = () => {
-    // setProjects((projects) =>
-    //   projects.map((p) =>
-    //     p.id === moreInfoProject.id
-    //       ? {
-    //           ...p,
-    //           uploadedFiles: [
-    //             ...p.uploadedFiles,
-    //             ...moreInfoFiles.filter((f) => f.file),
-    //           ],
-    //           updates: [
-    //             ...(moreInfoNotes.trim()
-    //               ? [
-    //                   {
-    //                     text: `Note: ${moreInfoNotes}`,
-    //                     date: new Date().toISOString(),
-    //                     author: "RFC User",
-    //                   },
-    //                 ]
-    //               : []),
-    //             ...(moreInfoEnquiry.trim()
-    //               ? [
-    //                   {
-    //                     text: `Enquiry: ${moreInfoEnquiry}`,
-    //                     date: new Date().toISOString(),
-    //                     author: "RFC User",
-    //                   },
-    //                 ]
-    //               : []),
-    //             ...(p.updates || []),
-    //           ],
-    //         }
-    //       : p
-    //   )
-    // );
-    setMoreInfoProject(null);
-    setMoreInfoFiles([{ label: "", file: null }]);
-    setMoreInfoNotes("");
-    setMoreInfoEnquiry("");
+
+  // Refactor submitMoreInfo to upload files and send the correct payload
+  const submitMoreInfo = async () => {
+    if (!moreInfoProject) return;
+    console.log(validateRequiredFields(moreInfoForm, ["enquiry", "notes"]));
+    if (validateRequiredFields(moreInfoForm, ["enquiry", "notes"]).length > 0) {
+      toast.error("Fill all the required fields");
+      return;
+    }
+    // Upload files
+    const uploadedFileIds = [];
+    for (const uf of moreInfoForm.files) {
+      if (uf.file) {
+        const uploaded = await uploadFile(uf.file, uf.label);
+        if (uploaded && uploaded.id) {
+          uploadedFileIds.push(uploaded.id);
+        } else {
+          toast.error("Failed to upload files");
+          return;
+        }
+      }
+    }
+    // Prepare data
+    const data = {
+      project_id: moreInfoProject.id,
+      notes: moreInfoForm.notes,
+      enquiry: moreInfoForm.enquiry,
+      uploaded_file_ids: uploadedFileIds,
+    };
+    // Call API
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.PROJECT_ADD_MORE_INFO,
+      data,
+      "application/json",
+      authToken,
+      "addMoreInfo"
+    );
+    if (response.status === 201) {
+      toast.success("Additional info added!");
+      setProjects((prev) =>
+        prev.map((item) => {
+          if (item.id === moreInfoProject.id) {
+            return {
+              ...item,
+              add_more_infos: [response.data, ...item.add_more_infos],
+            };
+          }
+          return item;
+        })
+      );
+      setMoreInfoProject(null);
+      setMoreInfoForm({
+        files: [{ label: "", file: null }],
+        notes: "",
+        enquiry: "",
+      });
+    } else {
+      toast.error("Failed to add more info");
+    }
   };
 
   const uploadFile = async (file: File, label: string) => {
@@ -357,12 +416,50 @@ export const RFCDashboard = () => {
       return null;
     }
   };
+
+  const handleSentToEstimation = async (id: number) => {
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_PROJECT(id),
+      {
+        send_to_estimation: true,
+      },
+      "application/json",
+      authToken,
+      "sentToEstimation"
+    );
+    if (response.status == 200) {
+      toast.success(response.detail);
+      setProjects((prev) =>
+        prev.map((item) => {
+          if (item.id == id) {
+            return {
+              ...item,
+              send_to_estimation: true,
+              status: "estimating",
+            };
+          }
+          return item;
+        })
+      );
+      setCards({
+        ...cards,
+        active_projects: cards.active_projects + 1,
+        read_for_estimation: cards.read_for_estimation - 1,
+      });
+    } else {
+      toast.error("Failed to sent to estimation");
+    }
+  };
+  if (!isFetched || (fetching && fetchType == "getProjects")) {
+    return <Loading full />;
+  }
   return (
     <div className="p-6 relative">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
-            RFC Team Dashboard
+            RFQ Team Dashboard
           </h1>
           <p className="text-slate-600 mt-1">
             Manage client requests and project initiation
@@ -491,20 +588,6 @@ export const RFCDashboard = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  {form.priority && (
-                    <div>
-                      <label className="block text-sm font-medium">
-                        Deadline (optional)
-                      </label>
-                      <Input
-                        type="date"
-                        value={form.deadline}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, deadline: e.target.value }))
-                        }
-                      />
-                    </div>
-                  )}
                   <div>
                     <label className="block text-sm font-medium">
                       Received Date
@@ -632,11 +715,6 @@ export const RFCDashboard = () => {
                   <div>
                     <strong>Priority:</strong> {form.priority}
                   </div>
-                  {form.deadline && (
-                    <div>
-                      <strong>Deadline:</strong> {form.deadline}
-                    </div>
-                  )}
                   <div>
                     <strong>Contact Person:</strong> {form.contactPerson}
                   </div>
@@ -678,7 +756,11 @@ export const RFCDashboard = () => {
                   <Button
                     className="bg-green-600 hover:bg-green-700"
                     onClick={() => submitProject(sendToEstimation)}
-                    loading={fetching && fetchType == "createProject"}
+                    loading={
+                      fetching &&
+                      (fetchType == "createProject" ||
+                        fetchType == "uploadFile")
+                    }
                   >
                     Save
                   </Button>
@@ -690,7 +772,7 @@ export const RFCDashboard = () => {
       )}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
@@ -698,7 +780,7 @@ export const RFCDashboard = () => {
                 <FileText size={20} className="text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{projects.length}</p>
+                <p className="text-2xl font-bold"> {cards.active_projects}</p>
                 <p className="text-sm text-slate-600">Active RFQs</p>
               </div>
             </div>
@@ -711,31 +793,10 @@ export const RFCDashboard = () => {
                 <Calendar size={20} className="text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {
-                    projects.filter((p) => p.status === "Ready for Estimation")
-                      .length
-                  }
+                <p className="text-2xl font-bold capitalize">
+                  {cards.read_for_estimation}
                 </p>
                 <p className="text-sm text-slate-600">Ready for Estimation</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Upload size={20} className="text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {projects.reduce(
-                    (a, p) => a + (p.uploaded_files?.length || 0),
-                    0
-                  )}
-                </p>
-                <p className="text-sm text-slate-600">Documents Uploaded</p>
               </div>
             </div>
           </CardContent>
@@ -794,37 +855,29 @@ export const RFCDashboard = () => {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-3">
-                  <Badge
-                    variant={
-                      project.priority.toLowerCase() === "high"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                  >
+                  <Badge {...getPriorityBadgeProps(project.priority)}>
                     {project.priority}
                   </Badge>
-                  <Badge variant="outline">{project.status}</Badge>
+                  <Badge {...getStatusBadgeProps(project.status)}>
+                    {project.status}
+                  </Badge>
                   <div className="flex gap-2 mt-2">
-                    <Button
+                    {/* <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => {
-                        /* edit logic */
-                      }}
+                    
                       title="Edit"
                     >
                       <Edit size={16} />
-                    </Button>
-                    <Button
+                    </Button> */}
+                    {/* <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => {
-                        /* delete logic */
-                      }}
+                      
                       title="Delete"
                     >
                       <Trash2 size={16} />
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </div>
@@ -843,15 +896,18 @@ export const RFCDashboard = () => {
                 >
                   <StickyNote size={14} className="mr-1" /> Add More Info
                 </Button>
-                <Button
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => {
-                    /* send to estimation logic */
-                  }}
-                >
-                  <Send size={14} className="mr-1" /> Send to Estimation
-                </Button>
+                {!project.send_to_estimation && (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    loading={fetching && fetchType == "sentToEstimation"}
+                    onClick={() => {
+                      handleSentToEstimation(project.id);
+                    }}
+                  >
+                    <Send size={14} className="mr-1" /> Send to Estimation
+                  </Button>
+                )}
               </div>
             </CardHeader>
           </Card>
@@ -861,84 +917,180 @@ export const RFCDashboard = () => {
       {/* Details View Modal */}
       {detailsProject && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative overflow-y-auto max-h-[90vh]">
-            <button
-              className="absolute top-2 right-2"
-              onClick={() => setDetailsProject(null)}
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl relative overflow-y-auto max-h-[90vh]">
+            {/* Header */}
+            <div
+              className="flex items-center justify-between px-6 py-4 rounded-t-lg"
+              style={{
+                background: "linear-gradient(90deg, #1976d2 0%, #4fc3f7 100%)",
+              }}
             >
-              <X />
-            </button>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <FileText size={20} /> Project Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-8">
               <div className="flex items-center gap-2">
-                <User size={16} /> <strong>Client Name:</strong>{" "}
-                {detailsProject.client_name}
+                <FileText size={22} className="text-white" />
+                <span className="text-lg font-bold text-white">
+                  Project Details
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Building2 size={16} /> <strong>Client Company:</strong>{" "}
-                {detailsProject.client_company}
+              <div className="text-sm text-white font-mono opacity-80 pr-3">
+                {detailsProject.project_id}
               </div>
-              <div className="flex items-center gap-2">
-                <MapPin size={16} /> <strong>Location:</strong>{" "}
-                {detailsProject.location}
+              <button
+                className="absolute top-3 right-3 text-white hover:text-gray-200"
+                onClick={() => setDetailsProject(null)}
+                aria-label="Close"
+              >
+                <X size={22} />
+              </button>
+            </div>
+            {/* Content */}
+            <div className="px-6 py-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6">
+                <div>
+                  <span className="font-semibold">Client Name:</span>
+                  <br />
+                  {detailsProject.client_name || (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-semibold">Client Company:</span>
+                  <br />
+                  {detailsProject.client_company || (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-semibold">Location:</span>
+                  <br />
+                  {detailsProject.location || (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-semibold">Project Type:</span>
+                  <br />
+                  {detailsProject.project_type || (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-semibold">Received Date:</span>
+                  <br />
+                  {detailsProject.received_date ? (
+                    new Date(detailsProject.received_date).toLocaleDateString()
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-semibold">Priority:</span>
+                  <br />
+                  {detailsProject.priority ? (
+                    <Badge {...getPriorityBadgeProps(detailsProject.priority)}>
+                      {detailsProject.priority}
+                    </Badge>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-semibold">Status:</span>
+                  <br />
+                  {detailsProject.status ? (
+                    <Badge {...getStatusBadgeProps(detailsProject.status)}>
+                      {detailsProject.status}
+                    </Badge>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <FileText size={16} /> <strong>Project Type:</strong>{" "}
-                {detailsProject.project_type}
+              <hr className="my-2" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6">
+                <div className="flex items-center gap-2">
+                  <User size={16} className="text-blue-600" />
+                  <span className="font-semibold">Contact Person:</span>
+                  <span>
+                    {detailsProject.contact_person || (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone size={16} className="text-green-600" />
+                  <span className="font-semibold">Phone:</span>
+                  <span>
+                    {detailsProject.contact_person_phone || (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Mail size={16} className="text-red-600" />
+                  <span className="font-semibold">Email:</span>
+                  <span>
+                    {detailsProject.contact_person_email || (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Calendar size={16} /> <strong>Deadline:</strong> 2023-11-20
+              <hr className="my-2" />
+              {/* Notes */}
+              <div className="mb-4">
+                <span className="font-semibold flex items-center gap-2 mb-1">
+                  <StickyNote size={16} /> Notes:
+                </span>
+                <div className="bg-slate-50 rounded p-2 min-h-[40px] text-gray-700">
+                  {detailsProject.notes ? (
+                    detailsProject.notes
+                  ) : (
+                    <span className="text-gray-400">No notes</span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{detailsProject.status}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone size={16} /> <strong>Contact Person:</strong>{" "}
-                {detailsProject.contact_person}
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone size={16} /> <strong>Phone:</strong>{" "}
-                {detailsProject.contact_person_phone}
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail size={16} /> <strong>Email:</strong>{" "}
-                {detailsProject.contact_person_email}
-              </div>
-              <div className="flex items-center gap-2">
-                <StickyNote size={16} /> <strong>Notes:</strong>{" "}
-                {detailsProject.notes}
-              </div>
-              <div className="col-span-2 mt-2">
-                <strong className="flex items-center gap-2 text-base mb-1">
-                  <FileText size={16} /> Uploaded Files
-                </strong>
+              {/* Uploaded Files */}
+              <div className="mb-4">
+                <span className="font-semibold flex items-center gap-2 mb-1">
+                  <FileText size={16} /> Uploaded Files:
+                </span>
                 <ul className="list-disc ml-6">
-                  {(detailsProject.uploaded_files || []).map((f, i) => (
-                    <li key={i} className="mb-2">
-                      <ShowFile label={f.label} url={f.file} />
-                    </li>
-                  ))}
+                  {detailsProject.uploaded_files &&
+                  detailsProject.uploaded_files.length > 0 ? (
+                    detailsProject.uploaded_files.map((f, i) => (
+                      <li key={i} className="mb-2">
+                        <ShowFile label={f.label} url={f.file} />
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-gray-400">No files uploaded</li>
+                  )}
                 </ul>
               </div>
-            </div>
-            {/* Add More Infos Section */}
-            {detailsProject.add_more_infos &&
-              detailsProject.add_more_infos.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
-                    <StickyNote size={18} /> Additional Info
-                  </h3>
+              {/* RFC Updates / Additional Info */}
+              <div className="mb-4">
+                <span className="font-semibold flex items-center gap-2 mb-1 text-yellow-700">
+                  <AlertCircle size={16} /> RFC Updates:
+                </span>
+                {detailsProject.add_more_infos &&
+                detailsProject.add_more_infos.length > 0 ? (
                   <div className="space-y-4">
                     {detailsProject.add_more_infos.map((info, idx) => (
                       <div
                         key={idx}
                         className="border rounded-lg p-4 bg-slate-50"
                       >
-                        <div className="flex items-center gap-2 mb-2 text-sm">
-                          <StickyNote size={14} />{" "}
-                          <span className="font-medium">{info.note}</span>
+                        <div className="flex flex-col gap-1 mb-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <StickyNote size={14} />
+                            <span className="font-medium">Notes:</span>
+                            <span>{info.notes || "-"}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Info size={14} />
+                            <span className="font-medium">Enquiry:</span>
+                            <span>{info.enquiry || "-"}</span>
+                          </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {(info.uploaded_files || []).map((f, j) => (
@@ -953,12 +1105,18 @@ export const RFCDashboard = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={() => setDetailsProject(null)}>
-                Close
-              </Button>
+                ) : (
+                  <div className="text-gray-400 ml-2">No updates yet.</div>
+                )}
+              </div>
+              <div className="flex justify-end mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setDetailsProject(null)}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -981,7 +1139,7 @@ export const RFCDashboard = () => {
               <label className="block text-sm font-medium mb-2">
                 Upload Additional Files
               </label>
-              {moreInfoFiles.map((uf, idx) => (
+              {moreInfoForm.files.map((uf, idx) => (
                 <div key={idx} className="flex items-center gap-2 mb-2">
                   <select
                     className="border rounded px-2 py-1 text-sm"
@@ -1001,7 +1159,7 @@ export const RFCDashboard = () => {
                     className="border rounded px-2 py-1 text-sm"
                     onChange={(e) => handleMoreInfoFileChange(idx, e)}
                   />
-                  {moreInfoFiles.length > 1 && (
+                  {moreInfoForm.files.length > 1 && (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -1029,8 +1187,13 @@ export const RFCDashboard = () => {
               <textarea
                 className="border rounded w-full p-2 text-sm"
                 rows={2}
-                value={moreInfoNotes}
-                onChange={(e) => setMoreInfoNotes(e.target.value)}
+                value={moreInfoForm.notes}
+                onChange={(e) =>
+                  setMoreInfoForm((form) => ({
+                    ...form,
+                    notes: e.target.value,
+                  }))
+                }
               />
             </div>
             <div className="mb-4">
@@ -1040,8 +1203,13 @@ export const RFCDashboard = () => {
               <textarea
                 className="border rounded w-full p-2 text-sm"
                 rows={2}
-                value={moreInfoEnquiry}
-                onChange={(e) => setMoreInfoEnquiry(e.target.value)}
+                value={moreInfoForm.enquiry}
+                onChange={(e) =>
+                  setMoreInfoForm((form) => ({
+                    ...form,
+                    enquiry: e.target.value,
+                  }))
+                }
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -1054,6 +1222,18 @@ export const RFCDashboard = () => {
               <Button
                 className="bg-blue-600 hover:bg-blue-700"
                 onClick={submitMoreInfo}
+                loading={
+                  fetching &&
+                  (fetchType == "addMoreInfo" ||
+                    fetchType == "editMoreInfo" ||
+                    fetchType == "uploadFile")
+                }
+                disabled={
+                  fetching &&
+                  (fetchType == "addMoreInfo" ||
+                    fetchType == "editMoreInfo" ||
+                    fetchType == "uploadFile")
+                }
               >
                 Submit
               </Button>
