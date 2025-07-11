@@ -267,21 +267,7 @@ export const RFCDashboard = () => {
     setSendToEstimation(false);
   };
 
-  // Mark as Ready for Estimation
-  const markReadyForEstimation = (id) => {
-    setProjects(
-      projects.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              status: "Ready for Estimation",
-              estimationStatus: "In Progress",
-            }
-          : p
-      )
-    );
-  };
-
+  
   // Filtered projects
   const filteredProjects = projects.filter(
     (project) =>

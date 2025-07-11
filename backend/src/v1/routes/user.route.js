@@ -6,7 +6,7 @@ import {
   toggleUserStatus,
 } from "../controllers/user.controller.js";
 import { allowRoles } from "../utils/verification.js";
-import { authenticateToken } from "../middleware/authMiddleware.js"
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -27,7 +27,7 @@ router.patch(
 router.get(
   "/admin/get-users",
   authenticateToken,
-  allowRoles("admin"),
+  allowRoles("admin", "estimation"),
   getUsersController
 );
 
@@ -37,6 +37,5 @@ router.patch(
   allowRoles("admin"),
   EditUserDataController
 );
-
 
 export default router;

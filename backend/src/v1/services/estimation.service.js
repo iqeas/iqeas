@@ -1,32 +1,33 @@
 import pool from "../config/db.js";
+import { updateProjectPartial } from "./projects.service.js";
 export async function createEstimation(data) {
   const {
     project_id,
     user_id,
-    status = "draft",
+    status = "approved",
     log = null,
     cost = null,
     deadline = null,
     approval_date = null,
     approved = false,
     sent_to_pm = false,
-    forward_to_id = null,
+    forward_id = null,
+    forward_type = null,
     notes = null,
-    updates = null,
     uploaded_file_ids = [],
   } = data;
 
   const query = `
-    INSERT INTO estimations (
-      project_id, user_id, status, log, cost,
-      deadline, approval_date, approved, sent_to_pm,
-      forward_to_id, notes, updates
-    ) VALUES (
-      $1, $2, $3, $4, $5,
-      $6, $7, $8, $9, $10,
-      $11, $12
-    ) RETURNING *;
-  `;
+  INSERT INTO estimations (
+    project_id, user_id, status, log, cost,
+    deadline, approval_date, approved, sent_to_pm,
+    forward_id, forward_type, notes
+  ) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, $9, $10,
+    $11, $12
+  ) RETURNING *;
+`;
 
   const values = [
     project_id,
@@ -38,9 +39,9 @@ export async function createEstimation(data) {
     approval_date,
     approved,
     sent_to_pm,
-    forward_to_id,
+    forward_id,
+    forward_type,
     notes,
-    updates,
   ];
 
   const result = await pool.query(query, values);
@@ -55,29 +56,91 @@ export async function createEstimation(data) {
     );
     await Promise.all(promises);
   }
+  await updateProjectPartial(project_id, {
+    estimation_status: "approved",
+    status: "Working",
+  });
 
   return estimation;
 }
 
-export async function getEstimationById(id) {
-  const estimationResult = await pool.query(
-    `SELECT * FROM estimations WHERE id = $1`,
-    [id]
-  );
+export async function getEstimationById(estimationId) {
+  const query = `
+    SELECT 
+      e.id,
+      e.created_at,
+      e.updated_at,
+      e.project_id,
+      e.user_id,
+      e.log,
+      e.cost,
+      e.deadline,
+      e.approval_date,
+      e.approved,
+      e.sent_to_pm,
+      e.forward_type,
+      e.forward_id,
+      e.notes,
+      e.updates,
 
-  if (estimationResult.rowCount === 0) return null;
+      -- Uploaded files
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', uf.id,
+              'label', uf.label,
+              'file', uf.file
+            )
+          )
+          FROM estimation_uploaded_files euf
+          JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+          WHERE euf.estimation_id = e.id
+        ), '[]'::json
+      ) AS uploaded_files,
 
-  const estimation = estimationResult.rows[0];
+      -- Forward object
+      CASE
+        WHEN e.forward_type = 'user' THEN (
+          SELECT json_build_object(
+            'id', u.id,
+            'label', u.name,
+            'users', NULL
+          )
+          FROM users u
+          WHERE u.id = e.forward_id
+        )
+        WHEN e.forward_type = 'team' THEN (
+  SELECT json_build_object(
+    'type', 'team',
+    'id', t.id,
+    'label', t.title,
+    'users', COALESCE((
+      SELECT json_agg(
+        json_build_object(
+          'id', u2.id,
+          'name', u2.name,
+          'email', u2.email
+        )
+      )
+      FROM teams_users tu
+      JOIN users u2 ON u2.id = tu.user_id
+      WHERE tu.team_id = t.id
+    ), '[]'::json)
+  )
+  FROM teams t WHERE t.id = e.forward_id
+)
+        ELSE NULL
+      END AS forward
 
-  const uploadedFilesResult = await pool.query(
-    `SELECT uf.* FROM uploaded_files uf
-     JOIN estimation_uploaded_files euf ON uf.id = euf.uploaded_file_id
-     WHERE euf.estimation_id = $1`,
-    [id]
-  );
+    FROM estimations e
+    WHERE e.id = $1
+    LIMIT 1;
+  `;
 
-  estimation.uploaded_files = uploadedFilesResult.rows;
-  return estimation;
+  const values = [estimationId];
+  const result = await pool.query(query, values);
+  return result.rows[0] || null;
 }
 
 export async function updateEstimation(id, data) {

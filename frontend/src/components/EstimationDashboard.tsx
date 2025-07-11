@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -53,6 +54,7 @@ import Loading from "./atomic/Loading";
 import type { IUser, ITeam, IEstimationProject } from "@/types/apiTypes";
 import { formatRevenue, toReadableText } from "@/utils/utils";
 import ShowFile from "./ShowFile";
+import { validateRequiredFields } from "@/utils/validation";
 
 const initialEstimators = [
   "Ahmed Al-Rashid",
@@ -60,23 +62,22 @@ const initialEstimators = [
   "John Doe",
   "Jane Smith",
 ];
-const initialPMs = ["PM Team 1", "PM Team 2", "Sarah PM", "Ahmed PM"];
 
 export const EstimationDashboard = () => {
+  // State for the Ready for Execution toggle in the Approved form
+  const [sentToPMForm, setSentToPMForm] = useState(false);
   const [projects, setProjects] = useState<IEstimationProject[]>([]);
   const [cards, setCards] = useState({
     active_estimation: 0,
     pending_estimations: 0,
     completed_estimations: 0,
-    total_value:0
+    total_value: 0,
   });
   const [selectedProject, setSelectedProject] = useState(null);
   const [clarificationText, setClarificationText] = useState("");
   const [updateText, setUpdateText] = useState("");
   const [estimators] = useState(initialEstimators);
-  const [pms] = useState(initialPMs);
   const [rfcDetailsProject, setRfcDetailsProject] = useState(null);
-  const [expectedDeadline, setExpectedDeadline] = useState("");
   const [sendToPM, setSendToPM] = useState(false);
   const [showReadyPrompt, setShowReadyPrompt] = useState(false);
   const [estimationFiles, setEstimationFiles] = useState([
@@ -93,6 +94,38 @@ export const EstimationDashboard = () => {
   const [teams, setTeams] = useState<ITeam[]>([]);
   const [forwardType, setForwardType] = useState<"user" | "team">("user");
   const [forwardId, setForwardId] = useState<string>("");
+  const [approvedForm, setApprovedForm] = useState({
+    forward_type: "user",
+    forward_id: "",
+    uploadedFiles: [], // [{ file, label }]
+    clientClarificationLog: "", // single string
+    cost: "",
+    costBreakdownFile: { file: null, label: "" },
+    estimationFile: { file: null, label: "" },
+    deadline: "",
+    approvalDate: "",
+    ready_for_estimation: false,
+    notes: "",
+    sentToPM: false,
+  });
+
+  const resetApprovedForm = () => {
+    setApprovedForm({
+      forward_type: "user",
+      forward_id: "",
+      uploadedFiles: [], // [{ file, label }]
+      clientClarificationLog: "", // single string
+      cost: "",
+      costBreakdownFile: { file: null, label: "" },
+      estimationFile: { file: null, label: "" },
+      deadline: "",
+      approvalDate: "",
+      ready_for_estimation: false,
+      notes: "",
+      sentToPM: false,
+    });
+    setEstimationFiles([]);
+  };
 
   // Add local state to track workflow step for each project
   const [workflowStep, setWorkflowStep] = useState({});
@@ -112,59 +145,68 @@ export const EstimationDashboard = () => {
       if (response.status == 200) {
         setProjects(response.data.projects);
         setTotalPages(response.data.total_pages);
-        setCards(response.data.cards)
+        setCards(response.data.cards);
       } else {
         toast.error("Failed to fetch projects");
-      }
-    };
-    const getUsersAndTeams = async () => {
-      const response = await makeApiCall(
-        "get",
-        API_ENDPOINT.GET_ALL_USERS_AND_TEAMS,
-        {},
-        "application/json",
-        authToken,
-        "getUsersAndTeams"
-      );
-      if (response.status === 200) {
-        setProjects(response.data.projects);
-        setTotalPages(response.data.total_pages);
       }
     };
     getProjects();
   }, []);
   // Helper to advance workflow step for a project
-  const advanceWorkflow = (projectId) => {
-    setWorkflowStep((prev) => ({
-      ...prev,
-      [projectId]: (prev[projectId] || 0) + 1,
-    }));
+  const getUsersAndTeams = async () => {
+    const response = await makeApiCall(
+      "get",
+      API_ENDPOINT.GET_ALL_USERS_AND_TEAMS,
+      {},
+      "application/json",
+      authToken,
+      "getUsersAndTeams"
+    );
+    if (response.status === 200) {
+      setUsers(response.data.users);
+      setTeams(response.data.teams);
+    }
   };
-  // Helper to reset workflow step for a project
-  const resetWorkflow = (projectId) => {
-    setWorkflowStep((prev) => ({
-      ...prev,
-      [projectId]: 0,
-    }));
-  };
-  // Handler for status transitions
+
   const handleStatusTransition = async (project, nextStatus) => {
     if (nextStatus === "Rejected") {
-      resetWorkflow(project.id);
+      if (users.length == 0 || teams.length == 0) {
+        getUsersAndTeams();
+      }
+      openRejectModal(project);
     } else if (nextStatus === "Approved") {
+      resetApprovedForm();
+      if (users.length == 0 || teams.length == 0) {
+        getUsersAndTeams();
+      }
       setSelectedProject(project);
-      resetWorkflow(project.id);
     } else {
       await changeProjectStatus(project, nextStatus);
     }
   };
-
   // Handlers for project modal fields
   const handleFieldChange = (field, value) => {
     setSelectedProject((p) => ({ ...p, [field]: value }));
+    setApprovedForm((f) => ({ ...f, [field]: value }));
   };
+
+  // For client clarification log
+  const handleEstimationFileChange = (idx, e) => {
+    setEstimationFiles((prev) =>
+      prev.map((item, index) => {
+        if (index === idx) {
+          return {
+            ...item,
+            file: e.target.files[0],
+          };
+        }
+        return item;
+      })
+    );
+  };
+
   const handleFileChange = (field, e) => {
-    setSelectedProject((p) => ({ ...p, [field]: e.target.files[0] }));
+    setApprovedForm((f) => ({ ...f, [field]: e.target.files[0] }));
   };
   const addClarification = () => {
     if (clarificationText.trim()) {
@@ -182,28 +224,7 @@ export const EstimationDashboard = () => {
       setClarificationText("");
     }
   };
-  const addUpdate = () => {
-    if (updateText.trim()) {
-      setSelectedProject((p) => ({
-        ...p,
-        updates: [
-          {
-            text: updateText,
-            date: new Date().toISOString(),
-            author: "Estimator",
-          },
-          ...(p.updates || []),
-        ],
-      }));
-      setUpdateText("");
-    }
-  };
-  const handleEstimationFileChange = (idx, e) => {
-    const file = e.target.files[0] || null;
-    setEstimationFiles((files) =>
-      files.map((uf, i) => (i === idx ? { ...uf, file } : uf))
-    );
-  };
+
   const handleEstimationLabelChange = (idx, e) => {
     const label = e.target.value;
     setEstimationFiles((files) =>
@@ -217,10 +238,108 @@ export const EstimationDashboard = () => {
     setEstimationFiles((files) => files.filter((_, i) => i !== idx));
   };
 
-  const markReadyForExecution = () => {
-    setSelectedProject((p) => ({ ...p, status: "Ready for Execution" }));
+  const SubmitEstimation = async () => {
+    // Validation
+    const requiredFields = [
+      "cost",
+      "deadline",
+      "approvalDate",
+      // "clientClarificationLog",
+      "forward_id",
+      "forward_type",
+    ];
+    const missing = validateRequiredFields(approvedForm, requiredFields);
+    if (missing.length > 0) {
+      toast.error(`Please fill: ${missing[0]}`);
+      return;
+    }
+
+    const uploadedFiles = [
+      ...approvedForm.uploadedFiles,
+      {
+        label: "Cost Breakdown",
+        file: approvedForm.costBreakdownFile,
+      },
+      {
+        label: "Estimation",
+        file: approvedForm.estimationFile,
+      },
+    ];
+    const uploadedFileIds = [];
+
+    for (const uf of uploadedFiles) {
+      if (uf.file) {
+        const uploaded = await uploadFile(uf.file, uf.label);
+        if (uploaded && uploaded.id) {
+          uploadedFileIds.push(uploaded.id);
+        } else {
+          toast.error("Failed to upload files");
+          return;
+        }
+      }
+    }
+    const data = {
+      project_id: selectedProject.id,
+      status: "approved",
+      log: approvedForm.clientClarificationLog,
+      cost: approvedForm.cost,
+      deadline: approvedForm.deadline,
+      approval_date: approvedForm.approvalDate,
+      approved: true,
+      sent_to_pm: approvedForm.ready_for_estimation,
+      forward_id: approvedForm.forward_id,
+      forward_type: approvedForm.forward_type,
+      notes: approvedForm.notes,
+      uploaded_file_ids: uploadedFileIds,
+    };
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.CREATE_ESTIMATION,
+      data,
+      "application/json",
+      authToken,
+      "createEstimation"
+    );
+    if ([201, 200].includes(response.status)) {
+      toast.success(response.detail);
+      setProjects((prev) =>
+        prev.map((item) => {
+          if (item.id == selectedProject.id) {
+            return {
+              ...selectedProject,
+              estimation: response.data,
+              status: "working",
+              estimation_status: "approved",
+            };
+          }
+          return item;
+        })
+      );
+      setSelectedProject(null);
+    } else {
+      toast.error("Failed to save estimation");
+    }
   };
 
+  const uploadFile = async (file: File, label: string) => {
+    const data = new FormData();
+    data.append("label", label);
+
+    data.append("file", file);
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.UPLOAD_FILE,
+      data,
+      "application/form-data",
+      authToken,
+      "uploadFile"
+    );
+    if (response.status == 201) {
+      return response.data;
+    } else {
+      return null;
+    }
+  };
   const openRejectModal = (project) => {
     setRejectModal({
       open: true,
@@ -296,6 +415,22 @@ export const EstimationDashboard = () => {
       toast.error(`Failed to mark as ${toReadableText(nextStatus)}`);
     }
   };
+
+  // Keep approvedForm.sentToPM in sync with toggle
+  useEffect(() => {
+    setApprovedForm((f) => ({ ...f, sentToPM: sentToPMForm }));
+  }, [sentToPMForm]);
+  // For ready_for_estimation toggle, if you have one
+  // useEffect(() => {
+  //   setApprovedForm((f) => ({ ...f, ready_for_estimation: readyForEstimation }));
+  // }, [readyForEstimation]);
+  // Keep approvedForm.uploadedFiles in sync with estimationFiles
+  useEffect(() => {
+    setApprovedForm((f) => ({
+      ...f,
+      uploadedFiles: estimationFiles,
+    }));
+  }, [estimationFiles]);
 
   if (!isFetched || (fetching && fetchType == "getProjects")) {
     return <Loading full />;
@@ -446,7 +581,7 @@ export const EstimationDashboard = () => {
                     <div>
                       <span className="text-slate-500">Status:</span>
                       <p className="font-medium">
-                        {toReadableText(project.estimation.status)}
+                        {toReadableText(project.estimation_status)}
                       </p>
                     </div>
                   </>
@@ -567,6 +702,21 @@ export const EstimationDashboard = () => {
                 )}
                 {/* Fallback: if not in workflow, show Continue Work as before */}
               </div>
+              {/* New row for Ready for Execution button if estimation.sent_to_pm is false and status is approved */}
+              {project.estimation &&
+                project.estimation.sent_to_pm === false &&
+                project.estimation_status === "approved" && (
+                  <div className="flex gap-2  border-t mt-4 pt-4">
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+                      onClick={() => {
+                        // Implement logic to mark as ready for execution and update sent_to_pm
+                      }}
+                    >
+                      Ready for Execution
+                    </Button>
+                  </div>
+                )}
             </CardContent>
           </Card>
         ))}
@@ -589,11 +739,14 @@ export const EstimationDashboard = () => {
               <div>
                 <label className="block font-medium">Cost Estimate (₹)</label>
                 <Input
-                  type="number"
-                  value={selectedProject.costEstimate}
-                  onChange={(e) =>
-                    handleFieldChange("costEstimate", e.target.value)
-                  }
+                  type="text"
+                  value={approvedForm.cost}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val)) {
+                      handleFieldChange("cost", val);
+                    }
+                  }}
                 />
               </div>
               <div>
@@ -602,13 +755,8 @@ export const EstimationDashboard = () => {
                 </label>
                 <Input
                   type="file"
-                  onChange={(e) => handleFileChange("costEstimateFile", e)}
+                  onChange={(e) => handleFileChange("costBreakdownFile", e)}
                 />
-                {selectedProject.costEstimateFile && (
-                  <span className="text-xs">
-                    {selectedProject.costEstimateFile.name}
-                  </span>
-                )}
               </div>
               <div>
                 <label className="block font-medium">
@@ -616,33 +764,24 @@ export const EstimationDashboard = () => {
                 </label>
                 <Input
                   type="file"
-                  onChange={(e) => handleFileChange("estimationPDF", e)}
+                  onChange={(e) => handleFileChange("estimationFile", e)}
                 />
-                {selectedProject.estimationPDF && (
-                  <span className="text-xs">
-                    {selectedProject.estimationPDF.name}
-                  </span>
-                )}
               </div>
               <div>
                 <label className="block font-medium">Deadline</label>
                 <Input
                   type="date"
-                  value={
-                    selectedProject.expectedDeadline || expectedDeadline || ""
+                  value={approvedForm.deadline}
+                  onChange={(e) =>
+                    handleFieldChange("deadline", e.target.value)
                   }
-                  onChange={(e) => {
-                    handleFieldChange("expectedDeadline", e.target.value);
-                    setExpectedDeadline(e.target.value);
-                  }}
                   className="w-44"
                 />
-                {(selectedProject.expectedDeadline || expectedDeadline) &&
-                  (selectedProject.expectedDeadline || expectedDeadline) !==
-                    "" &&
+                {selectedProject.setExpectedDeadline &&
+                  selectedProject.expectedDeadline !== "" &&
                   (() => {
                     const deadlineDate = parseISO(
-                      selectedProject.expectedDeadline || expectedDeadline
+                      selectedProject.expectedDeadline
                     );
                     const now = new Date();
                     const duration = intervalToDuration({
@@ -678,48 +817,31 @@ export const EstimationDashboard = () => {
                 <div className="flex gap-2 items-center">
                   <Input
                     type="date"
-                    value={selectedProject.approvalDate}
-                    onChange={(e) => {
-                      handleFieldChange("approvalDate", e.target.value);
-                    }}
+                    value={approvedForm.approvalDate}
+                    onChange={(e) =>
+                      handleFieldChange("approvalDate", e.target.value)
+                    }
                   />
-                  {/* <Button
-                    size="sm"
-                    variant={
-                      selectedProject.approvalDate ? "secondary" : "outline"
-                    }
-                    onClick={() =>
-                      handleFieldChange(
-                        "approvalDate",
-                        format(new Date(), "yyyy-MM-dd")
-                      )
-                    }
-                    disabled={!!selectedProject.approvalDate}
-                  >
-                    {selectedProject.approvalDate
-                      ? "Approved"
-                      : "Client Approved"}
-                  </Button> */}
                 </div>
               </div>
-              {selectedProject.approvalDate && (
-                <div className="flex items-center gap-2 mt-2">
-                  <Switch
-                    id="sendToPM"
-                    checked={sendToPM}
-                    onCheckedChange={setSendToPM}
-                  />
-                  <label htmlFor="sendToPM" className="text-sm">
-                    Send to Project Management Team
-                  </label>
-                </div>
-              )}
+              <div className="flex items-center gap-2 mt-2">
+                <Switch
+                  id="sentToPMForm"
+                  checked={sentToPMForm}
+                  onCheckedChange={setSentToPMForm}
+                />
+                <label htmlFor="sentToPMForm" className="text-sm">
+                  Ready for Execution
+                </label>
+              </div>
               <div>
                 <label className="block font-medium">Forward To</label>
                 <div className="flex gap-2 mb-2">
                   <Select
-                    value={forwardType}
-                    onValueChange={(v) => setForwardType(v as "user" | "team")}
+                    value={approvedForm.forward_type}
+                    onValueChange={(value) => {
+                      setApprovedForm({ ...approvedForm, forward_type: value });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -729,108 +851,73 @@ export const EstimationDashboard = () => {
                       <SelectItem value="team">PM Team</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={forwardId} onValueChange={setForwardId}>
+                  <Select
+                    value={forwardId}
+                    onValueChange={(value) => {
+                      setApprovedForm({ ...approvedForm, forward_id: value });
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue
                         placeholder={
-                          forwardType === "user" ? "Select User" : "Select Team"
+                          approvedForm.forward_type === "user"
+                            ? "Select User"
+                            : "Select Team"
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {forwardType === "user"
+                      {approvedForm.forward_type === "user"
                         ? users.map((u) => (
                             <SelectItem key={u.id} value={u.id}>
                               {u.name}
                             </SelectItem>
                           ))
                         : teams.map((t) => (
-                            <SelectItem key={t.id} value={t.id.toString()}>
+                            <SelectItem
+                              key={t.id.toString()}
+                              value={t.id.toString()}
+                            >
                               {t.title}
                             </SelectItem>
                           ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <Select
-                  value={selectedProject.forwardedTo}
-                  onValueChange={(v) => handleFieldChange("forwardedTo", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pms.map((pm) => (
-                      <SelectItem key={pm} value={pm}>
-                        {pm}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="col-span-2">
                 <label className="block font-medium">Remarks / Notes</label>
                 <Input
-                  value={selectedProject.remarks}
-                  onChange={(e) => handleFieldChange("remarks", e.target.value)}
+                  value={approvedForm.notes}
+                  onChange={(e) => handleFieldChange("notes", e.target.value)}
                 />
               </div>
               <div className="col-span-2">
                 <label className="block font-medium">
                   Client Clarification Log
                 </label>
-                <div className="space-y-2 mb-2 max-h-24 overflow-y-auto">
-                  {(selectedProject.clarificationLog || []).length === 0 && (
-                    <div className="text-slate-400">No clarifications yet.</div>
-                  )}
-                  {(selectedProject.clarificationLog || []).map((u, i) => (
-                    <div key={i} className="border rounded p-2 bg-slate-50">
-                      <div className="text-xs text-slate-500 mb-1">
-                        {u.author} • {new Date(u.date).toLocaleString()}
-                      </div>
-                      <div>{u.text}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 mb-2">
-                  <Input
-                    placeholder="Add clarification..."
-                    value={clarificationText}
-                    onChange={(e) => setClarificationText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && clarificationText.trim()) {
-                        addClarification();
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={addClarification}
-                    disabled={!clarificationText.trim()}
-                  >
-                    Add
-                  </Button>
-                </div>
+                <Textarea
+                  placeholder="Enter clarification..."
+                  value={approvedForm.clientClarificationLog}
+                  onChange={(e) =>
+                    setApprovedForm((f) => ({
+                      ...f,
+                      clientClarificationLog: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                />
               </div>
               <div className="col-span-2">
-                <label className="block font-medium mb-2">
-                  Upload Additional Documents
+                <label className="block text-sm font-medium mb-2">
+                  Uploaded Files
                 </label>
                 {estimationFiles.map((uf, idx) => (
                   <div key={idx} className="flex items-center gap-2 mb-2">
                     <select
                       className="border rounded px-2 py-1 text-sm"
-                      value={uf.label.startsWith("Other:") ? "Other" : uf.label}
-                      onChange={(e) => {
-                        if (e.target.value === "Other") {
-                          handleEstimationLabelChange(idx, {
-                            target: { value: "Other:" },
-                          });
-                        } else {
-                          handleEstimationLabelChange(idx, {
-                            target: { value: e.target.value },
-                          });
-                        }
-                      }}
+                      value={uf.label}
+                      onChange={(e) => handleEstimationLabelChange(idx, e)}
                     >
                       <option value="">Select Label</option>
                       <option value="BOQ">BOQ</option>
@@ -840,34 +927,18 @@ export const EstimationDashboard = () => {
                       <option value="Drawing">Drawing</option>
                       <option value="Other">Other</option>
                     </select>
-                    {uf.label.startsWith("Other:") && (
-                      <input
-                        type="text"
-                        className="border rounded px-2 py-1 text-sm"
-                        placeholder="Enter label"
-                        value={uf.label.replace("Other:", "")}
-                        onChange={(e) =>
-                          handleEstimationLabelChange(idx, {
-                            target: { value: "Other:" + e.target.value },
-                          })
-                        }
-                        style={{ minWidth: 120 }}
-                      />
-                    )}
                     <input
                       type="file"
                       className="border rounded px-2 py-1 text-sm"
                       onChange={(e) => handleEstimationFileChange(idx, e)}
                     />
-                    {estimationFiles.length > 1 && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => removeEstimationFileInput(idx)}
-                      >
-                        <X size={16} />
-                      </Button>
-                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeEstimationFileInput(idx)}
+                    >
+                      <X size={16} />
+                    </Button>
                   </div>
                 ))}
                 <Button
@@ -879,43 +950,18 @@ export const EstimationDashboard = () => {
                 >
                   + Add File
                 </Button>
-                <div className="mt-2">
-                  <div className="font-medium text-slate-700 mb-1">
-                    Uploaded Files:
-                  </div>
-                  <ul className="list-disc ml-8 space-y-1">
-                    {estimationFiles.filter((f) => f.file).length === 0 && (
-                      <li className="text-slate-400">No files uploaded</li>
-                    )}
-                    {estimationFiles
-                      .filter((f) => f.file)
-                      .map((f, i) => (
-                        <li key={i}>
-                          <span className="font-medium text-slate-700">
-                            {f.label.startsWith("Other:")
-                              ? f.label.replace("Other:", "")
-                              : f.label
-                              ? `${f.label}: `
-                              : ""}
-                          </span>
-                          {f.file?.name}
-                        </li>
-                      ))}
-                  </ul>
-                </div>
               </div>
             </div>
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-end mt-4 gap-2">
               <Button
-                className={`bg-green-600 hover:bg-green-700 ${
-                  selectedProject.approvalDate
-                    ? ""
-                    : "opacity-50 cursor-not-allowed"
-                }`}
-                onClick={markReadyForExecution}
-                disabled={!selectedProject.approvalDate}
+                className={`bg-green-600 hover:bg-green-700 `}
+                onClick={SubmitEstimation}
+                loading={
+                  fetching &&
+                  (fetchType == "createEstimation" || fetchType == "uploadFile")
+                }
               >
-                Mark as Ready for Execution
+                Submit
               </Button>
             </div>
           </div>
@@ -1257,54 +1303,96 @@ export const EstimationDashboard = () => {
             <div className="p-8 overflow-y-auto max-h-[90vh]">
               <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-base">
                 <div>
-                  <span className="font-semibold text-slate-700">
-                    Estimator:
-                  </span>
+                  <span className="font-semibold text-slate-700">Cost:</span>
                   <br />
-                  {viewEstimationProject.assignedEstimator}
+                  {viewEstimationProject.estimation?.cost ??
+                    viewEstimationProject.cost ?? (
+                      <span className="text-slate-400">-</span>
+                    )}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
-                    Estimation Status:
+                    Deadline:
                   </span>
                   <br />
-                  {viewEstimationProject.estimationStatus}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-700">
-                    Cost Estimate:
-                  </span>
-                  <br />
-                  {viewEstimationProject.costEstimate || (
-                    <span className="text-slate-400">-</span>
-                  )}
+                  {viewEstimationProject.estimation?.deadline ??
+                    viewEstimationProject.deadline ?? (
+                      <span className="text-slate-400">-</span>
+                    )}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
                     Approval Date:
                   </span>
                   <br />
-                  {viewEstimationProject.approvalDate || (
+                  {viewEstimationProject.estimation?.approval_date ??
+                    viewEstimationProject.approval_date ?? (
+                      <span className="text-slate-400">-</span>
+                    )}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">
+                    Ready for Execution:
+                  </span>
+                  <br />
+                  {viewEstimationProject.estimation?.sent_to_pm !==
+                  undefined ? (
+                    viewEstimationProject.estimation.sent_to_pm ? (
+                      "Yes"
+                    ) : (
+                      "No"
+                    )
+                  ) : viewEstimationProject.sent_to_pm !== undefined ? (
+                    viewEstimationProject.sent_to_pm ? (
+                      "Yes"
+                    ) : (
+                      "No"
+                    )
+                  ) : (
                     <span className="text-slate-400">-</span>
                   )}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
-                    Forwarded To:
+                    Forward Type:
                   </span>
                   <br />
-                  {viewEstimationProject.forwardedTo || (
-                    <span className="text-slate-400">-</span>
-                  )}
+                  {viewEstimationProject.estimation.forwarded_to?.type ??
+                    viewEstimationProject.forwarded_to?.type ?? (
+                      <span className="text-slate-400 capitalize">
+                        {viewEstimationProject.forwarded_to?.type}
+                      </span>
+                    )}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
-                    Remarks / Notes:
+                    Forward To:
                   </span>
                   <br />
-                  {viewEstimationProject.remarks || (
-                    <span className="text-slate-400">-</span>
-                  )}
+                  {viewEstimationProject.estimation?.forwarded_to?.label ??
+                    viewEstimationProject.forwarded_to?.label ?? (
+                      <span className="text-slate-400">
+                        {viewEstimationProject.forwarded_to?.label}
+                      </span>
+                    )}
+                </div>
+                <div className="col-span-2">
+                  <span className="font-semibold text-slate-700">Notes:</span>
+                  <br />
+                  {viewEstimationProject.estimation?.notes ??
+                    viewEstimationProject.notes ?? (
+                      <span className="text-slate-400">-</span>
+                    )}
+                </div>
+                <div className="col-span-2">
+                  <span className="font-semibold text-slate-700">
+                    Client Clarification Log:
+                  </span>
+                  <br />
+                  {viewEstimationProject.estimation?.log ??
+                    viewEstimationProject.log ?? (
+                      <span className="text-slate-400">-</span>
+                    )}
                 </div>
               </div>
               <div className="my-6 border-t pt-6">
@@ -1312,23 +1400,27 @@ export const EstimationDashboard = () => {
                   <FileText size={18} className="text-green-500" />
                   Uploaded Files:
                 </div>
-                <ul className="list-disc ml-8 space-y-1">
-                  {(viewEstimationProject.estimationUploadedFiles || []).filter(
-                    (f) => f.file
+                <div className="flex flex-wrap gap-2 ml-2">
+                  {(
+                    viewEstimationProject.estimation?.uploaded_files ||
+                    viewEstimationProject.uploaded_files ||
+                    []
                   ).length === 0 && (
-                    <li className="text-slate-400">No files uploaded</li>
+                    <span className="text-slate-400">No files uploaded</span>
                   )}
-                  {(viewEstimationProject.estimationUploadedFiles || [])
-                    .filter((f) => f.file)
-                    .map((f, i) => (
-                      <li key={i}>
-                        <span className="font-medium text-slate-700">
-                          {f.label ? `${f.label}: ` : ""}
-                        </span>
-                        {f.file?.name}
-                      </li>
-                    ))}
-                </ul>
+                  {(
+                    viewEstimationProject.estimation?.uploaded_files ||
+                    viewEstimationProject.uploaded_files ||
+                    []
+                  ).map((f, i) => (
+                    <ShowFile
+                      key={i}
+                      label={f.label}
+                      url={f.file}
+                      size="small"
+                    />
+                  ))}
+                </div>
               </div>
               <div className="flex justify-end mt-8">
                 <Button

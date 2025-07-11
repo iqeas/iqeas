@@ -19,6 +19,7 @@ export const API_ENDPOINT = {
   EDIT_PROJECT: (id: any) => `${API_URL}/projects/${id}`,
   GET_TEAMS_BY_ROLE: (role: any) => `${API_URL}/teams/role/${role}`,
   GET_ALL_ESTIMATION_PROJECTS: `${API_URL}/projects/estimation`,
+  CREATE_ESTIMATION: `${API_URL}/estimation`,
   GET_ALL_FILES: (query, page, pageSize) =>
     `${API_URL}/get-files/all-files?page=${page}&query=${query}&size=${pageSize}`,
 };
