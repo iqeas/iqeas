@@ -259,6 +259,7 @@ export const RFCDashboard = () => {
           read_for_estimation: cards.read_for_estimation + 1,
         });
       }
+      toast.success(response.detail);
     } else {
       toast.error("Failed to create project");
     }
@@ -855,10 +856,16 @@ export const RFCDashboard = () => {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-3">
-                  <Badge {...getPriorityBadgeProps(project.priority)}>
+                  <Badge
+                    className="capitalize"
+                    {...getPriorityBadgeProps(project.priority)}
+                  >
                     {project.priority}
                   </Badge>
-                  <Badge {...getStatusBadgeProps(project.status)}>
+                  <Badge
+                    className="capitalize"
+                    {...getStatusBadgeProps(project.status)}
+                  >
                     {project.status}
                   </Badge>
                   <div className="flex gap-2 mt-2">
@@ -997,7 +1004,10 @@ export const RFCDashboard = () => {
                   <span className="font-semibold">Status:</span>
                   <br />
                   {detailsProject.status ? (
-                    <Badge {...getStatusBadgeProps(detailsProject.status)}>
+                    <Badge
+                      className="capitalize"
+                      {...getStatusBadgeProps(detailsProject.status)}
+                    >
                       {detailsProject.status}
                     </Badge>
                   ) : (
