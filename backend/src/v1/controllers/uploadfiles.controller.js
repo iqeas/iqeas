@@ -1,5 +1,5 @@
 import {
-  getUploadedFilesByRole,
+  getUploadedFilesByRolePaginated,
   saveUploadedFile,
 } from "../services/uploadfiles.service.js";
 import { formatResponse } from "../utils/response.js";
@@ -44,16 +44,21 @@ export const uploadFileHandler = async (req, res) => {
 export async function getFiles(req, res) {
   try {
     const { id: userId, role } = req.user;
-    const { page = 1, size = 10 } = req.query;
+    const { page = 1, size = 10, query="" } = req.query;
 
     const result = await getUploadedFilesByRolePaginated(
       userId,
       role,
       page,
-      size
+      size,
+      query
     );
 
-    res.status(200).json(result);
+    res.status(200).json({
+      data: result,
+      status_code: 200,
+      detail: "Files fetched successfully",
+    });
   } catch (error) {
     console.error("Error fetching files:", error.message);
     res.status(500).json({ error: "Failed to fetch files" });

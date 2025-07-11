@@ -17,6 +17,6 @@ router.post(
 );
 
 
-router.get("/get-files/all-files", getFiles);
+router.get("/get-files/all-files", authenticateToken, getFiles);
 
 export default router;

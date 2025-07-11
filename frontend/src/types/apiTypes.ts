@@ -118,3 +118,25 @@ export interface IEstimationProject extends IRFCProject {
 }
 
 export type { IUser };
+
+// Document Center API types
+export interface IDocumentFile {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  label: string;
+  file: string;
+  uploaded_by_id: number;
+  uploaded_by: {
+    id: number;
+    name: string;
+  };
+}
+
+export interface IDocumentFileListResponse {
+  files: IDocumentFile[];
+  pagination: {
+    total: number;
+    totalPages: number;
+  };
+}

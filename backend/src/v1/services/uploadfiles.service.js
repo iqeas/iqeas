@@ -11,50 +11,59 @@ export async function saveUploadedFile({ label, filename, uploaded_by }) {
   return result.rows[0];
 }
 
-
 export async function getUploadedFilesByRolePaginated(
   userId,
   role,
   page = 1,
-  size = 10
+  size = 10,
+  searchQuery = ""
 ) {
   const limit = Math.max(Number(size), 1);
   const offset = Math.max((Number(page) - 1) * limit, 0);
 
   let baseWhereClause = "";
   let countWhereClause = "";
-  let params = [];
-  let countParams = [];
+  let params = [userId, limit, offset];
+  let countParams = [userId];
+  let searchCondition = "";
+  console.log(searchQuery);
+  if (searchQuery) {
+    searchCondition = `AND uf.label ILIKE $4`;
+    params.push(`%${searchQuery}%`);
+  }
 
   if (role === "rfq") {
     baseWhereClause = `WHERE uf.uploaded_by_id = $1`;
     countWhereClause = `WHERE uploaded_by_id = $1`;
-    params = [userId, limit, offset];
-    countParams = [userId];
   } else if (role === "estimation") {
     baseWhereClause = `
       WHERE uf.uploaded_by_id = $1
-         OR uf.uploaded_by_id IN (
-           SELECT id FROM users WHERE role = 'rfq'
-         )
+        OR uf.uploaded_by_id IN (
+          SELECT id FROM users WHERE role = 'rfq'
+        )
     `;
     countWhereClause = `
       WHERE uploaded_by_id = $1
-         OR uploaded_by_id IN (
-           SELECT id FROM users WHERE role = 'rfq'
-         )
+        OR uploaded_by_id IN (
+          SELECT id FROM users WHERE role = 'rfq'
+        )
     `;
-    params = [userId, limit, offset];
-    countParams = [userId];
   } else {
     throw new Error("Unauthorized role");
   }
 
   const query = `
-    SELECT *
+    SELECT 
+      uf.*,
+      json_build_object(
+        'id', u.id,
+        'name', u.name
+      ) AS uploaded_by
     FROM uploaded_files uf
+    LEFT JOIN users u ON uf.uploaded_by_id = u.id
     ${baseWhereClause}
-    ORDER BY created_at DESC
+    ${searchCondition}
+    ORDER BY uf.created_at DESC
     LIMIT $2 OFFSET $3
   `;
 
@@ -75,9 +84,6 @@ export async function getUploadedFilesByRolePaginated(
     pagination: {
       total,
       totalPages,
-      currentPage: Number(page),
-      pageSize: limit,
-      remainingPages: Math.max(totalPages - page, 0),
     },
   };
 }
