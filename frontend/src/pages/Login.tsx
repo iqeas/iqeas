@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, User as UserIcon } from "lucide-react";
+import { Eye, EyeOff, Lock, User as UserIcon, Loader2 } from "lucide-react";
 import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
 import { Button } from "@/components/ui/button";
@@ -18,13 +18,14 @@ const roleToPath: Record<string, string> = {
 
 const Login = () => {
   const { login, user } = useAuth();
-  console.log(user)
+  console.log(user);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const { makeApiCall, fetching } = useAPICall();
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const { makeApiCall, fetching, fetchType } = useAPICall();
 
   useEffect(() => {
     console.log(user);
@@ -40,10 +41,17 @@ const Login = () => {
       toast.error("Please enter both Email and Password.");
       return;
     }
-    const response = await makeApiCall("post", API_ENDPOINT.LOGIN, {
-      email,
-      password,
-    });
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.LOGIN,
+      {
+        email,
+        password,
+      },
+      "application/json",
+      undefined,
+      "login"
+    );
     console.log(response);
     if (response.status == 200) {
       console.log(response.data, response.data);
@@ -51,6 +59,41 @@ const Login = () => {
       navigate("/");
     } else {
       toast.error("Credentials invalid, try again");
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Please enter your email address first");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    try {
+      const response = await makeApiCall(
+        "post",
+        API_ENDPOINT.FORGOT_PASSWORD,
+        { email },
+        "application/json",
+        undefined,
+        "forgotPassword"
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        toast.success("Password reset link has been sent to your email");
+      } else {
+        toast.error("Failed to sent email, please try again");
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+    } finally {
+      setForgotPasswordLoading(false);
     }
   };
 
@@ -124,11 +167,28 @@ const Login = () => {
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition disabled:opacity-60"
             disabled={fetching}
-            loading={fetching}
+            loading={fetching && fetchType == "login"}
           >
             Sign In
           </Button>
         </form>
+
+        {/* Forgot Password Section */}
+        <div className="mt-4 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={forgotPasswordLoading}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Forgot Password?
+            </button>
+            {fetching && fetchType == "forgotPassword" && (
+              <Loader2 size={16} className="animate-spin text-blue-600" />
+            )}
+          </div>
+        </div>
         <div className="mt-6 text-center text-slate-400 text-xs">
           &copy; {new Date().getFullYear()} Oil Engineering ERP
         </div>

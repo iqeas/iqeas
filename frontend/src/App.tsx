@@ -20,7 +20,6 @@ import { AdminProjectsDashboard } from "./components/AdminProjectDashboard";
 import AdminMembers from "./components/AdminMembers";
 
 import { ConfirmDialogProvider } from "@/components/ui/alert-dialog";
-import { Toast, ToastProvider } from "@radix-ui/react-toast";
 import { Toaster } from "react-hot-toast";
 import AuthVerification from "./components/AuthVerification";
 

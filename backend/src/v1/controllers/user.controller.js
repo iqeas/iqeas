@@ -8,6 +8,7 @@ import {
 } from "../services/user.service.js";
 
 import { getAllTeams } from "../services/teams.service.js";
+import { sentForgotMail } from "../services/auth.service.js";
 
 export const createNewUser = async (req, res) => {
   const { email, phoneNumber, name, role, active } = req.body;
@@ -29,6 +30,8 @@ export const createNewUser = async (req, res) => {
       role,
       active
     );
+    const sentEmail = await sentForgotMail(email);
+    console.log(sentEmail);
     console.log(password);
     return res.status(201).json(
       formatResponse({
@@ -121,6 +124,7 @@ export const EditUserDataController = async (req, res) => {
       phoneNumber,
       active,
       role,
+      is_deleted,
     });
     return res.status(200).json(
       formatResponse({
