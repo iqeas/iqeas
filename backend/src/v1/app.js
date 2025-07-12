@@ -12,11 +12,12 @@ import taskActivityLogRoute from "./routes/task_activity_log.route.js";
 import chatRoute from "./routes/chat.route.js";
 import uploadFileRoute from "./routes/uploadfiles.route.js";
 import searchRoute from "./routes/search.route.js";
+import workflowRoute from "./routes/workflow.route.js";
 
 import cors from "cors"; // <-- Import cors
 
 const app = express();
-app.use(cors()); // <-- Use cors middleware
+app.use(cors());
 app.use(express.json());
 
 app.use("/api/v1", authRoute);
@@ -32,5 +33,6 @@ app.use("/api/v1", taskActivityLogRoute);
 app.use("/api/v1", chatRoute);
 app.use("/api/v1", uploadFileRoute);
 app.use("/api/v1", searchRoute);
+app.use("/api/v1", workflowRoute);
 
 export default app;
