@@ -302,3 +302,66 @@ CREATE TABLE task_chat_files (
     uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
     PRIMARY KEY (task_chat_id, uploaded_file_id)
 );
+
+
+
+
+
+
+--===========================================================================
+--                            This is the new sql 
+--===========================================================================
+
+
+CREATE TABLE stages (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name VARCHAR(20) NOT NULL CHECK (name IN ('IDC', 'IFR', 'IFA', 'AFC')),
+  weight NUMERIC(5,2) NOT NULL,          -- % contribution to progress
+  allocated_hours INT NOT NULL,         -- time allocated for the stage
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE stage_uploaded_files (
+  stage_id INTEGER NOT NULL REFERENCES stages(id) ON DELETE CASCADE,
+  uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
+  PRIMARY KEY (stage_id, uploaded_file_id)
+);
+
+CREATE TABLE drawings (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  drawing_type VARCHAR(100),
+  revision VARCHAR(50),
+  drawing_weightage NUMERIC(5,2),      
+  allocated_hours INT,                  
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  stage_id INTEGER REFERENCES stages(id) ON DELETE SET NULL,
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE drawing_stage_logs (
+  id SERIAL PRIMARY KEY,
+  drawing_id INTEGER NOT NULL REFERENCES drawings(id) ON DELETE CASCADE,
+  stage_id INTEGER NOT NULL REFERENCES stages(id) ON DELETE CASCADE,
+  step_name VARCHAR(20) NOT NULL CHECK (
+    step_name IN ('Drafting', 'Checking', 'Approval', 'Transmission')
+  ),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (
+    status IN ('pending', 'in_progress', 'completed', 'rework', 'rejected')
+  ),
+  notes TEXT,
+  created_by INTEGER REFERENCES users(id),
+
+  forwarded_to VARCHAR(10) CHECK (forwarded_to IN ('user', 'team')),  -- Who is assigned
+  forwarded_id INTEGER,                                              -- Id of user or team
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE drawing_stage_log_files (
+  log_id INTEGER NOT NULL REFERENCES drawing_stage_logs(id) ON DELETE CASCADE,
+  uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
+  PRIMARY KEY (log_id, uploaded_file_id)
+);
