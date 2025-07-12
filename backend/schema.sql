@@ -134,18 +134,18 @@ CREATE TABLE estimations (
     forward_id INTEGER
 );
 
-CREATE TABLE estimations_uploaded_files (
+CREATE TABLE estimation_uploaded_files (
     estimation_id INTEGER NOT NULL REFERENCES estimations(id) ON DELETE CASCADE,
     uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
     PRIMARY KEY (estimation_id, uploaded_file_id)
 );
 
-CREATE TABLE estimation_clarification_logs (
-    id SERIAL PRIMARY KEY,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    estimation_id INTEGER NOT NULL REFERENCES estimations(id) ON DELETE CASCADE,
-    clarification TEXT NOT NULL
-);
+-- CREATE TABLE estimation_clarification_logs (
+--     id SERIAL PRIMARY KEY,
+--     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+--     estimation_id INTEGER NOT NULL REFERENCES estimations(id) ON DELETE CASCADE,
+--     clarification TEXT NOT NULL
+-- );
 -- =====================
 -- PROJECT TIMELINES 
 -- =====================

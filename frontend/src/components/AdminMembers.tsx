@@ -32,6 +32,7 @@ const ROLES = [
   { value: "estimation", label: "Estimation" },
   { value: "documentation", label: "Document" },
   { value: "admin", label: "Admin" },
+  { value: "pm", label: "PM" },
 ];
 
 export default function AdminMembers() {

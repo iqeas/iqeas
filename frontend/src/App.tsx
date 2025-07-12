@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 
 import Login from "./pages/Login";
+import CreatePassword from "./pages/CreatePassword";
 import DashboardLayout from "./components/atomic/dashboardLayout/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -39,6 +40,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/create-password" element={<CreatePassword />} />
 
               {/* PM Team */}
               <Route path="/pm" element={<RoleProtectedRoute />}>

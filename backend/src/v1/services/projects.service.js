@@ -173,7 +173,6 @@ export async function getProjectByPagination(page = 1, size = 10) {
   const result = await pool.query(query, values);
   return result.rows;
 }
-
 export async function getProjectsEstimationProjects() {
   const query = `
     SELECT 
@@ -201,7 +200,7 @@ export async function getProjectsEstimationProjects() {
         ), '[]'::json
       ) AS uploaded_files,
 
-      -- Add more infos (array of { id, notes, enquiry, uploaded_files })
+      -- Add more infos
       COALESCE(
         (
           SELECT json_agg(
@@ -229,54 +228,79 @@ export async function getProjectsEstimationProjects() {
         ), '[]'::json
       ) AS add_more_infos,
 
-      -- Estimation (if exists)
+      -- Estimation with forward logic and uploaded_files
       (
-      SELECT json_build_object(
-        'id', e.id,
-        'status', e.status,
-        'cost', e.cost,
-        'deadline', e.deadline,
-        'approval_date', e.approval_date,
-        'approved', e.approved,
-        'sent_to_pm', e.sent_to_pm,
-        'notes', e.notes,
-        'updates', e.updates,
-        'log', e.log,
-        'user',
-          json_build_object(
-            'id', eu.id,
-            'name', eu.name,
-            'email', eu.email
-          ),
-        'forwarded_to', 
-          CASE 
-            WHEN e.forward_type = 'user' THEN (
-              SELECT json_build_object(
-                'type', 'user',
-                'id', fuser.id,
-                'name', fuser.name,
-                'email', fuser.email
+        SELECT json_build_object(
+          'id', e.id,
+          'status', e.status,
+          'cost', e.cost,
+          'deadline', e.deadline,
+          'approval_date', e.approval_date,
+          'approved', e.approved,
+          'sent_to_pm', e.sent_to_pm,
+          'notes', e.notes,
+          'updates', e.updates,
+          'log', e.log,
+          'user',
+            json_build_object(
+              'id', eu.id,
+              'name', eu.name,
+              'email', eu.email
+            ),
+          'forwarded_to', 
+            CASE 
+              WHEN e.forward_type = 'user' THEN (
+                SELECT json_build_object(
+                  'type', 'user',
+                  'id', fuser.id,
+                  'label', fuser.name,
+                  'users', NULL
+                )
+                FROM users fuser WHERE fuser.id = e.forward_id
               )
-              FROM users fuser WHERE fuser.id = e.forward_id
-            )
-            WHEN e.forward_type = 'team' THEN (
-              SELECT json_build_object(
-                'type', 'team',
-                'id', t.id,
-                'title', t.title
-              )
-              FROM teams t WHERE t.id = e.forward_id
-            )
-            ELSE NULL
-          END
+              WHEN e.forward_type = 'team' THEN (
+  SELECT json_build_object(
+    'type', 'team',
+    'id', t.id,
+    'label', t.title,
+    'users', COALESCE((
+      SELECT json_agg(
+        json_build_object(
+          'id', u2.id,
+          'name', u2.name,
+          'email', u2.email
+        )
       )
-      FROM estimations e
-      JOIN users eu ON e.user_id = eu.id
-      WHERE e.project_id = p.id
-      LIMIT 1
-    ) AS estimation,
+      FROM teams_users tu
+      JOIN users u2 ON u2.id = tu.user_id
+      WHERE tu.team_id = t.id
+    ), '[]'::json)
+  )
+  FROM teams t WHERE t.id = e.forward_id
+)
+              ELSE NULL
+            END,
+          'uploaded_files',
+            COALESCE((
+              SELECT json_agg(
+                json_build_object(
+                  'id', uf.id,
+                  'label', uf.label,
+                  'file', uf.file
+                )
+              )
+              FROM estimation_uploaded_files euf
+              JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+              WHERE euf.estimation_id = e.id
+            ), '[]'::json)
+        )
+        FROM estimations e
+        JOIN users eu ON e.user_id = eu.id
+        WHERE e.project_id = p.id
+        LIMIT 1
+      ) AS estimation,
 
-      -- Most recent project rejection (if any)
+      -- Project Rejection (if any)
       (
         SELECT json_build_object(
           'id', pr.id,
@@ -336,7 +360,7 @@ export async function getRFQCardData() {
   };
 }
 
-export async function getEstimationCardData(){
+export async function getEstimationCardData() {
   const active_estimation = await pool.query(
     `SELECT COUNT(*) AS count FROM projects WHERE send_to_estimation = true`
   );
@@ -354,6 +378,89 @@ export async function getEstimationCardData(){
     active_estimation: parseInt(active_estimation.rows[0].count),
     pending_estimations: parseInt(pending_estimations.rows[0].count),
     completed_estimations: parseInt(completed_estimations.rows[0].count),
-    total_value: parseFloat(total_value.rows[0].total) || 0
+    total_value: parseFloat(total_value.rows[0].total) || 0,
   };
+}
+
+export async function createProjectRejectionUploadedFiles(
+  rejectionId,
+  uploadedFileIds
+) {
+  if (!Array.isArray(uploadedFileIds) || uploadedFileIds.length === 0) {
+    throw new Error("uploadedFileIds must be a non-empty array");
+  }
+
+  const query = `
+    INSERT INTO project_rejection_uploaded_files (project_rejection_id, uploaded_file_id)
+    VALUES ($1, $2)
+    RETURNING *;
+  `;
+
+  const promises = uploadedFileIds.map(async (uploadedFileId) => {
+    const values = [rejectionId, uploadedFileId];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  });
+
+  return Promise.all(promises);
+}
+export async function createProjectRejection({
+  projectId,
+  reason,
+  uploaded_files_ids,
+  userId,
+}) {
+  const query = `
+    INSERT INTO project_rejections (project_id, note, user_id)
+    VALUES ($1, $2, $3)
+    RETURNING id;
+  `;
+
+  const values = [projectId, reason, userId];
+  const result = await pool.query(query, values);
+  const rejectionId = result.rows[0].id;
+
+  if (uploaded_files_ids && uploaded_files_ids.length > 0) {
+    await createProjectRejectionUploadedFiles(rejectionId, uploaded_files_ids);
+  }
+  await updateProjectPartial(projectId, {
+    estimation_status: "rejected",
+  });
+  return rejectionId;
+}
+export async function projectRejectionById(rejectionId) {
+  const query = `
+    SELECT 
+      pr.id,
+      pr.created_at,
+      pr.updated_at,
+      pr.project_id,
+      pr.user_id,
+      pr.note,
+      json_build_object(
+        'id', u.id,
+        'name', u.name
+      ) AS user,
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', uf.id,
+              'file', uf.file,
+              'label', uf.label
+            )
+          )
+          FROM project_rejection_uploaded_files pruf
+          JOIN uploaded_files uf ON pruf.uploaded_file_id = uf.id
+          WHERE pruf.project_rejection_id = pr.id
+        ), '[]'::json
+      ) AS uploaded_files
+    FROM project_rejections pr
+    JOIN users u ON pr.user_id = u.id
+    WHERE pr.id = $1
+    LIMIT 1;
+  `;
+  const result = await pool.query(query, [rejectionId]);
+  console.log([rejectionId], result.rows[0]);
+  return result.rows[0] || null;
 }

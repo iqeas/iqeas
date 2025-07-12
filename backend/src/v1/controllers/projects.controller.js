@@ -6,6 +6,8 @@ import {
   getRFQCardData,
   getProjectsEstimationProjects,
   getEstimationCardData,
+  createProjectRejection,
+  projectRejectionById,
 } from "../services/projects.service.js";
 
 import { formatResponse } from "../utils/response.js";
@@ -119,11 +121,47 @@ export const getEstimationProjects = async (req, res) => {
       formatResponse({
         statusCode: 200,
         detail: "Projects sent to estimation fetched successfully",
-        data: {total_pages : 10, projects, cards},
+        data: { total_pages: 10, projects, cards },
       })
     );
   } catch (error) {
     console.error("Error fetching estimation projects:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+
+export const projectRejectCreateHandler = async (req, res) => {
+  try {
+    const { projectId, reason, uploaded_files_ids } = req.body;
+    const userId = req.user.id; // Assuming user ID is in req.user
+    if (!projectId || !reason) {
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail: "Project ID and reason are required",
+        })
+      );
+    }
+    const projectRejectionId = await createProjectRejection({
+      projectId,
+      reason,
+      uploaded_files_ids,
+      userId,
+    });
+    const projectData = await projectRejectionById(projectRejectionId);
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 201,
+        detail: "Project rejected successfully",
+        data: projectData,
+      })
+    );
+  } catch (error) {
+    console.error("Error rejecting project:", error);
     return res
       .status(500)
       .json(

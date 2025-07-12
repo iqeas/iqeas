@@ -12,7 +12,7 @@ export const createEstimationHandler = async (req, res) => {
   try {
     const estimationData = req.body;
 
-    if (!estimationData.project_id || !estimationData.user_id) {
+    if (!estimationData.project_id) {
       return res.status(400).json(
         formatResponse({
           statusCode: 400,
@@ -21,13 +21,19 @@ export const createEstimationHandler = async (req, res) => {
       );
     }
 
-    const newEstimation = await createEstimation(estimationData);
+    const user_id = req.user.id;
+
+    const newEstimation = await createEstimation({
+      ...estimationData,
+      user_id,
+    });
+    const estimationResponse = await getEstimationById(newEstimation.id);
 
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
         detail: "Estimation created",
-        data: newEstimation,
+        data: estimationResponse,
       })
     );
   } catch (error) {
@@ -74,7 +80,7 @@ export const updateEstimationHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-
+    console.log(id)
     if (!id) {
       return res
         .status(400)

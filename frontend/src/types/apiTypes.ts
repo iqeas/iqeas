@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 interface IUser {
   id: string;
   name: string;
@@ -90,12 +91,7 @@ export interface IEstimation {
   updated_at: string;
   project_id: number;
   user_id: number;
-  status:
-    | "draft"
-    | "under_review"
-    | "sent_to_client"
-    | "estimation_approved"
-    | "estimation_rejected";
+  user: { name: string; id: number };
   log?: string;
   cost?: number;
   deadline?: string;
@@ -106,6 +102,13 @@ export interface IEstimation {
   forward_id?: number;
   notes?: string;
   updates?: string;
+  uploaded_files: { label: string; id: number; file: string }[];
+  forward_to: {
+    type: string;
+    id: number;
+    labe: string;
+    users: any[];
+  };
 }
 
 export interface IEstimationProject extends IRFCProject {

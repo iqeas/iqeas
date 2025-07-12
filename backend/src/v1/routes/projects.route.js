@@ -4,6 +4,7 @@ import {
   getProjectsPaginatedController,
   patchProject,
   getEstimationProjects,
+  projectRejectCreateHandler,
 } from "../controllers/projects.controller.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -14,5 +15,5 @@ router.patch("/projects/:id", authenticateToken, patchProject);
 // edit-needed change the function name accordingly
 router.get("/projects/rfq", authenticateToken, getProjectsPaginatedController);
 router.get("/projects/estimation", authenticateToken, getEstimationProjects);
-
+router.post("/projects/reject", authenticateToken, projectRejectCreateHandler);
 export default router;
