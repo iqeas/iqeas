@@ -80,7 +80,7 @@ export const updateEstimationHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-
+    console.log(id)
     if (!id) {
       return res
         .status(400)

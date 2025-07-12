@@ -63,7 +63,6 @@ export async function createEstimation(data) {
 
   return estimation;
 }
-
 export async function getEstimationById(estimationId) {
   const query = `
     SELECT 
@@ -83,6 +82,13 @@ export async function getEstimationById(estimationId) {
       e.notes,
       e.updates,
 
+      -- Estimation owner (user)
+      json_build_object(
+        'id', eu.id,
+        'name', eu.name,
+        'email', eu.email
+      ) AS user,
+
       -- Uploaded files
       COALESCE(
         (
@@ -99,7 +105,7 @@ export async function getEstimationById(estimationId) {
         ), '[]'::json
       ) AS uploaded_files,
 
-      -- Forward object
+      -- Forward object (user or team)
       CASE
         WHEN e.forward_type = 'user' THEN (
           SELECT json_build_object(
@@ -111,29 +117,30 @@ export async function getEstimationById(estimationId) {
           WHERE u.id = e.forward_id
         )
         WHEN e.forward_type = 'team' THEN (
-  SELECT json_build_object(
-    'type', 'team',
-    'id', t.id,
-    'label', t.title,
-    'users', COALESCE((
-      SELECT json_agg(
-        json_build_object(
-          'id', u2.id,
-          'name', u2.name,
-          'email', u2.email
+          SELECT json_build_object(
+            'type', 'team',
+            'id', t.id,
+            'label', t.title,
+            'users', COALESCE((
+              SELECT json_agg(
+                json_build_object(
+                  'id', u2.id,
+                  'name', u2.name,
+                  'email', u2.email
+                )
+              )
+              FROM teams_users tu
+              JOIN users u2 ON u2.id = tu.user_id
+              WHERE tu.team_id = t.id
+            ), '[]'::json)
+          )
+          FROM teams t WHERE t.id = e.forward_id
         )
-      )
-      FROM teams_users tu
-      JOIN users u2 ON u2.id = tu.user_id
-      WHERE tu.team_id = t.id
-    ), '[]'::json)
-  )
-  FROM teams t WHERE t.id = e.forward_id
-)
         ELSE NULL
       END AS forward
 
     FROM estimations e
+    JOIN users eu ON e.user_id = eu.id
     WHERE e.id = $1
     LIMIT 1;
   `;

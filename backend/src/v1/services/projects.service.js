@@ -340,7 +340,6 @@ export async function getProjectsEstimationProjects() {
   return result.rows;
 }
 
-
 export async function getProjectsSentToPM() {
   const query = `SELECT * FROM projects WHERE send_to_pm = true ORDER BY created_at DESC;`;
   const result = await pool.query(query);
@@ -381,4 +380,87 @@ export async function getEstimationCardData() {
     completed_estimations: parseInt(completed_estimations.rows[0].count),
     total_value: parseFloat(total_value.rows[0].total) || 0,
   };
+}
+
+export async function createProjectRejectionUploadedFiles(
+  rejectionId,
+  uploadedFileIds
+) {
+  if (!Array.isArray(uploadedFileIds) || uploadedFileIds.length === 0) {
+    throw new Error("uploadedFileIds must be a non-empty array");
+  }
+
+  const query = `
+    INSERT INTO project_rejection_uploaded_files (project_rejection_id, uploaded_file_id)
+    VALUES ($1, $2)
+    RETURNING *;
+  `;
+
+  const promises = uploadedFileIds.map(async (uploadedFileId) => {
+    const values = [rejectionId, uploadedFileId];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  });
+
+  return Promise.all(promises);
+}
+export async function createProjectRejection({
+  projectId,
+  reason,
+  uploaded_files_ids,
+  userId,
+}) {
+  const query = `
+    INSERT INTO project_rejections (project_id, note, user_id)
+    VALUES ($1, $2, $3)
+    RETURNING id;
+  `;
+
+  const values = [projectId, reason, userId];
+  const result = await pool.query(query, values);
+  const rejectionId = result.rows[0].id;
+
+  if (uploaded_files_ids && uploaded_files_ids.length > 0) {
+    await createProjectRejectionUploadedFiles(rejectionId, uploaded_files_ids);
+  }
+  await updateProjectPartial(projectId, {
+    estimation_status: "rejected",
+  });
+  return rejectionId;
+}
+export async function projectRejectionById(rejectionId) {
+  const query = `
+    SELECT 
+      pr.id,
+      pr.created_at,
+      pr.updated_at,
+      pr.project_id,
+      pr.user_id,
+      pr.note,
+      json_build_object(
+        'id', u.id,
+        'name', u.name
+      ) AS user,
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', uf.id,
+              'file', uf.file,
+              'label', uf.label
+            )
+          )
+          FROM project_rejection_uploaded_files pruf
+          JOIN uploaded_files uf ON pruf.uploaded_file_id = uf.id
+          WHERE pruf.project_rejection_id = pr.id
+        ), '[]'::json
+      ) AS uploaded_files
+    FROM project_rejections pr
+    JOIN users u ON pr.user_id = u.id
+    WHERE pr.id = $1
+    LIMIT 1;
+  `;
+  const result = await pool.query(query, [rejectionId]);
+  console.log([rejectionId], result.rows[0]);
+  return result.rows[0] || null;
 }

@@ -91,6 +91,7 @@ export interface IEstimation {
   updated_at: string;
   project_id: number;
   user_id: number;
+  user: { name: string; id: number };
   log?: string;
   cost?: number;
   deadline?: string;

@@ -65,7 +65,6 @@ const initialEstimators = [
 
 export const EstimationDashboard = () => {
   // State for the Ready for Execution toggle in the Approved form
-  const [sentToPMForm, setSentToPMForm] = useState(false);
   const [projects, setProjects] = useState<IEstimationProject[]>([]);
   const [cards, setCards] = useState({
     active_estimation: 0,
@@ -75,10 +74,7 @@ export const EstimationDashboard = () => {
   });
   const [selectedProject, setSelectedProject] = useState(null);
   const [clarificationText, setClarificationText] = useState("");
-  const [updateText, setUpdateText] = useState("");
-  const [estimators] = useState(initialEstimators);
   const [rfcDetailsProject, setRfcDetailsProject] = useState(null);
-  const [sendToPM, setSendToPM] = useState(false);
   const [showReadyPrompt, setShowReadyPrompt] = useState(false);
   const [estimationFiles, setEstimationFiles] = useState([
     { label: "", file: null },
@@ -208,22 +204,6 @@ export const EstimationDashboard = () => {
   const handleFileChange = (field, e) => {
     setApprovedForm((f) => ({ ...f, [field]: e.target.files[0] }));
   };
-  const addClarification = () => {
-    if (clarificationText.trim()) {
-      setSelectedProject((p) => ({
-        ...p,
-        clarificationLog: [
-          {
-            text: clarificationText,
-            date: new Date().toISOString(),
-            author: "Estimator",
-          },
-          ...(p.clarificationLog || []),
-        ],
-      }));
-      setClarificationText("");
-    }
-  };
 
   const handleEstimationLabelChange = (idx, e) => {
     const label = e.target.value;
@@ -315,6 +295,14 @@ export const EstimationDashboard = () => {
           return item;
         })
       );
+      setCards({
+        ...cards,
+        total_value: cards.total_value + response.data.cost,
+        completed_estimations:
+          cards.completed_estimations + (response.data.sent_to_pm ? 1 : 0),
+        pending_estimations:
+          cards.completed_estimations + (response.data.sent_to_pm ? -1 : 0),
+      });
       setSelectedProject(null);
     } else {
       toast.error("Failed to save estimation");
@@ -344,7 +332,7 @@ export const EstimationDashboard = () => {
     setRejectModal({
       open: true,
       project,
-      files: [{ label: "", file: null }],
+      files: [],
       notes: "",
     });
   };
@@ -416,10 +404,6 @@ export const EstimationDashboard = () => {
     }
   };
 
-  // Keep approvedForm.sentToPM in sync with toggle
-  useEffect(() => {
-    setApprovedForm((f) => ({ ...f, sentToPM: sentToPMForm }));
-  }, [sentToPMForm]);
   // For ready_for_estimation toggle, if you have one
   // useEffect(() => {
   //   setApprovedForm((f) => ({ ...f, ready_for_estimation: readyForEstimation }));
@@ -449,6 +433,89 @@ export const EstimationDashboard = () => {
         return 100;
       default:
         return 0;
+    }
+  };
+  const handleReadyForExecution = async (project) => {
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_ESTIMATION(project.estimation.id),
+      { sent_to_pm: true },
+      "application/json",
+      authToken,
+      "EditEstimation"
+    );
+    if (response.status == 200) {
+      setProjects((prev) =>
+        prev.map((item) => {
+          if (item.id == project.id) {
+            return {
+              ...item,
+              estimation: { ...item.estimation, sent_to_pm: true },
+            };
+          }
+          return item;
+        })
+      );
+      // setCards({
+      //   ...cards,
+      //   completed_estimations: cards.completed_estimations + 1,
+      //   pending_estimations: cards.pending_estimations - 1,
+      // });
+      toast.success("Successfully sent to Project managers");
+    } else {
+      toast.error("Failed to sent to project managers");
+    }
+  };
+  const handleProjectReject = async () => {
+    const requiredFields = ["notes"];
+    const missing = validateRequiredFields(rejectModal, requiredFields);
+    if (missing.length > 0) {
+      toast.error(`Please fill: ${missing[0]}`);
+      return;
+    }
+    const uploadedFileIds = [];
+
+    for (const uf of rejectModal.files) {
+      if (uf.file) {
+        const uploaded = await uploadFile(uf.file, uf.label);
+        if (uploaded && uploaded.id) {
+          uploadedFileIds.push(uploaded.id);
+        } else {
+          toast.error("Failed to upload files");
+          return;
+        }
+      }
+    }
+    const data = {
+      reason: rejectModal.notes,
+      projectId: rejectModal.project.id,
+      uploaded_files_ids: uploadedFileIds,
+    };
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.CREATE_PROJECT_REJECTION,
+      data,
+      "application/json",
+      authToken,
+      "createProjectRejection"
+    );
+    if (response.status == 201) {
+      setProjects((prev) =>
+        prev.map((item) => {
+          if (item.id == data.projectId) {
+            return {
+              ...item,
+              project_rejection: response.data,
+              estimation_status:"rejected"
+            };
+          }
+          return item;
+        })
+      );
+      closeRejectModal();
+      toast.success(response.detail);
+    } else {
+      toast.error("Failed to reject project");
     }
   };
   return (
@@ -517,7 +584,7 @@ export const EstimationDashboard = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  ₹{formatRevenue(cards.total_value)}
+                  {formatRevenue(cards.total_value)}
                 </p>
                 <p className="text-sm text-slate-600">Total Value</p>
               </div>
@@ -541,7 +608,13 @@ export const EstimationDashboard = () => {
                 <Badge
                   variant={
                     project.estimation_status === "approved"
+                      ? "default"
+                      : project.estimation_status === "rejected"
+                      ? "destructive"
+                      : project.estimation_status === "sent_to_client"
                       ? "secondary"
+                      : project.estimation_status === "under_review"
+                      ? "outline"
                       : "secondary"
                   }
                   className="capitalize"
@@ -556,8 +629,8 @@ export const EstimationDashboard = () => {
                   <>
                     <div>
                       <span className="text-slate-500">Estimator:</span>
-                      <p className="font-medium">
-                        {project.estimation.user_id || "-"}
+                      <p className="font-medium capitalize">
+                        {project.estimation.user.name || "-"}
                       </p>
                     </div>
                     <div>
@@ -701,22 +774,20 @@ export const EstimationDashboard = () => {
                   </>
                 )}
                 {/* Fallback: if not in workflow, show Continue Work as before */}
+                {project.estimation &&
+                  project.estimation.sent_to_pm === false && (
+                    <div className="flex  border-t ">
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+                        onClick={() => handleReadyForExecution(project)}
+                        loading={fetching && fetchType == "EditEstimation"}
+                      >
+                        Ready for Execution
+                      </Button>
+                    </div>
+                  )}
               </div>
               {/* New row for Ready for Execution button if estimation.sent_to_pm is false and status is approved */}
-              {project.estimation &&
-                project.estimation.sent_to_pm === false &&
-                project.estimation_status === "approved" && (
-                  <div className="flex gap-2  border-t mt-4 pt-4">
-                    <Button
-                      className="bg-blue-600 hover:bg-blue-700 text-white w-full"
-                      onClick={() => {
-                        // Implement logic to mark as ready for execution and update sent_to_pm
-                      }}
-                    >
-                      Ready for Execution
-                    </Button>
-                  </div>
-                )}
             </CardContent>
           </Card>
         ))}
@@ -827,8 +898,13 @@ export const EstimationDashboard = () => {
               <div className="flex items-center gap-2 mt-2">
                 <Switch
                   id="sentToPMForm"
-                  checked={sentToPMForm}
-                  onCheckedChange={setSentToPMForm}
+                  checked={approvedForm.ready_for_estimation}
+                  onCheckedChange={(val) => {
+                    setApprovedForm({
+                      ...approvedForm,
+                      ready_for_estimation: val,
+                    });
+                  }}
                 />
                 <label htmlFor="sentToPMForm" className="text-sm">
                   Ready for Execution
@@ -1142,37 +1218,43 @@ export const EstimationDashboard = () => {
                 </div>
               </div>
               {/* Rejection Section */}
-              {rfcDetailsProject.project_rejection &&
-                rfcDetailsProject.project_rejection.length > 0 && (
-                  <div className="my-6 border-t pt-6">
-                    <div className="font-semibold text-red-700 mb-1 flex items-center gap-2">
-                      <AlertCircle size={18} className="text-red-500" />
-                      Rejection Details:
-                    </div>
-                    {rfcDetailsProject.project_rejection.map((rej, idx) => (
-                      <div key={idx} className="mb-4">
-                        <div className="text-slate-700 mb-1">{rej.note}</div>
-                        <ul className="list-disc ml-8 space-y-1">
-                          {rej.uploaded_files &&
-                          rej.uploaded_files.length > 0 ? (
-                            rej.uploaded_files.map((f, i) => (
-                              <li key={i}>
-                                <span className="font-medium text-slate-700">
-                                  {f.label ? `${f.label}: ` : ""}
-                                </span>
-                                {f.file}
-                              </li>
-                            ))
-                          ) : (
-                            <li className="text-slate-400">
-                              No files uploaded
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    ))}
+              {(rfcDetailsProject.project_rejection &&
+                rfcDetailsProject.project_rejection.length > 0) ||
+              rfcDetailsProject.estimation_status === "rejected" ? (
+                <div className="my-6 border-t pt-6">
+                  <div className="font-semibold text-red-700 mb-1 flex items-center gap-2">
+                    <AlertCircle size={18} className="text-red-500" />
+                    Rejection Details:
                   </div>
-                )}
+                  {rfcDetailsProject.project_rejection ? (
+                    <div className="mb-4">
+                      <div className="text-slate-700 mb-1">
+                        {rfcDetailsProject.project_rejection.note}
+                      </div>
+                      <ul className="list-disc ml-8 space-y-1">
+                        {rfcDetailsProject.project_rejection.uploaded_files &&
+                        rfcDetailsProject.project_rejection.uploaded_files
+                          .length > 0 ? (
+                          rfcDetailsProject.project_rejection.uploaded_files.map(
+                            (f, i) => (
+                              <li key={i}>
+                                <ShowFile label={f.label} url={f.file} />
+                              </li>
+                            )
+                          )
+                        ) : (
+                          <li className="text-slate-400">No files uploaded</li>
+                        )}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="text-slate-700 mb-1">
+                      Project has been rejected but no detailed rejection
+                      information is available.
+                    </div>
+                  )}
+                </div>
+              ) : null}
               <div className="flex justify-end mt-8">
                 <Button
                   variant="outline"
@@ -1275,7 +1357,12 @@ export const EstimationDashboard = () => {
             </Button>
             <Button
               className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => {}}
+              onClick={handleProjectReject}
+              loading={
+                fetching &&
+                (fetchType == "createProjectRejection" ||
+                  fetchType == "uploadFile")
+              }
             >
               Reject
             </Button>
@@ -1422,6 +1509,48 @@ export const EstimationDashboard = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Rejection Section for View Estimation Modal */}
+              {(viewEstimationProject.project_rejection &&
+                viewEstimationProject.project_rejection.length > 0) ||
+              viewEstimationProject.estimation_status === "rejected" ? (
+                <div className="my-6 border-t pt-6">
+                  <div className="font-semibold text-red-700 mb-1 flex items-center gap-2">
+                    <AlertCircle size={18} className="text-red-500" />
+                    Rejection Details:
+                  </div>
+                  {viewEstimationProject.project_rejection &&
+                  viewEstimationProject.project_rejection.length > 0 ? (
+                    viewEstimationProject.project_rejection.map((rej, idx) => (
+                      <div key={idx} className="mb-4">
+                        <div className="text-slate-700 mb-1">{rej.note}</div>
+                        <ul className="list-disc ml-8 space-y-1">
+                          {rej.uploaded_files &&
+                          rej.uploaded_files.length > 0 ? (
+                            rej.uploaded_files.map((f, i) => (
+                              <li key={i}>
+                                <span className="font-medium text-slate-700">
+                                  {f.label ? `${f.label}: ` : ""}
+                                </span>
+                                {f.file}
+                              </li>
+                            ))
+                          ) : (
+                            <li className="text-slate-400">
+                              No files uploaded
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-slate-700 mb-1">
+                      Project has been rejected but no detailed rejection
+                      information is available.
+                    </div>
+                  )}
+                </div>
+              ) : null}
               <div className="flex justify-end mt-8">
                 <Button
                   variant="outline"
