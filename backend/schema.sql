@@ -330,8 +330,8 @@ CREATE TABLE drawings (
   title VARCHAR(255) NOT NULL,
   drawing_type VARCHAR(100),
   revision VARCHAR(50),
-  drawing_weightage NUMERIC(5,2),        -- Optional: custom weight for this drawing
-  allocated_hours INT,                   -- Optional: override stage hours
+  drawing_weightage NUMERIC(5,2),      
+  allocated_hours INT,                  
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   stage_id INTEGER REFERENCES stages(id) ON DELETE SET NULL,
   uploaded_by INTEGER REFERENCES users(id),
