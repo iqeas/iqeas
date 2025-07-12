@@ -24,4 +24,5 @@ export const API_ENDPOINT = {
   CREATE_PROJECT_REJECTION: `${API_URL}/projects/reject`,
   GET_ALL_FILES: (query, page, pageSize) =>
     `${API_URL}/get-files/all-files?page=${page}&query=${query}&size=${pageSize}`,
+  CREATE_PASSWORD: `${API_URL}/auth/create-password`,
 };

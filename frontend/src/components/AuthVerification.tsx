@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 const AuthVerification: React.FC<PropsWithChildren> = ({ children }) => {
   const { makeApiCall, fetching, isFetched } = useAPICall();
   const { login, setIsCheckedUser, isCheckedUser } = useAuth();
+  const pathname = window.location.pathname;
   const handleVerify = async () => {
     setIsCheckedUser(false);
     const authToken = localStorage.getItem("auth_token");
@@ -29,7 +30,7 @@ const AuthVerification: React.FC<PropsWithChildren> = ({ children }) => {
     setIsCheckedUser(true);
   };
   useEffect(() => {
-    if (localStorage.getItem("auth_token")) {
+    if (localStorage.getItem("auth_token") && pathname != "/create-password/") {
       handleVerify();
     } else {
       setIsCheckedUser(true);
