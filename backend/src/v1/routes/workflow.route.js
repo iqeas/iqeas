@@ -6,24 +6,21 @@ import {
   addDrawingStageLog,
   getDrawingLogs,
 } from "../controllers/workflow.controller.js";
-import uploadMiddleware from "../middlewares/upload.js";
-import authMiddleware from "../middlewares/auth.js";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
-
-router.use(authMiddleware);
 
 router.post("/stages", createStage);
 router.post(
   "/stages/:id/files",
-  uploadMiddleware.array("files"),
+  authenticateToken,
   uploadStageFiles
 );
 
 router.post("/drawings", createDrawing);
 router.post(
   "/drawings/:id/logs",
-  uploadMiddleware.array("files"),
+  authenticateToken,
   addDrawingStageLog
 );
 router.get("/drawings/:id/logs", getDrawingLogs);
