@@ -2,7 +2,6 @@ import pool from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { generatePassword } from "../utils/passwordGenerator.js";
 import { uuidGenerator } from "../utils/uuidGenerator.js";
-
 export async function createUser(
   email,
   phoneNumber,
@@ -14,6 +13,38 @@ export async function createUser(
   const hashedPassword = await bcrypt.hash(password, 10);
   const uniqueId = uuidGenerator();
 
+  // Check for soft-deleted user
+  const existingUser = await pool.query(
+    `SELECT id FROM users WHERE email = $1 AND is_deleted = true LIMIT 1`,
+    [email]
+  );
+
+  if (existingUser.rows.length > 0) {
+    // Update soft-deleted user with new data
+    const userId = existingUser.rows[0].id;
+
+    const result = await pool.query(
+      `UPDATE users SET
+        phoneNumber = $1,
+        name = $2,
+        role = $3,
+        password = $4,
+        active = $5,
+        is_deleted = false,
+        user_id = $6,
+        updated_at = NOW()
+      WHERE id = $7
+      RETURNING id, email, phoneNumber, name, role, active`,
+      [phoneNumber, name, role, hashedPassword, active, uniqueId, userId]
+    );
+
+    return {
+      user: result.rows[0],
+      password,
+    };
+  }
+
+  // Insert as new user
   const userResult = await pool.query(
     `INSERT INTO users (email, phoneNumber, name, role, password, active, user_id) 
      VALUES ($1, $2, $3, $4, $5, $6, $7) 
@@ -51,7 +82,7 @@ export async function updateUserData(
       phoneNumber = COALESCE($3, phoneNumber),
       active = COALESCE($4, active),
       role = COALESCE($5, role),
-      deleted = $6,
+      is_deleted = $6,
       updated_at = NOW()
     WHERE id = $7
     RETURNING id, email, phoneNumber, name, role, active, is_deleted`,
@@ -66,7 +97,7 @@ export async function updateUserData(
 export async function DeleteUser(id) {
   await pool.query(
     `
-    UPDATE users SET deleted=true where id=$1
+    UPDATE users SET is_deleted=true where id=$1
     `,
     [id]
   );

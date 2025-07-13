@@ -16,14 +16,14 @@ const CreatePassword = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { makeApiCall, fetching } = useAPICall();
 
-  const refId = searchParams.get("ref_id");
+  const token = searchParams.get("token");
 
   useEffect(() => {
-    if (!refId) {
+    if (!token) {
       toast.error("Invalid or missing reference ID");
       navigate("*");
     }
-  }, [refId, navigate]);
+  }, [token, navigate]);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -50,7 +50,7 @@ const CreatePassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!refId) {
+    if (!token) {
       toast.error("Invalid or missing reference ID");
       return;
     }
@@ -63,9 +63,8 @@ const CreatePassword = () => {
       "post",
       API_ENDPOINT.CREATE_PASSWORD,
       {
-        ref_id: refId,
-        password: password,
-        confirm_password: confirmPassword,
+        token: token,
+        newPassword: confirmPassword,
       },
       "application/json",
       undefined,
@@ -82,7 +81,7 @@ const CreatePassword = () => {
     }
   };
 
-  if (!refId) {
+  if (!token) {
     return null; // Will redirect to not-found
   }
 

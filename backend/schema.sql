@@ -36,6 +36,9 @@ CREATE TABLE teams_users (
     PRIMARY KEY (team_id, user_id)
 );
 
+
+
+
 -- =====================
 -- UPLOADED FILES
 -- =====================
