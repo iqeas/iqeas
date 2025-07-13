@@ -13,6 +13,7 @@ import chatRoute from "./routes/chat.route.js";
 import uploadFileRoute from "./routes/uploadfiles.route.js";
 import searchRoute from "./routes/search.route.js";
 import workflowRoute from "./routes/workflow.route.js";
+import documentRoute from "./routes/documents.route.js";
 
 import cors from "cors"; // <-- Import cors
 
@@ -34,5 +35,6 @@ app.use("/api/v1", chatRoute);
 app.use("/api/v1", uploadFileRoute);
 app.use("/api/v1", searchRoute);
 app.use("/api/v1", workflowRoute);
+app.use("/api/v1", documentRoute);
 
 export default app;

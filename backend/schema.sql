@@ -365,3 +365,5 @@ CREATE TABLE drawing_stage_log_files (
     uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
     PRIMARY KEY (log_id, uploaded_file_id)
 );
+
+
