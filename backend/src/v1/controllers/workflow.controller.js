@@ -77,36 +77,31 @@ export async function createDrawing(req, res) {
 }
 
 export async function addDrawingStageLog(req, res) {
+  let result;
   try {
-    const userId = req.user.id;
-    const {
-      step_name,
-      status,
-      notes,
-      forwarded_to,
-      forwarded_id,
-      uploaded_files_ids,
-    } = req.body;
-
-    const result = await WorkflowService.addDrawingStageLog(
-      req.params.id,
-      step_name,
-      status,
-      notes,
-      userId,
-      req.files,
-      forwarded_to,
-      forwarded_id
+    result = await WorkflowService.addDrawingStageLog({
+      drawingId: req.params.id,
+      userId: req.user.id,
+      ...req.body,
+    });
+    
+    const current_log_id = req.body.log_id;
+    await WorkflowService.updateLogStatus(current_log_id, true);
+    const logData = await WorkflowService.getUserAssignedTaskByLogId(
+      current_log_id
     );
-
     res.status(201).json(
       formatResponse({
         statusCode: 201,
         detail: "Drawing stage log added",
-        data: result,
+        data: logData,
       })
     );
   } catch (err) {
+    console.log(err);
+    if(result) {
+      await WorkflowService.deleteDrawingLog(result.id);
+    }
     res.status(500).json(
       formatResponse({
         statusCode: 500,
@@ -182,6 +177,90 @@ export async function getStageDrawingsController(req, res) {
       formatResponse({
         statusCode: 500,
         detail: "Failed to fetch drawings with logs",
+        data: err.message,
+      })
+    );
+  }
+}
+
+export async function getAssignedTasksController(req, res) {
+  try {
+    const userId = req.user.id;
+    const { page = 1, size = 10, filter = "all", query = "" } = req.query;
+    const result = await WorkflowService.getUserAssignedTasks(
+      userId,
+      query,
+      page,
+      size,
+      filter
+    );
+    const cards = await WorkflowService.getUserTaskStats(userId);
+
+    res.json({
+      status_code: 200,
+      detail: "Success",
+      data: { ...result, cards },
+    });
+  } catch (error) {
+    console.error("Worker task error:", error);
+    res.status(500).json({
+      status_code: 500,
+      detail: "Internal Server Error",
+      data: error.message,
+    });
+  }
+}
+
+export async function EditDrawingLogsController(req, res) {
+  try {
+    const { id } = req.params;
+    const { status, uploaded_files_ids, action_taken,reason } = req.body;
+
+    await WorkflowService.updateDrawingLog(
+      id,
+      status,
+      action_taken,
+      reason,
+      uploaded_files_ids
+    );
+    const logData = await WorkflowService.getUserAssignedTaskByLogId(id);
+
+    res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Drawing log updated successfully",
+        data: logData,
+      })
+    );
+  } catch (err) {
+    console.error("Error updating drawing log:", err);
+    res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: "Failed to update drawing log",
+        data: err.message,
+      })
+    );
+  }
+}
+
+export async function getDrawingLogByIdController(req, res) {
+  try {
+    const logId = req.params.id;
+    const logData = await WorkflowService.getDrawingLogById(logId);
+    res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Drawing log fetched successfully",
+        data: logData,
+      })
+    );
+  } catch (err) {
+    console.error("Error fetching drawing log:", err);
+    res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: "Failed to fetch drawing log",
         data: err.message,
       })
     );

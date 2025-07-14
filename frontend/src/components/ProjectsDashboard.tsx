@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search, Plus, Grid, List, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,102 +12,72 @@ import {
 import { ProjectCard } from "@/components/ProjectCard";
 import { Badge } from "@/components/ui/badge";
 import ProjectSlidingPanel from "./ProjectSlidingPanel";
-
-const mockProjects = [
-  {
-    id: "PRJ-2024-001",
-    clientName: "Saudi Aramco",
-    location: "Dhahran, Saudi Arabia",
-    createdDate: "2024-01-15",
-    status: "In Progress",
-    assignedTeams: ["RFC Team", "PM Team", "Working Team"],
-    progress: 65,
-    priority: "High",
-    estimatedCompletion: "2024-03-20",
-    estimationDetails: {
-      costEstimate: "2,500,000",
-      costBreakdownFile: {
-        label: "Cost Breakdown.xlsx",
-        url: "/files/cost-breakdown.xlsx",
-      },
-      estimationPDF: { label: "Estimation.pdf", url: "/files/estimation.pdf" },
-      deadline: "2024-02-28",
-      approvalDate: "2024-02-20",
-      remarks: "Reviewed and approved by client.",
-      uploadedFiles: [
-        { label: "BOQ", url: "/files/boq.pdf" },
-        { label: "Layout", url: "/files/layout.pdf" },
-      ],
-    },
-  },
-  {
-    id: "PRJ-2024-002",
-    clientName: "ADNOC",
-    location: "Abu Dhabi, UAE",
-    createdDate: "2024-01-20",
-    status: "Under Estimation",
-    assignedTeams: ["RFC Team", "Estimation Department"],
-    progress: 25,
-    priority: "Medium",
-    estimatedCompletion: "2024-04-15",
-    estimationDetails: {
-      costEstimate: "1,800,000",
-      costBreakdownFile: {
-        label: "Cost Breakdown.xlsx",
-        url: "/files/cost-breakdown-adnoc.xlsx",
-      },
-      estimationPDF: {
-        label: "Estimation.pdf",
-        url: "/files/estimation-adnoc.pdf",
-      },
-      deadline: "2024-03-15",
-      approvalDate: "",
-      remarks: "Pending client review.",
-      uploadedFiles: [{ label: "Spec", url: "/files/spec-adnoc.pdf" }],
-    },
-  },
-  {
-    id: "PRJ-2024-003",
-    clientName: "Kuwait Oil Company",
-    location: "Kuwait City, Kuwait",
-    createdDate: "2024-02-01",
-    status: "Data Collection",
-    assignedTeams: ["RFC Team"],
-    progress: 10,
-    priority: "Low",
-    estimatedCompletion: "2024-05-30",
-    estimationDetails: {
-      costEstimate: "-",
-      costBreakdownFile: null,
-      estimationPDF: null,
-      deadline: "2024-04-30",
-      approvalDate: "",
-      remarks: "Estimation not started.",
-      uploadedFiles: [],
-    },
-  },
-];
-
-type Project = (typeof mockProjects)[number];
+import { useAPICall } from "@/hooks/useApiCall";
+import { API_ENDPOINT } from "@/config/backend";
+import { useAuth } from "@/contexts/AuthContext";
+import toast from "react-hot-toast";
+import Loading from "./atomic/Loading";
+import { Project, ProjectListResponse } from "@/types/apiTypes";
 
 export const ProjectsDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-
-  const filteredProjects = mockProjects.filter((project) => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
+  const { authToken } = useAuth();
+  const totalPages = useRef(0);
+  const filteredProjects = projects.filter((project) => {
     const matchesSearch =
-      project.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.id.toLowerCase().includes(searchTerm.toLowerCase());
+      project.project_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
+  // Disable global scroll when ProjectSlidingPanel is open
+  useEffect(() => {
+    if (selectedProject) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedProject]);
+
+  useEffect(() => {
+    const getProjects = async () => {
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_ALL_PM_PROJECTS,
+        {},
+        "application/json",
+        authToken,
+        "getProjects"
+      );
+      if (response.status === 200) {
+        const data = response.data as ProjectListResponse;
+        setProjects(data.projects);
+        totalPages.current = data.total_pages;
+      } else {
+        toast.error("Failed to fetch projects");
+      }
+    };
+    getProjects();
+  }, []);
+
+  if (fetching || !isFetched) {
+    return <Loading full />;
+  }
+
   return (
-    <div className="p-6 relative">
+    <div className="p-6 relative ">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -143,10 +113,9 @@ export const ProjectsDashboard = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="Data Collection">Data Collection</SelectItem>
-              <SelectItem value="Under Estimation">Under Estimation</SelectItem>
-              <SelectItem value="In Progress">In Progress</SelectItem>
-              <SelectItem value="Finalized">Finalized</SelectItem>
+              <SelectItem value="Working">Working</SelectItem>
+              <SelectItem value="Pending">Pending</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex border rounded-lg">
@@ -174,23 +143,18 @@ export const ProjectsDashboard = () => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
           <span className="text-slate-600">
-            Showing {filteredProjects.length} of {mockProjects.length} projects
+            Showing {filteredProjects.length} of {projects.length} projects
           </span>
           <div className="flex space-x-2">
             <Badge variant="outline">
-              Active:{" "}
-              {mockProjects.filter((p) => p.status === "In Progress").length}
+              Working: {projects.filter((p) => p.status === "Working").length}
             </Badge>
             <Badge variant="outline">
-              Pending:{" "}
-              {
-                mockProjects.filter((p) => p.status === "Under Estimation")
-                  .length
-              }
+              Pending: {projects.filter((p) => p.status === "Pending").length}
             </Badge>
             <Badge variant="outline">
               Completed:{" "}
-              {mockProjects.filter((p) => p.status === "Finalized").length}
+              {projects.filter((p) => p.status === "Completed").length}
             </Badge>
           </div>
         </div>

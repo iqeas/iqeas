@@ -9,6 +9,7 @@ export const API_ENDPOINT = {
   EDIT_USER_STATUS: (id: any) => `${API_URL}/admin/user/${id}/status`,
   CREATE_PROJECT: `${API_URL}/projects`,
   GET_ALL_USERS_AND_TEAMS: `${API_URL}/admin/get-users`,
+  GET_USERS_BY_ROLE: (role: any) => `${API_URL}/admin/get-users/${role}`,
   EDIT_USER: (id: any) => `${API_URL}/admin/users/${id}`,
   DELETE_USER: (id: any) => `${API_URL}/admin/users/${id}`,
   CREATE_TEAMS: `${API_URL}/teams`,
@@ -26,4 +27,18 @@ export const API_ENDPOINT = {
     `${API_URL}/get-files/all-files?page=${page}&query=${query}&size=${pageSize}`,
   CREATE_PASSWORD: `${API_URL}/auth/reset-password`,
   FORGOT_PASSWORD: `${API_URL}/auth/forgot-password`,
+  CREATE_STAGE: (project_id: any) => `${API_URL}/stages/${project_id}`,
+  GET_STAGES: (project_id: any) => `${API_URL}/stages/${project_id}`,
+  GET_PROJECT_STAGE: (projectId: any, stageId: any) =>
+    `${API_URL}/stages/drawings/${projectId}/${stageId}`,
+  GET_ALL_PM_PROJECTS: `${API_URL}/projects/pm`,
+  GET_STAGE_DRAWINGS: (project_id: any, stage_id: any) =>
+    `${API_URL}/stages/drawings/${project_id}/${stage_id}`,
+  CREATE_STAGE_DRAWING: `${API_URL}/drawings`,
+  GET_WORKER_TASKS: (query, page, size, filter) =>
+    `${API_URL}/workers/tasks?page=${page}&size=${size}&filter=${filter}&query=${query}`,
+  CREATE_DRAWING_LOGS: (drawing_id: any) =>
+    `${API_URL}/drawings/${drawing_id}/logs`,
+  EDIT_DRAWING_LOG: (log_id: any) => `${API_URL}/logs/${log_id}`,
+  GET_DRAWING_LOG: (log_id: any) => `${API_URL}/logs/${log_id}`,
 };

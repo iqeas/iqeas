@@ -45,7 +45,12 @@ export const useAPICall = () => {
       const response = await axios({
         method: method,
         data: data,
-        headers: header,
+        headers: {
+          ...header,
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
         url: method.toLowerCase() === "get" ? `${endpoint}` : endpoint,
       });
       const responseJson = response.data;
