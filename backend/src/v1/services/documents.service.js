@@ -1,9 +1,6 @@
 
 import pool from "../config/db.js";
 
-
-
-
 export async function getDocuments({
   page = 1,
   size = 10,
