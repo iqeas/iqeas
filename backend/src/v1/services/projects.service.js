@@ -178,7 +178,6 @@ export async function getProjectsEstimationProjects() {
     SELECT 
       p.*,
 
-      -- User object
       json_build_object(
         'id', u.id,
         'name', u.name,
@@ -186,49 +185,37 @@ export async function getProjectsEstimationProjects() {
         'phonenumber', u.phonenumber
       ) AS user,
 
-      -- Uploaded files directly on project
-      COALESCE(
-        (
-          SELECT json_agg(json_build_object(
-            'id', uf.id,
-            'file', uf.file,
-            'label', uf.label
-          ))
-          FROM projects_uploaded_files puf
-          JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
-          WHERE puf.project_id = p.id
-        ), '[]'::json
-      ) AS uploaded_files,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'file', uf.file,
+          'label', uf.label
+        ))
+        FROM projects_uploaded_files puf
+        JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
+        WHERE puf.project_id = p.id
+      ), '[]'::json) AS uploaded_files,
 
-      -- Add more infos
-      COALESCE(
-        (
-          SELECT json_agg(
-            json_build_object(
-              'id', pm.id,
-              'notes', pm.notes,
-              'enquiry', pm.enquiry,
-              'uploaded_files',
-                COALESCE((
-                  SELECT json_agg(
-                    json_build_object(
-                      'id', uf2.id,
-                      'file', uf2.file,
-                      'label', uf2.label
-                    )
-                  )
-                  FROM project_more_info_uploaded_files pmuf
-                  JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
-                  WHERE pmuf.project_more_info_id = pm.id
-                ), '[]'::json)
-            )
-          )
-          FROM project_more_info pm
-          WHERE pm.project_id = p.id
-        ), '[]'::json
-      ) AS add_more_infos,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', pm.id,
+          'notes', pm.notes,
+          'enquiry', pm.enquiry,
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf2.id,
+              'file', uf2.file,
+              'label', uf2.label
+            ))
+            FROM project_more_info_uploaded_files pmuf
+            JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
+            WHERE pmuf.project_more_info_id = pm.id
+          ), '[]'::json)
+        ))
+        FROM project_more_info pm
+        WHERE pm.project_id = p.id
+      ), '[]'::json) AS add_more_infos,
 
-      -- Estimation with forward logic and uploaded_files
       (
         SELECT json_build_object(
           'id', e.id,
@@ -241,58 +228,30 @@ export async function getProjectsEstimationProjects() {
           'notes', e.notes,
           'updates', e.updates,
           'log', e.log,
-          'user',
-            json_build_object(
-              'id', eu.id,
-              'name', eu.name,
-              'email', eu.email
-            ),
-          'forwarded_to', 
-            CASE 
-              WHEN e.forward_type = 'user' THEN (
-                SELECT json_build_object(
-                  'type', 'user',
-                  'id', fuser.id,
-                  'label', fuser.name,
-                  'users', NULL
-                )
-                FROM users fuser WHERE fuser.id = e.forward_id
-              )
-              WHEN e.forward_type = 'team' THEN (
-  SELECT json_build_object(
-    'type', 'team',
-    'id', t.id,
-    'label', t.title,
-    'users', COALESCE((
-      SELECT json_agg(
-        json_build_object(
-          'id', u2.id,
-          'name', u2.name,
-          'email', u2.email
-        )
-      )
-      FROM teams_users tu
-      JOIN users u2 ON u2.id = tu.user_id
-      WHERE tu.team_id = t.id
-    ), '[]'::json)
-  )
-  FROM teams t WHERE t.id = e.forward_id
-)
-              ELSE NULL
-            END,
-          'uploaded_files',
-            COALESCE((
-              SELECT json_agg(
-                json_build_object(
-                  'id', uf.id,
-                  'label', uf.label,
-                  'file', uf.file
-                )
-              )
-              FROM estimation_uploaded_files euf
-              JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
-              WHERE euf.estimation_id = e.id
-            ), '[]'::json)
+          'user', json_build_object(
+            'id', eu.id,
+            'name', eu.name,
+            'email', eu.email
+          ),
+          'forwarded_to', (
+            SELECT json_build_object(
+              'id', fuser.id,
+              'label', fuser.name,
+              'email', fuser.email
+            )
+            FROM users fuser
+            WHERE fuser.id = e.forwarded_user_id
+          ),
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf.id,
+              'label', uf.label,
+              'file', uf.file
+            ))
+            FROM estimation_uploaded_files euf
+            JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+            WHERE euf.estimation_id = e.id
+          ), '[]'::json)
         )
         FROM estimations e
         JOIN users eu ON e.user_id = eu.id
@@ -300,7 +259,6 @@ export async function getProjectsEstimationProjects() {
         LIMIT 1
       ) AS estimation,
 
-      -- Project Rejection (if any)
       (
         SELECT json_build_object(
           'id', pr.id,
@@ -311,13 +269,11 @@ export async function getProjectsEstimationProjects() {
             'name', pru.name
           ),
           'uploaded_files', COALESCE((
-            SELECT json_agg(
-              json_build_object(
-                'id', uf3.id,
-                'file', uf3.file,
-                'label', uf3.label
-              )
-            )
+            SELECT json_agg(json_build_object(
+              'id', uf3.id,
+              'file', uf3.file,
+              'label', uf3.label
+            ))
             FROM project_rejection_uploaded_files prf
             JOIN uploaded_files uf3 ON prf.uploaded_file_id = uf3.id
             WHERE prf.project_rejection_id = pr.id
@@ -335,7 +291,131 @@ export async function getProjectsEstimationProjects() {
     WHERE p.send_to_estimation = true
     ORDER BY p.created_at DESC;
   `;
+  const result = await pool.query(query);
+  return result.rows;
+}
 
+export async function getPMProjects() {
+  const query = `
+    SELECT 
+      p.*,
+
+      json_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email,
+        'phonenumber', u.phonenumber
+      ) AS user,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'file', uf.file,
+          'label', uf.label
+        ))
+        FROM projects_uploaded_files puf
+        JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
+        WHERE puf.project_id = p.id
+      ), '[]'::json) AS uploaded_files,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', pm.id,
+          'notes', pm.notes,
+          'enquiry', pm.enquiry,
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf2.id,
+              'file', uf2.file,
+              'label', uf2.label
+            ))
+            FROM project_more_info_uploaded_files pmuf
+            JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
+            WHERE pmuf.project_more_info_id = pm.id
+          ), '[]'::json)
+        ))
+        FROM project_more_info pm
+        WHERE pm.project_id = p.id
+      ), '[]'::json) AS add_more_infos,
+
+      (
+        SELECT json_build_object(
+          'id', e.id,
+          'status', e.status,
+          'cost', e.cost,
+          'deadline', e.deadline,
+          'approval_date', e.approval_date,
+          'approved', e.approved,
+          'sent_to_pm', e.sent_to_pm,
+          'notes', e.notes,
+          'updates', e.updates,
+          'log', e.log,
+          'user', json_build_object(
+            'id', eu.id,
+            'name', eu.name,
+            'email', eu.email
+          ),
+          'forwarded_to', (
+            SELECT json_build_object(
+              'id', fuser.id,
+              'label', fuser.name,
+              'email', fuser.email
+            )
+            FROM users fuser
+            WHERE fuser.id = e.forwarded_user_id
+          ),
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf.id,
+              'label', uf.label,
+              'file', uf.file
+            ))
+            FROM estimation_uploaded_files euf
+            JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+            WHERE euf.estimation_id = e.id
+          ), '[]'::json)
+        )
+        FROM estimations e
+        JOIN users eu ON e.user_id = eu.id
+        WHERE e.project_id = p.id
+        LIMIT 1
+      ) AS estimation,
+
+      (
+        SELECT json_build_object(
+          'id', pr.id,
+          'note', pr.note,
+          'created_at', pr.created_at,
+          'user', json_build_object(
+            'id', pru.id,
+            'name', pru.name
+          ),
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf3.id,
+              'file', uf3.file,
+              'label', uf3.label
+            ))
+            FROM project_rejection_uploaded_files prf
+            JOIN uploaded_files uf3 ON prf.uploaded_file_id = uf3.id
+            WHERE prf.project_rejection_id = pr.id
+          ), '[]'::json)
+        )
+        FROM project_rejections pr
+        JOIN users pru ON pr.user_id = pru.id
+        WHERE pr.project_id = p.id
+        ORDER BY pr.created_at DESC
+        LIMIT 1
+      ) AS project_rejection
+
+    FROM projects p
+    LEFT JOIN users u ON p.user_id = u.id
+    WHERE EXISTS (
+      SELECT 1 FROM estimations e
+      WHERE e.project_id = p.id AND e.sent_to_pm = true
+    )
+    ORDER BY p.created_at DESC;
+  `;
   const result = await pool.query(query);
   return result.rows;
 }
