@@ -109,3 +109,11 @@ export async function getAllUsers() {
   );
   return result.rows;
 }
+
+export async function getUsersByRole(role) {
+  const result = await pool.query(
+    `SELECT id, email, name, role, phonenumber, active, created_at FROM users WHERE role = $1 AND is_deleted = false ORDER BY created_at DESC`,
+    [role]
+  );
+  return result.rows;
+}

@@ -166,55 +166,7 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
           )}
         </div>
 
-        {/* Tab Buttons */}
-        <div className="flex mb-6">
-          <button
-            className={`flex-1 ${
-              panelTab == "deliverable"
-                ? "border-b-2 border-blue-600 text-blue-600 "
-                : "bg-slate-100 text-slate-700"
-            } bg-slate-100 pb-1 py-2`}
-            onClick={() => setPanelTab("deliverable")}
-          >
-            Deliverables
-          </button>
-          <button
-            className={`flex-1 ${
-              panelTab == "task"
-                ? "border-b-2 border-blue-600 text-blue-600 "
-                : "bg-slate-100 text-slate-700"
-            } bg-slate-100 py-2`}
-            onClick={() => setPanelTab("task")}
-          >
-            Task
-          </button>
-          <button
-            className={`flex-1 ${
-              panelTab == "documentation"
-                ? "border-b-2 border-blue-600 text-blue-600 "
-                : "bg-slate-100 text-slate-700"
-            } bg-slate-100 py-2 `}
-            onClick={() => setPanelTab("documentation")}
-          >
-            Submission
-          </button>
-        </div>
-        {/* Tab Content */}
-        <div className="flex-1 flex items-center justify-center text-xl  font-semibold w-full">
-          {panelTab === "deliverable" && (
-            <div className="w-full h-full overflow-auto">
-              <Deliverables projectId={selectedProject.id} />
-            </div>
-          )}
-          {panelTab === "task" && (
-            <div className="w-full h-full overflow-auto">
-              <TaskAssignmentPage projectId={selectedProject.id} />
-            </div>
-          )}
-          {panelTab === "documentation" && (
-            <Submission projectId={selectedProject.id} />
-          )}
-        </div>
+        <Submission projectId={selectedProject.id} />
         <Button className="mt-6" variant="outline" onClick={onClose}>
           Close
         </Button>

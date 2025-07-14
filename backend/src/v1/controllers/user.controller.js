@@ -5,6 +5,7 @@ import {
   getAllUsers,
   updateUserData,
   DeleteUser,
+  getUsersByRole,
 } from "../services/user.service.js";
 
 import { getAllTeams } from "../services/teams.service.js";
@@ -99,6 +100,28 @@ export const getUsersController = async (req, res) => {
     );
   } catch (error) {
     console.error("Error fetching users and teams:", error.message);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+
+export const getUsersByRoleController = async (req, res) => {
+  try {
+    const { role } = req.params;
+    const [users] = await Promise.all([getUsersByRole(role)]);
+
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Users fetched successfully",
+        data: users,
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching users:", error.message);
     return res
       .status(500)
       .json(

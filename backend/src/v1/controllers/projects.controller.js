@@ -8,6 +8,7 @@ import {
   getEstimationCardData,
   createProjectRejection,
   projectRejectionById,
+  getPMProjects,
 } from "../services/projects.service.js";
 
 import { formatResponse } from "../utils/response.js";
@@ -116,6 +117,30 @@ export const getEstimationProjects = async (req, res) => {
     const size = parseInt(req.query.size) || 10;
     const query = req.query.search || "";
     const projects = await getProjectsEstimationProjects();
+    const cards = await getEstimationCardData();
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Projects sent to estimation fetched successfully",
+        data: { total_pages: 10, projects, cards },
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching estimation projects:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+export const getPMProjectsController = async (req, res) => {
+  try {
+    // edit-needed i will pase page and size from query params and alse search as query
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+    const query = req.query.search || "";
+    const projects = await getPMProjects();
     const cards = await getEstimationCardData();
     return res.status(200).json(
       formatResponse({

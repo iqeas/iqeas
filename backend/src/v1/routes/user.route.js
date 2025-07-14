@@ -2,6 +2,7 @@ import express from "express";
 import {
   createNewUser,
   EditUserDataController,
+  getUsersByRoleController,
   getUsersController,
   toggleUserStatus,
 } from "../controllers/user.controller.js";
@@ -29,6 +30,11 @@ router.get(
   authenticateToken,
   allowRoles("admin", "estimation"),
   getUsersController
+);
+router.get(
+  "/admin/get-users/:role",
+  authenticateToken,
+  getUsersByRoleController
 );
 
 router.patch(
