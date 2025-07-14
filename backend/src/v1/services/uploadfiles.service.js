@@ -106,14 +106,12 @@ export async function getUploadedFilesByRolePaginated(
       throw new Error("Unauthorized role");
   }
 
-  // Add search param if applicable
   if (searchQuery && role !== "admin") {
     const q = `%${searchQuery}%`;
     queryParams.push(q);
     countParams.push(q);
   }
 
-  // Add pagination params
   queryParams.push(limit, offset);
 
   const query = `
