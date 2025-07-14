@@ -1,6 +1,6 @@
-// import {
-//   getDocumentsByProjectAndType,
-// } from "../services/documentCenter.service.js";
+import {
+  getDocumentsByProjectAndType,
+} from "../services/documents.service.js";
 import { formatResponse } from "../utils/response.js";
 
 export async function getDocumentsHandler(req, res) {
