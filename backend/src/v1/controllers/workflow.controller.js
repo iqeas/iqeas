@@ -3,7 +3,7 @@ import { formatResponse } from "../utils/response.js";
 
 export async function createStage(req, res) {
   try {
-    const project_id  = req.params.project_id;
+    const project_id = req.params.project_id;
     const result = await WorkflowService.createStage(project_id, req.body);
     res.status(201).json(
       formatResponse({
@@ -51,7 +51,7 @@ export async function uploadStageFiles(req, res) {
 export async function createDrawing(req, res) {
   try {
     const userId = req.user.id;
-    
+
     const result = await WorkflowService.createDrawing(req.body, userId);
     const drawingId = result.id;
     const drawingData = await WorkflowService.getDrawingsWithLogsById(
@@ -79,7 +79,14 @@ export async function createDrawing(req, res) {
 export async function addDrawingStageLog(req, res) {
   try {
     const userId = req.user.id;
-    const { step_name, status, notes, forwarded_to, forwarded_id } = req.body;
+    const {
+      step_name,
+      status,
+      notes,
+      forwarded_to,
+      forwarded_id,
+      uploaded_files_ids,
+    } = req.body;
 
     const result = await WorkflowService.addDrawingStageLog(
       req.params.id,
@@ -131,8 +138,7 @@ export async function getDrawingLogs(req, res) {
   }
 }
 
-
-export async function getStagesByProjectIdController(req,res){
+export async function getStagesByProjectIdController(req, res) {
   try {
     const projectId = req.params.project_id;
     const stages = await WorkflowService.getStagesByProjectId(projectId);
@@ -157,8 +163,13 @@ export async function getStagesByProjectIdController(req,res){
 export async function getStageDrawingsController(req, res) {
   try {
     const { project_id, stage_id } = req.params;
-    console.log(`Fetching drawings for project: ${project_id}, stage: ${stage_id}`);
-    const drawings = await WorkflowService.getDrawingsWithLogs(project_id, stage_id);
+    console.log(
+      `Fetching drawings for project: ${project_id}, stage: ${stage_id}`
+    );
+    const drawings = await WorkflowService.getDrawingsWithLogs(
+      project_id,
+      stage_id
+    );
     res.status(200).json(
       formatResponse({
         statusCode: 200,
