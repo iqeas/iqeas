@@ -1,5 +1,5 @@
 import express from "express";
-import { handleGetFilesByType } from "../controllers/documentfiles.controller.js";
+import { handleGetFilesByType } from "../controllers/documentFiles.controller.js";
 
 const router = express.Router();
 
