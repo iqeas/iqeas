@@ -148,7 +148,7 @@ export interface IDocumentFileListResponse {
 export type UploadedFile = {
   id: number;
   label: string;
-  url: string;
+  file: string;
 };
 
 export type DrawingStageLog = {
@@ -226,6 +226,7 @@ export interface Project {
   location: string;
   project_type: string;
   priority: string;
+  progress: number;
   contact_person: string;
   contact_person_phone: string;
   contact_person_email: string;
@@ -236,6 +237,7 @@ export interface Project {
   user: EstimationUser;
   uploaded_files: UploadedFile[];
   add_more_infos: AddMoreInfo[];
+  delivery_files: UploadedFile[];
   estimation: Estimation | null;
   project_rejection: any;
 }

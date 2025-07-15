@@ -25,7 +25,7 @@ import { API_ENDPOINT } from "@/config/backend";
 import toast from "react-hot-toast";
 import Loading from "./atomic/Loading";
 import { validateRequiredFields } from "@/utils/validation";
-import { Drawing, IUser } from "@/types/apiTypes";
+import { Drawing, IUser, DrawingStageLog } from "@/types/apiTypes";
 
 const STAGES = ["IDC", "IFR", "IFA", "AFC"];
 
@@ -100,7 +100,8 @@ const Submission = ({ projectId }) => {
   const [workingUsers, setWorkingUsers] = useState<IUser[]>([]);
   const [documentingUsers, setDocumentingUsers] = useState<IUser[]>([]);
   const [userSelectedStage, setUserSelectedStage] = useState(false);
-
+  const [sentToSelectedFiles, setSentToSelectedFiles] = useState([]);
+  const [currentSentToFiles, setCurrentSentToFiles] = useState([]);
   // Add a function to fetch all stages (getAllStage)
   const getAllStages = async () => {
     const r = await makeApiCall(
@@ -128,6 +129,7 @@ const Submission = ({ projectId }) => {
   useEffect(() => {
     getAllStages();
   }, [projectId]);
+
   useEffect(() => {
     setUserSelectedStage(false);
   }, [projectId]);
@@ -142,23 +144,23 @@ const Submission = ({ projectId }) => {
   }, [selectedStage, stageData[selectedStage]?.drawing]);
 
   // Set default selectedStage to first pending, or last if all completed
-  useEffect(() => {
-    if (userSelectedStage) return; // Don't auto-select if user has chosen
-    if (!stageData || Object.keys(stageData).length === 0) return;
-    let foundPending = false;
-    for (let i = 0; i < STAGES.length; i++) {
-      const stageName = STAGES[i];
-      const block = stageData[stageName];
-      if (block && block.stage && block.stage.status === "pending") {
-        setSelectedStage(stageName);
-        foundPending = true;
-        break;
-      }
-    }
-    if (!foundPending) {
-      setSelectedStage(STAGES[STAGES.length - 1]);
-    }
-  }, [stageData, userSelectedStage]);
+  // useEffect(() => {
+  //   if (userSelectedStage) return; // Don't auto-select if user has chosen
+  //   if (!stageData || Object.keys(stageData).length === 0) return;
+  //   let foundPending = false;
+  //   for (let i = 0; i < STAGES.length; i++) {
+  //     const stageName = STAGES[i];
+  //     const block = stageData[stageName];
+  //     if (block && block.stage && block.stage.status === "pending") {
+  //       setSelectedStage(stageName);
+  //       foundPending = true;
+  //       break;
+  //     }
+  //   }
+  //   if (!foundPending) {
+  //     setSelectedStage(STAGES[STAGES.length - 1]);
+  //   }
+  // }, [stageData, userSelectedStage]);
 
   // Helper to get status and color for a stage
   const getStageStatus = (stage: any) => {
@@ -468,6 +470,8 @@ const Submission = ({ projectId }) => {
     }
   };
   const handleOpenDrafting = async () => {
+    console.log("enter");
+    setCurrentSentToFiles(stageData[selectedStage].drawing.uploaded_files);
     if (Array.isArray(workingUsers) && workingUsers.length !== 0) {
       setShowSendDialog(true);
       setSendDialogType("drafting");
@@ -494,34 +498,16 @@ const Submission = ({ projectId }) => {
     }
   };
   const handleSentToDraft = async () => {
-    console.log(sentToForm);
     if (sentToForm.selected_user == null) {
       toast.error("Choose drafting user");
       return;
     }
-    if (
-      sentToForm.uploaded_files.some((f) => !f.label || f.label.trim() === "")
-    ) {
-      toast.error("All extra uploaded files must have a label.");
+    if (sentToSelectedFiles.length == 0) {
+      toast.success("Choose at least one file to sent");
       return;
     }
-    let uploadedFileIds = [];
-    if (sentToForm.uploaded_files.length > 0) {
-      try {
-        const uploadResults = await Promise.all(
-          sentToForm.uploaded_files.map((f) => uploadFile(f.file, f.label))
-        );
-        uploadedFileIds = uploadResults.map((res) => res.id);
-      } catch (err) {
-        toast.error("File upload failed. Please try again.");
-        return;
-      }
-    }
-    const drawing_files_ids = stageData[
-      selectedStage
-    ].drawing.uploaded_files.map((item) => item.id);
     const data = {
-      uploaded_files_ids: [...drawing_files_ids, ...uploadedFileIds],
+      uploaded_files_ids: [...sentToSelectedFiles],
       notes: sentToForm.notes,
       forwarded_user_id: sentToForm.selected_user,
       status: "not_started",
@@ -668,9 +654,12 @@ const Submission = ({ projectId }) => {
   };
   const handleSendToDocumentation = async () => {
     const task = stageData[selectedStage].drawingLogs[0];
-    const completed_files_ids = task.incoming_files.map((item) => item.id);
+    if (sentToSelectedFiles.length == 0) {
+      toast.success("Choose at least one file to sent");
+      return;
+    }
     const data = {
-      uploaded_files_ids: [...completed_files_ids],
+      uploaded_files_ids: [...sentToSelectedFiles],
       notes: sendDocNotes,
       forwarded_user_id: sendDocUser,
       status: "not_started",
@@ -726,9 +715,12 @@ const Submission = ({ projectId }) => {
   };
   const handleBackToChecking = async () => {
     const task = stageData[selectedStage].drawingLogs[0];
-    const completed_files_ids = task.outgoing_files.map((item) => item.id);
+    if (sentToSelectedFiles.length == 0) {
+      toast.success("Choose at least one file to sent");
+      return;
+    }
     const data = {
-      uploaded_files_ids: [...completed_files_ids],
+      uploaded_files_ids: [...sentToSelectedFiles],
       status: "not_started",
       step_name: "checking",
       notes: backToCheckingNotes,
@@ -779,7 +771,6 @@ const Submission = ({ projectId }) => {
       toast.error("Failed to send back to drafting");
     }
   };
-
   const handleOpenDocModal = async () => {
     if (Array.isArray(documentingUsers) && documentingUsers.length !== 0) {
       setShowSendDocModal(true);
@@ -832,7 +823,7 @@ const Submission = ({ projectId }) => {
                   key={stage}
                   className={`px-4 py-2 rounded font-bold border-2 transition-all ${
                     selectedStage === stage
-                      ? statusInfo.color + " border-4 border-blue-700"
+                      ? statusInfo.color + " border-8 border-blue-700"
                       : statusInfo.color
                   }`}
                   onClick={() => {
@@ -849,7 +840,7 @@ const Submission = ({ projectId }) => {
               );
             })}
           </div>
-          {fetching && fetchType == "getStageDrawing" ? (
+          {loadingStage ? (
             <Loading full={false} />
           ) : stageData[selectedStage] === undefined ||
             stageData[selectedStage] === null ? (
@@ -860,7 +851,9 @@ const Submission = ({ projectId }) => {
                 work.
               </div>
               <Button
-                onClick={handleOpenDrafting}
+                onClick={() => {
+                  handleOpenDrafting();
+                }}
                 loading={fetching && fetchType == "getWorkingUsers"}
               >
                 {"Send to Drafting"}
@@ -905,12 +898,6 @@ const Submission = ({ projectId }) => {
                   <h6 className="font-medium text-sm text-gray-700">
                     Workflow Progress
                   </h6>
-                  <span className="text-xs text-gray-500">
-                    Revision:{" "}
-                    {getCurrentRevision(
-                      stageData[selectedStage]?.drawingLogs as any[]
-                    )}
-                  </span>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   {WORKFLOW_STEPS.map((step, sidx) => {
@@ -1019,69 +1006,97 @@ const Submission = ({ projectId }) => {
                     </div>
                   </div>
                   <div className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                    {(stageData[selectedStage]?.drawingLogs as any[]).map(
-                      (log, index) => (
+                    {(
+                      stageData[selectedStage]?.drawingLogs as DrawingStageLog[]
+                    ).map((log, index) => {
+                      // Determine log type and color
+                      const isDone =
+                        log.status === "completed" &&
+                        log.action_taken === "not_yet";
+                      let borderColor = "border-gray-400";
+                      let bgColor = "bg-gray-50";
+                      let statusLabel = (log.status || "not_started").replace(
+                        "_",
+                        " "
+                      );
+                      let statusBadge = "bg-gray-200 text-gray-600";
+                      if (isDone) {
+                        borderColor = "border-green-400";
+                        bgColor = "bg-green-50";
+                        statusLabel = "Completed";
+                        statusBadge = "bg-green-100 text-green-700";
+                      } else if (
+                        log.status === "completed" &&
+                        log.action_taken === "approved"
+                      ) {
+                        borderColor = "border-green-400";
+                        bgColor = "bg-green-50";
+                        statusLabel = "Approved";
+                        statusBadge = "bg-green-100 text-green-700";
+                      } else if (
+                        log.status === "completed" &&
+                        log.action_taken === "rejected"
+                      ) {
+                        borderColor = "border-red-400";
+                        bgColor = "bg-red-50";
+                        statusLabel = "Rejected";
+                        statusBadge = "bg-red-100 text-red-700";
+                      } else if (log.status === "in_progress") {
+                        borderColor = "border-blue-400";
+                        bgColor = "bg-blue-50";
+                        statusLabel = "In Progress";
+                        statusBadge = "bg-blue-100 text-blue-700";
+                      } else if (log.status === "not_started") {
+                        borderColor = "border-gray-400";
+                        bgColor = "bg-gray-100";
+                        statusLabel = "Not Started";
+                        statusBadge = "bg-gray-200 text-gray-600";
+                      } else if (log.is_sent) {
+                        borderColor = "border-yellow-400";
+                        bgColor = "bg-yellow-50";
+                        statusLabel = "Sent";
+                        statusBadge = "bg-yellow-100 text-yellow-700";
+                      }
+                      return (
                         <div
-                          key={(log as any).id}
-                          className={`text-sm p-3 rounded border-l-4 ${
-                            (log as any).status === "completed"
-                              ? "bg-green-50 border-green-400"
-                              : (log as any).status === "rejected"
-                              ? "bg-red-50 border-red-400"
-                              : (log as any).status === "in_progress"
-                              ? "bg-blue-50 border-blue-400"
-                              : (log as any).status === "not_started"
-                              ? "bg-gray-100 border-gray-400"
-                              : "bg-gray-50 border-gray-400"
+                          key={log.id}
+                          className={`text-sm p-3 rounded border-l-4 ${bgColor} ${borderColor} ${
+                            isDone ? "opacity-80" : ""
                           }`}
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div className="font-medium text-base">
-                              {(log as any).step_name}
-                              {(log as any).status === "rejected" &&
-                                (log as any).reason && (
-                                  <div className="text-xs text-red-700 mb-2">
-                                    Reason: {(log as any).reason}
-                                  </div>
-                                )}
-
+                              {log.step_name}
+                              {log.status === "rejected" && log.reason && (
+                                <div className="text-xs text-red-700 mb-2">
+                                  Reason: {log.reason}
+                                </div>
+                              )}
                               <div className="text-gray-700 mb-2">
-                                Notes: {(log as any).notes}
+                                Notes: {log.notes}
                               </div>
                             </div>
-                            <div className="flex  flex-col justify-end items-end">
+                            <div className="flex flex-col justify-end items-end">
                               <div className="flex gap-2 items-center">
                                 <span
-                                  className={`px-2 py-1 rounded text-xs font-medium capitalize ${
-                                    (log as any).status === "completed" ||
-                                    (log as any).status === "approved"
-                                      ? "bg-green-100 text-green-700"
-                                      : (log as any).status === "rejected"
-                                      ? "bg-red-100 text-red-700"
-                                      : (log as any).status === "in_progress"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : (log as any).status === "not_started"
-                                      ? "bg-gray-200 text-gray-600"
-                                      : "bg-gray-100 text-gray-600"
-                                  }`}
+                                  className={`px-2 py-1 rounded text-xs font-medium capitalize ${statusBadge}`}
                                 >
-                                  {(
-                                    (log as any).status || "not_started"
-                                  ).replace("_", " ")}
+                                  {statusLabel}
                                 </span>
                                 <span className="text-xs text-gray-500">
                                   {new Date(
-                                    (log as any).created_at
+                                    log.created_at
                                   ).toLocaleDateString()}
                                 </span>
                               </div>
+                              {/* Only show action buttons for actionable logs, not for 'Done' */}
                               <div className="flex-1 pt-2">
                                 {!isAdmin &&
-                                  index == 0 &&
-                                  log.step_name == "approval" &&
+                                  index === 0 &&
+                                  log.step_name === "approval" &&
+                                  !isDone &&
                                   (() => {
                                     const lastApprovalLog = log;
-                                    console.log(log);
                                     if (
                                       lastApprovalLog.status === "not_started"
                                     ) {
@@ -1122,7 +1137,7 @@ const Submission = ({ projectId }) => {
                                               fetchType === "EditMarkAsApproved"
                                             }
                                           >
-                                            Approve
+                                            Move Forward
                                           </Button>
                                           <Button
                                             variant="destructive"
@@ -1130,7 +1145,7 @@ const Submission = ({ projectId }) => {
                                               setShowRejectModal(true)
                                             }
                                           >
-                                            Reject
+                                            Go Back
                                           </Button>
                                         </div>
                                       );
@@ -1143,7 +1158,14 @@ const Submission = ({ projectId }) => {
                                     ) {
                                       return (
                                         <Button
-                                          onClick={() => handleOpenDocModal()}
+                                          onClick={() => {
+                                            setSentToSelectedFiles([]);
+                                            setCurrentSentToFiles([
+                                              ...log.incoming_files,
+                                              ...log.outgoing_files,
+                                            ]);
+                                            handleOpenDocModal();
+                                          }}
                                           loading={
                                             fetching &&
                                             fetchType === "getDocumentingUsers"
@@ -1165,9 +1187,14 @@ const Submission = ({ projectId }) => {
                                     ) {
                                       return (
                                         <Button
-                                          onClick={() =>
-                                            setShowBackToCheckingModal(true)
-                                          }
+                                          onClick={() => {
+                                            setSentToSelectedFiles([]);
+                                            setCurrentSentToFiles([
+                                              ...log.incoming_files,
+                                              ...log.outgoing_files,
+                                            ]);
+                                            setShowBackToCheckingModal(true);
+                                          }}
                                           loading={
                                             fetching &&
                                             fetchType ===
@@ -1188,52 +1215,47 @@ const Submission = ({ projectId }) => {
                               </div>
                             </div>
                           </div>
-
                           {/* Incoming Files */}
-                          {(log as any).incoming_files &&
-                            (log as any).incoming_files.length > 0 && (
+                          {log.incoming_files &&
+                            log.incoming_files.length > 0 && (
                               <div className="mb-2">
                                 <div className="font-semibold text-xs text-gray-600 mb-1">
                                   Incoming Files:
                                 </div>
                                 <div className="flex flex-wrap gap-1">
-                                  {(log as any).incoming_files.map(
-                                    (file: any, idx: number) => (
-                                      <ShowFile
-                                        key={idx}
-                                        label={file.label}
-                                        url={file.url}
-                                        size="small"
-                                      />
-                                    )
-                                  )}
+                                  {log.incoming_files.map((file, idx) => (
+                                    <ShowFile
+                                      key={idx}
+                                      label={file.label}
+                                      url={file.file}
+                                      size="small"
+                                    />
+                                  ))}
                                 </div>
                               </div>
                             )}
                           {/* Outgoing Files */}
-                          {(log as any).outgoing_files &&
-                            (log as any).outgoing_files.length > 0 && (
+                          {log.outgoing_files &&
+                            log.outgoing_files.length > 0 && (
                               <div className="mb-2">
                                 <div className="font-semibold text-xs text-gray-600 mb-1">
                                   Outgoing Files:
                                 </div>
                                 <div className="flex flex-wrap gap-1">
-                                  {(log as any).outgoing_files.map(
-                                    (file: any, idx: number) => (
-                                      <ShowFile
-                                        key={idx}
-                                        label={file.label}
-                                        url={file.url}
-                                        size="small"
-                                      />
-                                    )
-                                  )}
+                                  {log.outgoing_files.map((file, idx) => (
+                                    <ShowFile
+                                      key={idx}
+                                      label={file.label}
+                                      url={file.file}
+                                      size="small"
+                                    />
+                                  ))}
                                 </div>
                               </div>
                             )}
                         </div>
-                      )
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1461,7 +1483,11 @@ const Submission = ({ projectId }) => {
       </Dialog>
       <Dialog
         open={showSendDialog && sendDialogType === "drafting"}
-        onOpenChange={setShowSendDialog}
+        onOpenChange={() => {
+          setSentToSelectedFiles([]);
+          setCurrentSentToFiles([]);
+          setShowSendDialog(false);
+        }}
       >
         <DialogContent className="max-w-lg" overlayClassName="bg-black/40">
           <DialogHeader>
@@ -1482,59 +1508,31 @@ const Submission = ({ projectId }) => {
             />
           </div>
           <div>
-            {/* <Label htmlFor="extra-files">Extra File Uploading</Label>
-            <Input
-              id="extra-files"
-              type="file"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                const newFiles = files
-                  .filter((file): file is File => file instanceof File)
-                  .map((file) => ({
-                    file,
-                    label: file.name,
-                    tempUrl: URL.createObjectURL(file),
-                  }));
-                setSentTOForm((prev) => ({
-                  ...prev,
-                  uploaded_files: [...(prev.uploaded_files || []), ...newFiles],
-                }));
-                e.target.value = "";
-              }}
-            />
-            {sentToForm.uploaded_files.map((f, idx) => (
-              <div key={idx} className="flex items-center gap-2 mt-1">
-                <Input
-                  type="text"
-                  value={f.label}
-                  onChange={(e) => {
-                    setSentTOForm((prev) => ({
-                      ...prev,
-                      uploaded_files: prev.uploaded_files.map((file, i) =>
-                        i === idx ? { ...file, label: e.target.value } : file
-                      ),
-                    }));
-                  }}
-                  className={f.label.trim() ? "" : "border-red-400"}
-                />
-                <span className="text-xs">{f.file && f.file.name}</span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setSentTOForm((prev) => ({
-                      ...prev,
-                      uploaded_files: prev.uploaded_files.filter(
-                        (_, i) => i !== idx
-                      ),
-                    }));
-                  }}
-                >
-                  &times;
-                </Button>
+            {currentSentToFiles.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-slate-500 mb-1">
+                  Select files to send back:
+                </div>
+                {currentSentToFiles.map((file) => (
+                  <label key={file.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={sentToSelectedFiles.includes(file.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSentToSelectedFiles((prev) => [...prev, file.id]);
+                        } else {
+                          setSentToSelectedFiles((prev) =>
+                            prev.filter((id) => id !== file.id)
+                          );
+                        }
+                      }}
+                    />
+                    <span>{file.label}</span>
+                  </label>
+                ))}
               </div>
-            ))} */}
+            )}
           </div>
           <div className="mt-4">
             <Label htmlFor="forwardId">Select User</Label>
@@ -1962,6 +1960,31 @@ const Submission = ({ projectId }) => {
                 placeholder="Add notes for documentation..."
               />
             </div>
+            {currentSentToFiles.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-slate-500 mb-1">
+                  Select files to send back:
+                </div>
+                {currentSentToFiles.map((file) => (
+                  <label key={file.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={sentToSelectedFiles.includes(file.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSentToSelectedFiles((prev) => [...prev, file.id]);
+                        } else {
+                          setSentToSelectedFiles((prev) =>
+                            prev.filter((id) => id !== file.id)
+                          );
+                        }
+                      }}
+                    />
+                    <span>{file.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
             <div>
               <Label htmlFor="send-doc-user">Forward to User</Label>
               <Select value={sendDocUser} onValueChange={setSendDocUser}>
@@ -2013,6 +2036,31 @@ const Submission = ({ projectId }) => {
                 placeholder="Add notes for checking..."
               />
             </div>
+            {currentSentToFiles.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-slate-500 mb-1">
+                  Select files to send back:
+                </div>
+                {currentSentToFiles.map((file) => (
+                  <label key={file.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={sentToSelectedFiles.includes(file.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSentToSelectedFiles((prev) => [...prev, file.id]);
+                        } else {
+                          setSentToSelectedFiles((prev) =>
+                            prev.filter((id) => id !== file.id)
+                          );
+                        }
+                      }}
+                    />
+                    <span>{file.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"

@@ -210,9 +210,15 @@ export const RFCDashboard = () => {
       toast.error(`Missing required field: ${missing[0]}`);
       return;
     }
-    // if (!(form.uploadedFiles.length > 0 && form.uploadedFiles[0].file !=null)){
-    //   return toast.error("Please attach at least one")
-    // }
+    // Check for missing file labels
+    if (
+      form.uploadedFiles.some(
+        (f) => f.file && (!f.label || f.label.trim() === "")
+      )
+    ) {
+      toast.error("Please enter a label for every uploaded file.");
+      return;
+    }
     // Upload all files in form.uploadedFiles
     const uploadedFileIds = [];
 
@@ -273,24 +279,6 @@ export const RFCDashboard = () => {
 
   // Filtered projects is now just projects (API handles filtering)
   const filteredProjects = projects;
-
-  // Add function to add a new update to a project
-  const addProjectUpdate = (projectId, text) => {
-    // setProjects((projects) =>
-    //   projects.map((p) =>
-    //     p.id === projectId
-    //       ? {
-    //           ...p,
-    //           updates: [
-    //             { text, date: new Date().toISOString(), author: "RFC User" },
-    //             ...(p.updates || []),
-    //           ],
-    //         }
-    //       : p
-    //   )
-    // );
-    // setUpdateText("");
-  };
 
   // Add handlers for more info modal
   const handleMoreInfoFileChange = (idx, e) => {
@@ -540,11 +528,11 @@ export const RFCDashboard = () => {
                     <Select
                       value={form.projectType}
                       onValueChange={(v) =>
-                        setForm((f) => ({ ...f, projectType: v.toLowerCase() }))
+                        setForm((f) => ({ ...f, projectType: v }))
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select Project Type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Pipeline">Pipeline</SelectItem>
@@ -590,46 +578,60 @@ export const RFCDashboard = () => {
                     <label className="block text-sm font-medium mb-2">
                       Uploaded Files
                     </label>
+                    <Input
+                      type="file"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setForm((prev) => ({
+                          ...prev,
+                          uploadedFiles: [
+                            ...prev.uploadedFiles,
+                            ...files.map((file) => ({
+                              file,
+                              label: "",
+                              tempUrl: URL.createObjectURL(file),
+                            })),
+                          ],
+                        }));
+                        e.target.value = "";
+                      }}
+                    />
                     {form.uploadedFiles.map((uf, idx) => (
-                      <div key={idx} className="flex items-center gap-2 mb-2">
-                        <select
-                          className="border rounded px-2 py-1 text-sm"
+                      <div key={idx} className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="text"
+                          placeholder="Label"
                           value={uf.label}
-                          onChange={(e) => handleLabelChange(idx, e)}
-                        >
-                          <option value="">Select Label</option>
-                          <option value="BOQ">BOQ</option>
-                          <option value="Layout">Layout</option>
-                          <option value="RFQ">RFQ</option>
-                          <option value="Spec">Spec</option>
-                          <option value="Drawing">Drawing</option>
-                          <option value="Other">Other</option>
-                        </select>
-                        <input
-                          type="file"
-                          className="border rounded px-2 py-1 text-sm"
-                          onChange={(e) => handleFileChange(idx, e)}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              uploadedFiles: prev.uploadedFiles.map((u, i) =>
+                                i === idx ? { ...u, label: e.target.value } : u
+                              ),
+                            }))
+                          }
+                          className={
+                            uf.label && uf.label.trim() ? "" : "border-red-400"
+                          }
                         />
-                        {form.uploadedFiles.length > 1 && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removeFileInput(idx)}
-                          >
-                            <X size={16} />
-                          </Button>
-                        )}
+                        <span className="text-xs">{uf.file.name}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              uploadedFiles: prev.uploadedFiles.filter(
+                                (_, i) => i !== idx
+                              ),
+                            }))
+                          }
+                        >
+                          &times;
+                        </Button>
                       </div>
                     ))}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={addFileInput}
-                      className="mt-1"
-                    >
-                      + Add File
-                    </Button>
                   </div>
                   <div>
                     <label className="block text-sm font-medium">

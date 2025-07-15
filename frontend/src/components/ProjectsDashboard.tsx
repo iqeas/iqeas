@@ -77,7 +77,7 @@ export const ProjectsDashboard = () => {
     };
     getProjects();
   }, [searchTerm, page, statusFilter]);
-
+  
   return (
     <div className="p-6 relative ">
       {/* Header */}
@@ -198,11 +198,11 @@ export const ProjectsDashboard = () => {
           {filteredProjects.map((project) => {
             // Map snake_case to camelCase for ProjectCard and provide defaults for missing fields
             // Type as 'any' to suppress linter error due to type mismatch between API and ProjectCard
-            const mappedProject: any = {
+            const mappedProject = {
               ...project,
               clientName: project.client_name,
               createdDate: project.created_at,
-              progress: 20,
+              progress: project.progress,
               status: project.status || "",
             };
             return (
@@ -264,6 +264,7 @@ export const ProjectsDashboard = () => {
       {/* Sliding Panel */}
       {selectedProject && (
         <ProjectSlidingPanel
+        setProjects={setProjects}
           selectedProject={selectedProject}
           onClose={() => setSelectedProject(null)}
         />

@@ -186,14 +186,15 @@ export const WorkerDashboard = () => {
     }
   };
   const handleSentToChecking = async () => {
-    if (completeFiles.find((item) => !item.label)) {
-      toast.error("Give label to all the uploaded files");
+    if (sentToSelectedFiles.length == 0) {
+      toast.success("Choose at least one file to sent");
       return;
     }
+
     const task = tasks.find((item) => item.id == completeModal.taskId);
-    const completed_files_ids = task.outgoing_files.map((item) => item.id);
+
     const data = {
-      uploaded_files_ids: [...completed_files_ids],
+      uploaded_files_ids: [...sentToSelectedFiles],
       notes: checkingNotes,
       forwarded_user_id: checkingUser,
       status: "not_started",
@@ -230,9 +231,13 @@ export const WorkerDashboard = () => {
   };
   const handleSentToApproval = async () => {
     const task = tasks.find((item) => item.id == completeModal.taskId);
-    const completed_files_ids = task.incoming_files.map((item) => item.id);
+    if (sentToSelectedFiles.length == 0) {
+      toast.success("Choose at least one file to sent");
+      return;
+    }
+
     const data = {
-      uploaded_files_ids: [...completed_files_ids],
+      uploaded_files_ids: [...sentToSelectedFiles],
       notes: checkingNotes,
       status: "not_started",
       step_name: "approval",
@@ -384,6 +389,11 @@ export const WorkerDashboard = () => {
   // 3. Add handler for Back to Drafting with notes only
   const handleBackToDraftingWithNotes = async () => {
     const task = tasks.find((item) => item.id == backToDraftingModal.taskId);
+    if (sentToSelectedFiles.length == 0) {
+      toast.success("Choose at least one file to sent");
+      return;
+    }
+
     const data = {
       uploaded_files_ids: [...sentToSelectedFiles],
       status: "not_started",
@@ -699,13 +709,18 @@ export const WorkerDashboard = () => {
                             task.step_name === "drafting" && (
                               <Button
                                 size="sm"
-                                onClick={() =>
+                                onClick={() => {
+                                  setSentToSelectedFiles([]);
+                                  setCurrentSentToFiles([
+                                    ...task.incoming_files,
+                                    ...task.outgoing_files,
+                                  ]);
                                   handleOpenSentToChecking({
                                     open: true,
                                     type: "sent_to_checking",
                                     taskId: task.id,
-                                  })
-                                }
+                                  });
+                                }}
                               >
                                 Send to Checking
                               </Button>
@@ -716,6 +731,11 @@ export const WorkerDashboard = () => {
                               <Button
                                 size="sm"
                                 onClick={() => {
+                                  setSentToSelectedFiles([]);
+                                  setCurrentSentToFiles([
+                                    ...task.incoming_files,
+                                    ...task.outgoing_files,
+                                  ]);
                                   setCompleteModal({
                                     open: true,
                                     taskId: task.id,
@@ -732,6 +752,12 @@ export const WorkerDashboard = () => {
                               <Button
                                 size="sm"
                                 onClick={() => {
+                                  setSentToSelectedFiles([]);
+                                  setCurrentSentToFiles([
+                                    ...task.incoming_files,
+                                    ...task.outgoing_files,
+                                  ]);
+
                                   setBackToDraftingModal({
                                     open: true,
                                     taskId: task.id,
@@ -764,9 +790,11 @@ export const WorkerDashboard = () => {
       {completeModal.open && completeModal.type == "complete" && (
         <Dialog
           open={true}
-          onOpenChange={() =>
-            setCompleteModal({ open: false, taskId: null, type: "" })
-          }
+          onOpenChange={() => {
+            setSentToSelectedFiles([]);
+            setCurrentSentToFiles([]);
+            setCompleteModal({ open: false, taskId: null, type: "" });
+          }}
         >
           <DialogContent>
             <DialogHeader>
@@ -862,6 +890,8 @@ export const WorkerDashboard = () => {
           ) != null
         }
         onOpenChange={() => {
+          setSentToSelectedFiles([]);
+          setCurrentSentToFiles([]);
           setCompleteModal({ open: false, taskId: null, type: "" });
         }}
       >
@@ -889,52 +919,28 @@ export const WorkerDashboard = () => {
               placeholder="Add notes..."
             />
           </div>
-          {completeModal.type == "back_to_drafting" && (
-            <div className="mb-4">
-              <label className="block font-medium mb-1">Upload Files</label>
-              <Input
-                type="file"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  setCheckingFiles((prev) => [
-                    ...prev,
-                    ...files.map((file) => ({
-                      file,
-                      label: file.name,
-                      tempUrl: URL.createObjectURL(file),
-                    })),
-                  ]);
-                  e.target.value = "";
-                }}
-              />
-              {checkingFiles.map((f, idx) => (
-                <div key={idx} className="flex items-center gap-2 mt-1">
-                  <Input
-                    type="text"
-                    value={f.label}
-                    onChange={(e) =>
-                      setCheckingFiles((prev) =>
-                        prev.map((file, i) =>
-                          i === idx ? { ...file, label: e.target.value } : file
-                        )
-                      )
-                    }
-                    className={f.label.trim() ? "" : "border-red-400"}
+          {currentSentToFiles.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-slate-500 mb-1">
+                Select files to send :
+              </div>
+              {currentSentToFiles.map((file) => (
+                <label key={file.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={sentToSelectedFiles.includes(file.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSentToSelectedFiles((prev) => [...prev, file.id]);
+                      } else {
+                        setSentToSelectedFiles((prev) =>
+                          prev.filter((id) => id !== file.id)
+                        );
+                      }
+                    }}
                   />
-                  <span className="text-xs">{f.file && f.file.name}</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setCheckingFiles((prev) =>
-                        prev.filter((_, i) => i !== idx)
-                      )
-                    }
-                  >
-                    &times;
-                  </Button>
-                </div>
+                  <span>{file.label}</span>
+                </label>
               ))}
             </div>
           )}
@@ -1003,7 +1009,7 @@ export const WorkerDashboard = () => {
                   </Button>
                 );
               }
-          
+
               return null;
             })()}
           </div>
@@ -1285,9 +1291,11 @@ export const WorkerDashboard = () => {
       {/* Back to Drafting Modal */}
       <Dialog
         open={backToDraftingModal.open}
-        onOpenChange={() =>
-          setBackToDraftingModal({ open: false, taskId: null })
-        }
+        onOpenChange={() => {
+          setSentToSelectedFiles([]);
+          setCurrentSentToFiles([]);
+          setBackToDraftingModal({ open: false, taskId: null });
+        }}
       >
         <DialogContent>
           <DialogHeader>

@@ -19,29 +19,16 @@ interface ProjectCardProps {
   userRole?: string;
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "Working":
-      return "bg-blue-100 text-blue-800 border-blue-200";
-    case "Pending":
-      return "bg-yellow-100 text-yellow-800 border-yellow-200";
-    case "Completed":
-      return "bg-green-100 text-green-800 border-green-200";
-    default:
-      return "bg-gray-100 text-gray-800 border-gray-200";
-  }
-};
-
 const getPriorityColor = (priority: string) => {
   switch (priority) {
     case "high":
-      return "text-red-600";
+      return "text-red-600 capitalize";
     case "medium":
-      return "text-yellow-600";
+      return "text-yellow-600 capitalize";
     case "low":
-      return "text-green-600";
+      return "text-green-600 capitalize";
     default:
-      return "text-gray-600";
+      return "text-gray-600 capitalize";
   }
 };
 
@@ -54,7 +41,21 @@ export const ProjectCard = ({
     project.estimation &&
     new Date(project.estimation.deadline) < new Date() &&
     project.status !== "Completed";
-
+  const getStatusColor = (status: string) => {
+    console.log(status);
+    switch (status.toLowerCase()) {
+      case "draft":
+        return "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-100 capitalize";
+      case "estimating":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100 capitalize";
+      case "working":
+        return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 capitalize";
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-100 capitalize";
+      default:
+        return "bg-slate-200 text-slate-600 border-slate-200 hover:bg-slate-200 capitalize";
+    }
+  };
   if (viewMode === "list") {
     return (
       <Card className="hover:shadow-md transition-shadow">
@@ -66,7 +67,11 @@ export const ProjectCard = ({
                   <h3 className="font-semibold text-slate-800">
                     {project.project_id}
                   </h3>
-                  <Badge className={getStatusColor(project.status)}>
+                  <Badge
+                    className={`${getStatusColor(
+                      project.status
+                    )} hover:bg-transparent`}
+                  >
                     {project.status}
                   </Badge>
                   {isOverdue && (
@@ -120,6 +125,18 @@ export const ProjectCard = ({
                 </Badge>
               </div>
             </div>
+          </div>
+          {/* Project Progress Bar */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-blue-900">
+                Progress
+              </span>
+              <span className="text-xs text-slate-600">
+                {project.progress}%
+              </span>
+            </div>
+            <Progress value={project.progress} className="h-2 bg-slate-100" />
           </div>
           <div className="mt-6 flex justify-end">
             <Button className="bg-black text-white w-full" onClick={onSelect}>
@@ -204,6 +221,18 @@ export const ProjectCard = ({
             <span className="text-xs text-slate-500">
               Created by: {project.user.name}
             </span>
+          </div>
+          {/* Project Progress Bar */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-blue-900">
+                Progress
+              </span>
+              <span className="text-xs text-slate-600">
+                {project.progress}%
+              </span>
+            </div>
+            <Progress value={project.progress} className="h-2 bg-slate-100" />
           </div>
         </div>
         <div className="mt-4">

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Deliverables } from "./Deliverables";
@@ -9,48 +10,122 @@ import Submission from "./Submission";
 import ShowFile from "./ShowFile";
 import AdminEstimationStage from "./AdminEstimationStage";
 import { Project } from "@/types/apiTypes";
-
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { API_ENDPOINT } from "@/config/backend";
+import { useAPICall } from "@/hooks/useApiCall";
+import { useAuth } from "@/contexts/AuthContext";
+import toast from "react-hot-toast";
 
 interface ProjectSlidingPanelProps {
   selectedProject: Project;
+  setProjects: any;
   onClose: () => void;
 }
 
 const getStatusColor = (status: string) => {
-  switch (status) {
-    case "Data Collection":
+  console.log(status);
+  switch (status.toLowerCase()) {
+    case "draft":
+      return "bg-gray-100 text-gray-700 border-gray-200";
+    case "estimating":
       return "bg-yellow-100 text-yellow-800 border-yellow-200";
-    case "Under Estimation":
-      return "bg-orange-100 text-orange-800 border-orange-200";
-    case "In Progress":
+    case "working":
       return "bg-blue-100 text-blue-800 border-blue-200";
-    case "Finalized":
+    case "completed":
       return "bg-green-100 text-green-800 border-green-200";
     default:
-      return "bg-gray-100 text-gray-800 border-gray-200";
-  }
-};
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case "High":
-      return "text-red-600";
-    case "Medium":
-      return "text-yellow-600";
-    case "Low":
-      return "text-green-600";
-    default:
-      return "text-gray-600";
+      return "bg-slate-200 text-slate-600 border-slate-200";
   }
 };
 
 const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
   selectedProject,
   onClose,
+  setProjects,
 }) => {
-  const [showEstimationDetails, setShowEstimationDetails] = useState(false);
- 
+  const [showEstimationModal, setShowEstimationModal] = useState(false);
+  type DeliveryFile = { id: number; label: string; url: string };
+  const [files, setFiles] = useState<DeliveryFile[]>([]); // Store files for delivery
+  const [enableDelivery, setEnableDelivery] = useState(false); // Control Make Delivery button
+  const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
+  const [selectedDeliveryFiles, setSelectedDeliveryFiles] = useState<number[]>(
+    []
+  );
+  const { makeApiCall, fetching, fetchType } = useAPICall();
+  const { authToken } = useAuth();
+
+  // Handler for file selection in delivery dialog
+  const handleFileToggle = (fileId: number) => {
+    setSelectedDeliveryFiles((prev) =>
+      prev.includes(fileId)
+        ? prev.filter((id) => id !== fileId)
+        : [...prev, fileId]
+    );
+  };
+
+  // Handler for delivery submit
+  const handleDeliverySubmit = async () => {
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.ADD_DELIVERY_FILES(selectedProject.id),
+      { file_ids: selectedDeliveryFiles },
+      "application/json",
+      authToken,
+      "addDeliverySubmit"
+    );
+    if (response.status === 201) {
+      setProjects((prev) =>
+        prev.map((item) => {
+          if (item.id == selectedProject.id) {
+            return { ...selectedProject, delivery_files: response.data };
+          }
+        })
+      );
+      setShowDeliveryDialog(false);
+    } else {
+      toast.error("Failed to fetch final files");
+      setShowDeliveryDialog(true);
+    }
+  };
+
+  // Enable delivery if all stages are approved (status 'completed')
+  React.useEffect(() => {
+    setEnableDelivery(selectedProject.status.toLowerCase() === "completed");
+  }, [selectedProject.status]);
+
+  // Fetch delivery files when Make Delivery is clicked
+  const handleMakeDeliveryClick = async () => {
+    if (files.length != 0) {
+      setShowDeliveryDialog(true);
+      return;
+    }
+    try {
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_ALL_DELIVERY_FILES(selectedProject.id),
+        {},
+        "application/json",
+        authToken,
+        "getDeliveryFiles"
+      );
+      if (response.status === 200 && Array.isArray(response.data)) {
+        setFiles(response.data);
+      } else {
+        setFiles([]);
+        toast.error("Failed to fetch final files");
+      }
+      setShowDeliveryDialog(true);
+    } catch (err) {
+      setFiles([]);
+      setShowDeliveryDialog(true);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <div
@@ -58,84 +133,188 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
         onClick={onClose}
       />
       <div className="relative w-full h-full bg-white p-6 flex flex-col overflow-y-auto">
-        {/* Project Details */}
         <div className="mb-6">
-          <div className="border rounded-xl p-6 bg-slate-50 mb-2">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="font-semibold text-slate-800 text-lg">
-                    {selectedProject.id}
-                  </h3>
-                  <Badge className={getStatusColor(selectedProject.status)}>
-                    {selectedProject.status}
-                  </Badge>
-                  {/* {isOverdue && (
-                    <AlertCircle size={16} className="text-red-500" />
-                  )} */}
-                </div>
-                <h2 className="text-xl font-semibold text-slate-800 mb-1">
-                  {selectedProject.client_name}
-                </h2>
-                <div className="flex items-center text-sm text-slate-500 space-x-4 mb-1">
-                  <span className="flex items-center">
-                    <MapPin size={14} className="mr-1" />
-                    {selectedProject.location}
+          <div className="border rounded-xl p-6 bg-white shadow-sm">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className="font-bold text-2xl text-blue-900">
+                  {selectedProject.name}
+                </h3>
+                <span className="text-xs bg-blue-100 text-blue-700 rounded px-2 py-1 font-semibold">
+                  {selectedProject.project_id}
+                </span>
+                <span className="text-xs bg-slate-100 text-slate-700 rounded px-2 py-1 font-semibold border border-slate-200">
+                  {selectedProject.project_type}
+                </span>
+                <span
+                  className={`ml-auto px-2 py-1 rounded text-xs font-semibold border ${getStatusColor(
+                    selectedProject.status
+                  )}`}
+                >
+                  {selectedProject.status.charAt(0).toUpperCase() +
+                    selectedProject.status.slice(1)}
+                </span>
+                <div className="flex flex-col items-end ml-4 min-w-[120px]">
+                  <span className="text-xs text-slate-600 mb-1">
+                    Progress: {selectedProject.progress}%
                   </span>
-                  <span className="flex items-center">
-                    <Calendar size={14} className="mr-1" />
-                    {new Date(selectedProject.created_at).toLocaleDateString()}
-                  </span>
+                  <Progress
+                    value={selectedProject.progress}
+                    className="h-2 w-24 bg-slate-100"
+                  />
                 </div>
               </div>
-              <div className="flex items-end flex-col gap-4 min-w-[180px]">
-                <div className="text-center">
-                  <p className="text-sm text-slate-500 mb-1">Progress</p>
-                  <div className="flex items-center space-x-2">
-                    <Progress
-                      value={20}
-                      className="w-20"
-                    />
-                    <span className="text-sm font-medium">
-                      {20}%
-                    </span>
+              <div className="flex flex-wrap gap-6">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Client</p>
+                  <div className="font-medium text-slate-800">
+                    {selectedProject.client_name}
                   </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-sm text-slate-500 mb-1">Priority</p>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Priority</p>
                   <span
-                    className={`text-sm font-medium ${getPriorityColor(
-                      selectedProject.priority
-                    )}`}
+                    className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                      selectedProject.priority === "High"
+                        ? "bg-red-100 text-red-700"
+                        : selectedProject.priority === "Medium"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
                   >
                     {selectedProject.priority}
                   </span>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Created</p>
+                  <div className="text-slate-700 text-sm">
+                    {new Date(selectedProject.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-xs text-slate-500 mb-1">Contact Person</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-slate-800">
+                    {selectedProject.contact_person}
+                  </span>
+                  {selectedProject.contact_person_phone && (
+                    <span className="text-xs text-slate-500 ml-2">
+                      {selectedProject.contact_person_phone}
+                    </span>
+                  )}
+                  {selectedProject.contact_person_email && (
+                    <span className="text-xs text-blue-600 ml-2 underline">
+                      {selectedProject.contact_person_email}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Estimation Details Section */}
-        <div className="mb-6">
-          <button
-            className="flex items-center justify-between w-full px-4 py-2 bg-slate-100 rounded hover:bg-slate-200"
-            onClick={() => setShowEstimationDetails((v) => !v)}
+        {/* Estimation Details Section as Modal */}
+        <div className="mb-6 flex gap-4 items-center justify-between">
+          {selectedProject.estimation && (
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow"
+              onClick={() => setShowEstimationModal(true)}
+            >
+              View Estimation
+            </Button>
+          )}
+          {/* Project Final Delivery Files */}
+
+          {enableDelivery && selectedProject.delivery_files.length == 0 && (
+            <Button
+              className="text-white font-semibold px-4 py-2 rounded shadow"
+              onClick={handleMakeDeliveryClick}
+              loading={fetching && fetchType == "getDeliveryFiles"}
+            >
+              Make Delivery
+            </Button>
+          )}
+          <Dialog
+            open={showEstimationModal}
+            onOpenChange={setShowEstimationModal}
           >
-            <span className="font-semibold text-blue-700">
-              Estimation Details
-            </span>
-            <span>{showEstimationDetails ? "▲" : "▼"}</span>
-          </button>
-          {showEstimationDetails && selectedProject.estimation && (
-            <div className="p-0">
+            <DialogContent className="max-w-3xl p-0 m-0">
               <AdminEstimationStage
                 estimationDetails={selectedProject.estimation}
               />
-            </div>
-          )}
+            </DialogContent>
+          </Dialog>
+          {/* Delivery Dialog */}
+          <Dialog
+            open={showDeliveryDialog}
+            onOpenChange={setShowDeliveryDialog}
+          >
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Select Files for Delivery</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 max-h-80 overflow-y-auto">
+                {files.length === 0 ? (
+                  <div className="text-slate-500 text-center">
+                    No files available for delivery.
+                  </div>
+                ) : (
+                  files.map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center gap-3 border rounded p-2"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedDeliveryFiles.includes(file.id)}
+                        onChange={() => handleFileToggle(file.id)}
+                        className="accent-blue-600"
+                      />
+                      <ShowFile label={file.label} url={file.url} />
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeliveryDialog(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleDeliverySubmit}
+                  loading={fetching && fetchType == "addDeliverySubmit"}
+                  disabled={fetching && fetchType == "addDeliverySubmit"}
+                >
+                  Submit Delivery
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
+        {Array.isArray(selectedProject.delivery_files) &&
+          selectedProject.delivery_files.length > 0 && (
+            <div className="w-full mt-4">
+              <div className="font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                Project Final Delivery Files:
+              </div>
+              <div className="flex flex-wrap gap-2 mr-2">
+                {selectedProject.delivery_files.map((f: any, i: number) => (
+                  <ShowFile
+                    key={f.id || i}
+                    label={f.label || ""}
+                    url={f.file || f.url || ""}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+        {/* Submission component with file and delivery state handlers */}
         <Submission projectId={selectedProject.id} />
         <Button className="mt-6" variant="outline" onClick={onClose}>
           Close

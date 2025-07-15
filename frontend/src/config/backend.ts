@@ -46,4 +46,8 @@ export const API_ENDPOINT = {
     `${API_URL}/drawings/${drawing_id}/logs`,
   EDIT_DRAWING_LOG: (log_id: any) => `${API_URL}/logs/${log_id}`,
   GET_DRAWING_LOG: (log_id: any) => `${API_URL}/logs/${log_id}`,
+  GET_ALL_DELIVERY_FILES: (project_id: any) =>
+    `${API_URL}/stages/final-files/${project_id}`,
+  ADD_DELIVERY_FILES: (project_id: any) =>
+    `${API_URL}/project-delivery/${project_id}`,
 };

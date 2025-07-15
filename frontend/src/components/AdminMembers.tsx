@@ -546,13 +546,13 @@ export default function AdminMembers() {
           </table>
         </div>
       </div>
-      <div className="flex items-center justify-between mb-6 mt-12">
+      {/* <div className="flex items-center justify-between mb-6 mt-12">
         <h2 className="text-2xl font-bold">Team Management</h2>
         <Button onClick={() => openTeamModal()}>
           <Plus className="mr-2" />
           Add Team
         </Button>
-      </div>
+      </div> */}
       <Dialog
         open={teamModal.open}
         onOpenChange={(open) => setTeamModal((m) => ({ ...m, open }))}
@@ -711,7 +711,7 @@ export default function AdminMembers() {
           </form>
         </DialogContent>
       </Dialog>
-      <div>
+      {/* <div>
         <h3 className="font-semibold mb-2">Teams</h3>
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white border rounded-xl">
@@ -761,7 +761,7 @@ export default function AdminMembers() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

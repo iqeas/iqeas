@@ -64,6 +64,8 @@ export const DocumentationDashboard = () => {
     task: DocumentationTask | null;
   }>({ open: false, task: null });
   const [backToApprovalNotes, setBackToApprovalNotes] = useState("");
+  const [sentToSelectedFiles, setSentToSelectedFiles] = useState([]);
+  const [currentSentToFiles, setCurrentSentToFiles] = useState([]);
   // Fetch tasks
   useEffect(() => {
     fetchTasks();
@@ -191,12 +193,13 @@ export const DocumentationDashboard = () => {
   // Back to Approval
   const handleBackToApproval = async () => {
     const task = backToApprovalModal.task;
-    const completed_files_ids = [
-      ...task.outgoing_files.map((item) => item.id),
-      ...task.incoming_files.map((item) => item.id),
-    ];
+    if (sentToSelectedFiles.length == 0) {
+      toast.success("Choose at least one file to sent");
+      return;
+    }
+
     const data = {
-      uploaded_files_ids: completed_files_ids,
+      uploaded_files_ids: sentToSelectedFiles,
       status: "not_started",
       step_name: "approval",
       notes: backToApprovalNotes,
@@ -246,12 +249,6 @@ export const DocumentationDashboard = () => {
       return null;
     }
   };
-  // Get unique stages for dropdown
-  const stageOptions = [
-    "All",
-    ...Array.from(new Set(tasks.map((d) => d.step_name))),
-  ];
-  // Filtered tasks
   const filteredTasks = tasks.filter((d) => {
     const matchesStage = stageFilter === "All" || d.step_name === stageFilter;
     const searchLower = search.toLowerCase();
@@ -309,70 +306,70 @@ export const DocumentationDashboard = () => {
         <Loading full={false} />
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredTasks.map((task) => (
-              <Card
+          <Card
                 key={task.id}
-                className="hover:shadow-lg transition-shadow border-blue-100"
-              >
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
+            className="hover:shadow-lg transition-shadow border-blue-100"
+          >
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
                       <CardTitle className="text-lg">
                         {task.project_code}
                       </CardTitle>
                       <p className="text-slate-600">{task.client_company}</p>
-                    </div>
-                    <Badge
-                      variant={
+                </div>
+                <Badge
+                  variant={
                         task.status === "rejected"
-                          ? "destructive"
+                      ? "destructive"
                           : task.status === "approved"
-                          ? "default"
-                          : "secondary"
-                      }
+                      ? "default"
+                      : "secondary"
+                  }
                       className="capitalize"
-                    >
+                >
                       {task.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-slate-500">Stage:</span>
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-500">Stage:</span>
                       <p className="font-medium">{task.step_name}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Deliverable:</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Deliverable:</span>
                       <p className="font-medium">{task.drawing_title}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Submitted By:</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Submitted By:</span>
                       <p className="font-medium">{task.assigned_by.name}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Date:</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Date:</span>
                       <p className="font-medium">
                         {new Date(task.created_at).toLocaleString()}
                       </p>
-                    </div>
-                  </div>
-                  {/* Actions Section */}
-                  <div className="mt-3">
-                    <div className="text-xs font-semibold text-slate-500 mb-1">
-                      Actions
-                    </div>
-                    <div className="flex flex-col md:flex-row gap-2 md:gap-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="md:flex-1"
+                </div>
+              </div>
+              {/* Actions Section */}
+              <div className="mt-3">
+                <div className="text-xs font-semibold text-slate-500 mb-1">
+                  Actions
+                </div>
+                <div className="flex flex-col md:flex-row gap-2 md:gap-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="md:flex-1"
                         onClick={() => setViewDetail(task)}
                         disabled={fetching}
-                      >
-                        View Project Detail
-                      </Button>
+                  >
+                    View Project Detail
+                  </Button>
                       {task.status === "not_started" && (
                         <Button
                           size="sm"
@@ -392,9 +389,9 @@ export const DocumentationDashboard = () => {
                       )}
                       {task.status === "in_progress" && (
                         <>
-                          <Button
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white md:flex-1 shadow-sm"
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white md:flex-1 shadow-sm"
                             onClick={() => handleApprove(task)}
                             disabled={
                               fetching &&
@@ -404,48 +401,53 @@ export const DocumentationDashboard = () => {
                               fetching &&
                               fetchType == `DocMarkAsApproved${task.id}`
                             }
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-700 text-white md:flex-1 shadow-sm"
-                            onClick={() =>
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-red-600 hover:bg-red-700 text-white md:flex-1 shadow-sm"
+                    onClick={() =>
                               setRejectModal({ open: true, task: task })
-                            }
+                    }
                             disabled={fetching}
-                          >
-                            Reject
-                          </Button>
+                  >
+                    Reject
+                  </Button>
                         </>
                       )}
                       {task.status === "completed" &&
                         task.action_taken === "rejected" &&
                         !task.is_sent && (
-                          <Button
-                            size="sm"
+                      <Button
+                        size="sm"
                             className="bg-yellow-600 hover:bg-yellow-700 text-white md:flex-1 shadow-sm"
-                            onClick={() =>
-                              setBackToApprovalModal({ open: true, task })
-                            }
+                            onClick={() => {
+                              setSentToSelectedFiles([]);
+                              setCurrentSentToFiles([
+                                ...task.incoming_files,
+                                ...task.outgoing_files,
+                              ]);
+                              setBackToApprovalModal({ open: true, task });
+                            }}
                             disabled={fetching}
                           >
                             Back to Approval
-                          </Button>
-                        )}
-                    </div>
-                  </div>
+                      </Button>
+                  )}
+                </div>
+              </div>
                 </CardContent>
               </Card>
             ))}
-          </div>
+                </div>
           {!fetching && filteredTasks.length === 0 && (
             <div className="text-center py-12">
               <div className="text-slate-400 mb-4">
                 No documentation tasks found.
               </div>
-            </div>
-          )}
+                </div>
+              )}
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="flex justify-center mt-8 gap-2">
@@ -468,8 +470,8 @@ export const DocumentationDashboard = () => {
               >
                 Next
               </Button>
-            </div>
-          )}
+                </div>
+              )}
         </>
       )}
 
@@ -553,7 +555,11 @@ export const DocumentationDashboard = () => {
       {/* Back to Approval Modal */}
       <Dialog
         open={backToApprovalModal.open}
-        onOpenChange={() => setBackToApprovalModal({ open: false, task: null })}
+        onOpenChange={() => {
+          setSentToSelectedFiles([]);
+          setCurrentSentToFiles([]);
+          setBackToApprovalModal({ open: false, task: null });
+        }}
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -565,6 +571,32 @@ export const DocumentationDashboard = () => {
               value={backToApprovalNotes}
               onChange={(e) => setBackToApprovalNotes(e.target.value)}
             />
+
+            {currentSentToFiles.length > 0 && (
+              <div className="space-y-2">
+              <div className="text-xs font-semibold text-slate-500 mb-1">
+                  Select files to send :
+              </div>
+                {currentSentToFiles.map((file) => (
+                  <label key={file.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={sentToSelectedFiles.includes(file.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSentToSelectedFiles((prev) => [...prev, file.id]);
+                        } else {
+                          setSentToSelectedFiles((prev) =>
+                            prev.filter((id) => id !== file.id)
+                          );
+                        }
+                      }}
+                    />
+                    <span>{file.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2 justify-end mt-4">
               <Button
                 variant="outline"
@@ -717,14 +749,14 @@ export const DocumentationDashboard = () => {
                 <ul className="list-disc ml-8 space-y-1">
                   {viewDetail.outgoing_files &&
                     viewDetail.outgoing_files.length === 0 && (
-                      <li className="text-slate-400">No files uploaded</li>
-                    )}
+                    <li className="text-slate-400">No files uploaded</li>
+                  )}
                   {viewDetail.outgoing_files &&
                     viewDetail.outgoing_files.map((f, i) => (
-                      <li key={i}>
+                    <li key={i}>
                         <ShowFile label={f.label} url={f.file} size="medium" />
-                      </li>
-                    ))}
+                    </li>
+                  ))}
                 </ul>
               </div>
               {viewDetail.status === "rejected" && viewDetail.reason && (

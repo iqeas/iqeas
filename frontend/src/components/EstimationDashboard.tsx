@@ -268,7 +268,7 @@ export const EstimationDashboard = () => {
       approval_date: approvedForm.approvalDate,
       approved: true,
       sent_to_pm: approvedForm.ready_for_estimation,
-      forward_id: approvedForm.forward_id,
+      forwarded_user_id: approvedForm.forward_id,
       forward_type: approvedForm.forward_type,
       notes: approvedForm.notes,
       uploaded_file_ids: uploadedFileIds,
@@ -417,7 +417,7 @@ export const EstimationDashboard = () => {
     }));
   }, [estimationFiles]);
 
-  if (!isFetched ) {
+  if (!isFetched) {
     return <Loading full />;
   }
   // Helper to compute progress from estimation_status
@@ -618,7 +618,7 @@ export const EstimationDashboard = () => {
       </div>
 
       {/* Estimation Cards */}
-      {(fetching && fetchType == "getProjects") ? (
+      {fetching && fetchType == "getProjects" ? (
         <Loading full={false} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -978,7 +978,7 @@ export const EstimationDashboard = () => {
               <div>
                 <label className="block font-medium">Forward To</label>
                 <div className="flex gap-2 mb-2">
-                  <Select
+                  {/* <Select
                     value={approvedForm.forward_type}
                     onValueChange={(value) => {
                       setApprovedForm({ ...approvedForm, forward_type: value });
@@ -991,7 +991,7 @@ export const EstimationDashboard = () => {
                       <SelectItem value="user">Individual</SelectItem>
                       <SelectItem value="team">PM Team</SelectItem>
                     </SelectContent>
-                  </Select>
+                  </Select> */}
                   <Select
                     value={approvedForm.forward_id}
                     onValueChange={(value) => {
@@ -1053,44 +1053,53 @@ export const EstimationDashboard = () => {
                 <label className="block text-sm font-medium mb-2">
                   Uploaded Files
                 </label>
+                <Input
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setEstimationFiles((prev) => [
+                      ...prev,
+                      ...files.map((file) => ({
+                        file,
+                        label: "",
+                        tempUrl: URL.createObjectURL(file),
+                      })),
+                    ]);
+                    e.target.value = "";
+                  }}
+                />
                 {estimationFiles.map((uf, idx) => (
-                  <div key={idx} className="flex items-center gap-2 mb-2">
-                    <select
-                      className="border rounded px-2 py-1 text-sm"
+                  <div key={idx} className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="text"
+                      placeholder="Label"
                       value={uf.label}
-                      onChange={(e) => handleEstimationLabelChange(idx, e)}
-                    >
-                      <option value="">Select Label</option>
-                      <option value="BOQ">BOQ</option>
-                      <option value="Layout">Layout</option>
-                      <option value="RFQ">RFQ</option>
-                      <option value="Spec">Spec</option>
-                      <option value="Drawing">Drawing</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    <input
-                      type="file"
-                      className="border rounded px-2 py-1 text-sm"
-                      onChange={(e) => handleEstimationFileChange(idx, e)}
+                      onChange={(e) =>
+                        setEstimationFiles((prev) =>
+                          prev.map((u, i) =>
+                            i === idx ? { ...u, label: e.target.value } : u
+                          )
+                        )
+                      }
+                      className={
+                        uf.label && uf.label.trim() ? "" : "border-red-400"
+                      }
                     />
+                    <span className="text-xs">{uf.file?.name}</span>
                     <Button
-                      size="icon"
+                      size="sm"
                       variant="ghost"
-                      onClick={() => removeEstimationFileInput(idx)}
+                      onClick={() =>
+                        setEstimationFiles((prev) =>
+                          prev.filter((_, i) => i !== idx)
+                        )
+                      }
                     >
-                      <X size={16} />
+                      &times;
                     </Button>
                   </div>
                 ))}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={addEstimationFileInput}
-                  className="mt-1"
-                >
-                  + Add File
-                </Button>
               </div>
             </div>
             <div className="flex justify-end mt-4 gap-2">
