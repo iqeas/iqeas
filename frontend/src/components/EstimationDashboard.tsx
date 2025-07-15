@@ -73,7 +73,6 @@ export const EstimationDashboard = () => {
     total_value: 0,
   });
   const [selectedProject, setSelectedProject] = useState(null);
-  const [clarificationText, setClarificationText] = useState("");
   const [rfcDetailsProject, setRfcDetailsProject] = useState(null);
   const [showReadyPrompt, setShowReadyPrompt] = useState(false);
   const [estimationFiles, setEstimationFiles] = useState([
@@ -88,8 +87,6 @@ export const EstimationDashboard = () => {
   const [viewEstimationProject, setViewEstimationProject] = useState(null);
   const [users, setUsers] = useState<IUser[]>([]);
   const [teams, setTeams] = useState<ITeam[]>([]);
-  const [forwardType, setForwardType] = useState<"user" | "team">("user");
-  const [forwardId, setForwardId] = useState<string>("");
   const [approvedForm, setApprovedForm] = useState({
     forward_type: "user",
     forward_id: "",
@@ -127,12 +124,16 @@ export const EstimationDashboard = () => {
   const [workflowStep, setWorkflowStep] = useState({});
   const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
   const { authToken } = useAuth();
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   useEffect(() => {
     const getProjects = async () => {
+      // Add page and pageSize to API call if supported
       const response = await makeApiCall(
         "get",
-        API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS,
+        API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS(searchTerm, page, 2),
         {},
         "application/json",
         authToken,
@@ -147,7 +148,7 @@ export const EstimationDashboard = () => {
       }
     };
     getProjects();
-  }, []);
+  }, [searchTerm, page]);
   // Helper to advance workflow step for a project
   const getUsersAndTeams = async () => {
     const response = await makeApiCall(
@@ -416,7 +417,7 @@ export const EstimationDashboard = () => {
     }));
   }, [estimationFiles]);
 
-  if (!isFetched || (fetching && fetchType == "getProjects")) {
+  if (!isFetched ) {
     return <Loading full />;
   }
   // Helper to compute progress from estimation_status
@@ -506,7 +507,7 @@ export const EstimationDashboard = () => {
             return {
               ...item,
               project_rejection: response.data,
-              estimation_status:"rejected"
+              estimation_status: "rejected",
             };
           }
           return item;
@@ -593,141 +594,188 @@ export const EstimationDashboard = () => {
         </Card>
       </div>
 
+      {/* Search and Pagination */}
+      <div className="flex items-center gap-2 mb-6">
+        <input
+          className="border rounded px-2 py-1 w-full"
+          type="text"
+          placeholder="Search by client, project ID, or deliverable..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setSearchTerm(searchInput);
+          }}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setSearchTerm(searchInput)}
+          className="px-2"
+          aria-label="Search"
+        >
+          🔍
+        </Button>
+      </div>
+
       {/* Estimation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {projects.map((project) => (
-          <Card key={project.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex justify-between items-start">
+      {(fetching && fetchType == "getProjects") ? (
+        <Loading full={false} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {projects.map((project) => (
+            <Card
+              key={project.id}
+              className="hover:shadow-lg transition-shadow"
+            >
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">
+                      {project.project_id}
+                    </CardTitle>
+                    <p className="text-slate-600">{project.client_name}</p>
+                  </div>
+                  <Badge
+                    variant={
+                      project.estimation_status === "approved"
+                        ? "default"
+                        : project.estimation_status === "rejected"
+                        ? "destructive"
+                        : project.estimation_status === "sent_to_client"
+                        ? "secondary"
+                        : project.estimation_status === "under_review"
+                        ? "outline"
+                        : "secondary"
+                    }
+                    className="capitalize"
+                  >
+                    {toReadableText(project.estimation_status)}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {project.estimation ? (
+                    <>
+                      <div>
+                        <span className="text-slate-500">Estimator:</span>
+                        <p className="font-medium capitalize">
+                          {project.estimation.user.name || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Deadline:</span>
+                        <p className="font-medium">
+                          {project.estimation.deadline
+                            ? new Date(
+                                project.estimation.deadline
+                              ).toLocaleDateString()
+                            : "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Cost:</span>
+                        <p className="font-medium">
+                          {project.estimation.cost
+                            ? `₹${project.estimation.cost}`
+                            : "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Status:</span>
+                        <p className="font-medium">
+                          {toReadableText(project.estimation_status)}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="text-slate-500">Created By:</span>
+                        <p className="font-medium capitalize">
+                          {project.user?.name || project.user_id || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Received Date:</span>
+                        <p className="font-medium">
+                          {project.received_date
+                            ? new Date(
+                                project.received_date
+                              ).toLocaleDateString()
+                            : "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Priority:</span>
+                        <p className="font-medium capitalize">
+                          {toReadableText(project.priority)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Status:</span>
+                        <p className="font-medium capitalize">
+                          {toReadableText(project.status)}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
                 <div>
-                  <CardTitle className="text-lg">
-                    {project.project_id}
-                  </CardTitle>
-                  <p className="text-slate-600">{project.client_name}</p>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-slate-500">Progress</span>
+                    <span className="text-sm font-medium">
+                      {getProgressFromStatus(project.estimation_status)}%
+                    </span>
+                  </div>
+                  <Progress
+                    value={getProgressFromStatus(project.estimation_status)}
+                    className="h-2"
+                  />
                 </div>
-                <Badge
-                  variant={
-                    project.estimation_status === "approved"
-                      ? "default"
-                      : project.estimation_status === "rejected"
-                      ? "destructive"
-                      : project.estimation_status === "sent_to_client"
-                      ? "secondary"
-                      : project.estimation_status === "under_review"
-                      ? "outline"
-                      : "secondary"
-                  }
-                  className="capitalize"
-                >
-                  {toReadableText(project.estimation_status)}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {project.estimation ? (
-                  <>
-                    <div>
-                      <span className="text-slate-500">Estimator:</span>
-                      <p className="font-medium capitalize">
-                        {project.estimation.user.name || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Deadline:</span>
-                      <p className="font-medium">
-                        {project.estimation.deadline
-                          ? new Date(
-                              project.estimation.deadline
-                            ).toLocaleDateString()
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Cost:</span>
-                      <p className="font-medium">
-                        {project.estimation.cost
-                          ? `₹${project.estimation.cost}`
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Status:</span>
-                      <p className="font-medium">
-                        {toReadableText(project.estimation_status)}
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <span className="text-slate-500">Created By:</span>
-                      <p className="font-medium capitalize">
-                        {project.user?.name || project.user_id || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Received Date:</span>
-                      <p className="font-medium">
-                        {project.received_date
-                          ? new Date(project.received_date).toLocaleDateString()
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Priority:</span>
-                      <p className="font-medium capitalize">
-                        {toReadableText(project.priority)}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Status:</span>
-                      <p className="font-medium capitalize">
-                        {toReadableText(project.status)}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm text-slate-500">Progress</span>
-                  <span className="text-sm font-medium">
-                    {getProgressFromStatus(project.estimation_status)}%
-                  </span>
-                </div>
-                <Progress
-                  value={getProgressFromStatus(project.estimation_status)}
-                  className="h-2"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setRfcDetailsProject(project)}
-                >
-                  View Details
-                </Button>
-                {project.estimation_status === "approved" && (
+                <div className="flex gap-2 pt-2">
                   <Button
                     size="sm"
                     variant="outline"
                     className="flex-1"
-                    onClick={() => setViewEstimationProject(project)}
+                    onClick={() => setRfcDetailsProject(project)}
                   >
-                    View Estimation
+                    View Details
                   </Button>
-                )}
-                {/* Status workflow buttons */}
-                {project.estimation_status === "not_started" &&
-                  (workflowStep[project.id] || 0) === 0 && (
+                  {project.estimation_status === "approved" && (
                     <Button
                       size="sm"
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setViewEstimationProject(project)}
+                    >
+                      View Estimation
+                    </Button>
+                  )}
+                  {/* Status workflow buttons */}
+                  {project.estimation_status === "not_started" &&
+                    (workflowStep[project.id] || 0) === 0 && (
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() =>
+                          handleStatusTransition(project, "under_review")
+                        }
+                        disabled={fetching}
+                        loading={
+                          fetching &&
+                          fetchType == `editProjectStatus${project.id}`
+                        }
+                      >
+                        Mark as Under Review
+                      </Button>
+                    )}
+                  {project.estimation_status === "under_review" && (
+                    <Button
+                      size="sm"
+                      className="flex-1"
                       onClick={() =>
-                        handleStatusTransition(project, "under_review")
+                        handleStatusTransition(project, "sent_to_client")
                       }
                       disabled={fetching}
                       loading={
@@ -735,63 +783,80 @@ export const EstimationDashboard = () => {
                         fetchType == `editProjectStatus${project.id}`
                       }
                     >
-                      Mark as Under Review
+                      Mark as Sent to Client
                     </Button>
                   )}
-                {project.estimation_status === "under_review" && (
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() =>
-                      handleStatusTransition(project, "sent_to_client")
-                    }
-                    disabled={fetching}
-                    loading={
-                      fetching && fetchType == `editProjectStatus${project.id}`
-                    }
-                  >
-                    Mark as Sent to Client
-                  </Button>
-                )}
-                {project.estimation_status === "sent_to_client" && (
-                  <>
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => openRejectModal(project)}
-                    >
-                      Rejected
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() =>
-                        handleStatusTransition(project, "Approved")
-                      }
-                    >
-                      Approved
-                    </Button>
-                  </>
-                )}
-                {/* Fallback: if not in workflow, show Continue Work as before */}
-                {project.estimation &&
-                  project.estimation.sent_to_pm === false && (
-                    <div className="flex  border-t ">
+                  {project.estimation_status === "sent_to_client" && (
+                    <>
                       <Button
-                        className="bg-blue-600 hover:bg-blue-700 text-white w-full"
-                        onClick={() => handleReadyForExecution(project)}
-                        loading={fetching && fetchType == "EditEstimation"}
+                        size="sm"
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => openRejectModal(project)}
                       >
-                        Ready for Execution
+                        Rejected
                       </Button>
-                    </div>
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() =>
+                          handleStatusTransition(project, "Approved")
+                        }
+                      >
+                        Approved
+                      </Button>
+                    </>
                   )}
-              </div>
-              {/* New row for Ready for Execution button if estimation.sent_to_pm is false and status is approved */}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  {/* Fallback: if not in workflow, show Continue Work as before */}
+                  {project.estimation &&
+                    project.estimation.sent_to_pm === false && (
+                      <div className="flex  border-t ">
+                        <Button
+                          className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+                          onClick={() => handleReadyForExecution(project)}
+                          loading={fetching && fetchType == "EditEstimation"}
+                        >
+                          Ready for Execution
+                        </Button>
+                      </div>
+                    )}
+                </div>
+                {/* New row for Ready for Execution button if estimation.sent_to_pm is false and status is approved */}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+      {!fetching && projects.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-slate-400 mb-4">
+            No estimation projects found.
+          </div>
+        </div>
+      )}
+      {/* Pagination Controls */}
+      {!fetching && totalPages > 1 && (
+        <div className="flex justify-center mt-8 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </Button>
+          <span className="px-3 py-1 text-sm font-medium">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      )}
 
       {/* Project Modal */}
       {selectedProject && (
@@ -928,7 +993,7 @@ export const EstimationDashboard = () => {
                     </SelectContent>
                   </Select>
                   <Select
-                    value={forwardId}
+                    value={approvedForm.forward_id}
                     onValueChange={(value) => {
                       setApprovedForm({ ...approvedForm, forward_id: value });
                     }}

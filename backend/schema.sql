@@ -346,14 +346,17 @@ CREATE TABLE drawings_uploaded_files (
 CREATE TABLE drawing_stage_logs (
     id SERIAL PRIMARY KEY,
     drawing_id INTEGER NOT NULL REFERENCES drawings(id) ON DELETE CASCADE,
-    stage_id INTEGER NOT NULL REFERENCES stages(id) ON DELETE CASCADE,
     step_name VARCHAR(20) NOT NULL ,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' ,
     notes TEXT,
     created_by INTEGER REFERENCES users(id),
     forwarded_user_id INTEGER,                                    
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     reason TEXT,
+    is_sent BOOLEAN DEFAULT FALSE NOT NULL,
+    action_taken VARCHAR(100),
+    step_order INTEGER DEFAULT 1
 );
 
 CREATE TABLE drawing_stage_log_files (

@@ -200,7 +200,7 @@ const App = () => (
                   path=""
                   element={
                     <DashboardLayout>
-                      <AdminProjectsDashboard />
+                      <ProjectsDashboard />
                     </DashboardLayout>
                   }
                 />
