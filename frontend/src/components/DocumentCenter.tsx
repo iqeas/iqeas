@@ -266,19 +266,19 @@ import { useAPICall } from "@/hooks/useApiCall"; // Your updated hook
 import { API_ENDPOINT } from "@/config/backend";
 import Loading from "./atomic/Loading"; // Your loading spinner component
 import type { IDocumentFile } from "@/types/apiTypes"; // Your document file interface
+import toast from "react-hot-toast";
 
 export const DocumentCenter = () => {
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [files, setFiles] = useState<IDocumentFile[]>([]);
-  const { fetching, fetchType, makeApiCall } = useAPICall();
+  const { fetching, fetchType, makeApiCall, isFetched } = useAPICall();
   const { authToken, user } = useAuth();
 
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const [totalPages, setTotalPages] = useState(0);
   const [totalFiles, setTotalFiles] = useState(0);
-  const [isLoadingData, setIsLoadingData] = useState(true);
 
   const getProjectsEndpoint = useCallback(() => {
     switch (user?.role) {
@@ -287,6 +287,12 @@ export const DocumentCenter = () => {
       case "rfq":
         return API_ENDPOINT.GET_ALL_PROJECTS_FOR_ADMIN;
       case "estimation":
+        return API_ENDPOINT.GET_ALL_PROJECTS_FOR_ADMIN;
+      case "documentation":
+        return API_ENDPOINT.GET_ALL_PROJECTS_FOR_ADMIN;
+      case "working":
+        return API_ENDPOINT.GET_ALL_PROJECTS_FOR_ADMIN;
+      case "pm":
         return API_ENDPOINT.GET_ALL_PROJECTS_FOR_ADMIN;
       default:
         return null;
@@ -301,64 +307,28 @@ export const DocumentCenter = () => {
           "DocumentCenter: No valid API endpoint for user role:",
           user?.role
         );
-        setIsLoadingData(false);
         return;
       }
 
       const queryParams = `?page=${page}&pageSize=${pageSize}&search=${searchTerm}`;
-      console.log(
-        `DocumentCenter: Fetching documents from ${endpoint}${queryParams}`
+
+      const response = await makeApiCall(
+        "get",
+        `${endpoint}${queryParams}`,
+        {},
+        "application/json",
+        authToken,
+        "getFiles"
       );
 
-      try {
-        const response = await makeApiCall(
-          "get",
-          `${endpoint}${queryParams}`,
-          {},
-          "application/json",
-          authToken,
-          "getFiles"
-        );
-
-        console.log("DocumentCenter: Raw response from makeApiCall:", response);
-        console.log(
-          "DocumentCenter: Response data (files array):",
-          response?.data
-        );
-        console.log(
-          "DocumentCenter: Response pagination:",
-          response?.pagination
-        );
-
-        if (response?.data && Array.isArray(response.data)) {
-          setFiles(response.data);
-          setTotalFiles(response.pagination?.total || 0);
-          setTotalPages(response.pagination?.totalPages || 1);
-          console.log("DocumentCenter: Files state updated successfully.");
-        } else {
-          console.warn(
-            "DocumentCenter: API response data is not an array or is missing.",
-            response
-          );
-          setFiles([]);
-          setTotalFiles(0);
-          setTotalPages(1);
-        }
-      } catch (error) {
-        console.error("DocumentCenter: Error fetching documents:", error);
+      if (response.status == 200) {
+        setFiles(response.data.projects);
+        setTotalFiles(response.data.total_pages);
+      } else {
+        toast.error("Failed to fetch documents");
         setFiles([]);
         setTotalFiles(0);
         setTotalPages(1);
-      } finally {
-        // This is the only place isLoadingData should be set to false.
-        // It ensures the initial full-page loader is removed after the first fetch.
-        // Only set to false if it was true (i.e., initial load)
-        if (isLoadingData) {
-          setIsLoadingData(false);
-          console.log(
-            "DocumentCenter: setIsLoadingData(false) called in finally block."
-          );
-        }
       }
     };
 
@@ -377,17 +347,10 @@ export const DocumentCenter = () => {
   ]); // Removed 'fetching' and 'isLoadingData' from dependencies
 
   // Primary full-page loading spinner.
-  if (isLoadingData) {
-    console.log("DocumentCenter: Rendering full page loading spinner.");
+  if (!isFetched && fetching && fetchType == "getFiles") {
     return <Loading full />;
   }
 
-  // Debugging: Log the files state right before rendering the main UI
-  console.log(
-    "DocumentCenter: Component about to render main UI. Files:",
-    files
-  );
-  console.log("DocumentCenter: Total files count:", totalFiles);
   return (
     <div className="space-y-6 p-6 font-inter">
       {/* Header */}
@@ -398,22 +361,6 @@ export const DocumentCenter = () => {
             Manage project documents with version control
           </p>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="rounded-lg shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Total Projects</p>
-                <p className="text-2xl font-bold">{totalFiles}</p>
-              </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText size={20} className="text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <Card className="rounded-lg shadow-sm">

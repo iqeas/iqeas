@@ -360,7 +360,7 @@ export const RFCDashboard = () => {
       );
       setMoreInfoProject(null);
       setMoreInfoForm({
-        files: [{ label: "", file: null }],
+        files: [],
         notes: "",
         enquiry: "",
       });
@@ -820,7 +820,7 @@ export const RFCDashboard = () => {
       </div>
 
       {/* RFQ Cards */}
-      {fetching || !isFetched ? (
+      {!isFetched || (fetching && fetchType == "getProjects") ? (
         <Loading full={false} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1181,46 +1181,58 @@ export const RFCDashboard = () => {
               <label className="block text-sm font-medium mb-2">
                 Upload Additional Files
               </label>
+              <Input
+                type="file"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setMoreInfoForm((prev) => ({
+                    ...prev,
+                    files: [
+                      ...prev.files,
+                      ...files.map((file) => ({
+                        file,
+                        label: "",
+                        tempUrl: URL.createObjectURL(file),
+                      })),
+                    ],
+                  }));
+                  e.target.value = "";
+                }}
+              />
               {moreInfoForm.files.map((uf, idx) => (
-                <div key={idx} className="flex items-center gap-2 mb-2">
-                  <select
-                    className="border rounded px-2 py-1 text-sm"
+                <div key={idx} className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="text"
+                    placeholder="Label"
                     value={uf.label}
-                    onChange={(e) => handleMoreInfoLabelChange(idx, e)}
-                  >
-                    <option value="">Select Label</option>
-                    <option value="BOQ">BOQ</option>
-                    <option value="Layout">Layout</option>
-                    <option value="RFQ">RFQ</option>
-                    <option value="Spec">Spec</option>
-                    <option value="Drawing">Drawing</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  <input
-                    type="file"
-                    className="border rounded px-2 py-1 text-sm"
-                    onChange={(e) => handleMoreInfoFileChange(idx, e)}
+                    onChange={(e) =>
+                      setMoreInfoForm((prev) => ({
+                        ...prev,
+                        files: prev.files.map((u, i) =>
+                          i === idx ? { ...u, label: e.target.value } : u
+                        ),
+                      }))
+                    }
+                    className={
+                      uf.label && uf.label.trim() ? "" : "border-red-400"
+                    }
                   />
-                  {moreInfoForm.files.length > 1 && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => removeMoreInfoFileInput(idx)}
-                    >
-                      <X size={16} />
-                    </Button>
-                  )}
+                  <span className="text-xs">{uf.file?.name}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setMoreInfoForm((prev) => ({
+                        ...prev,
+                        files: prev.files.filter((_, i) => i !== idx),
+                      }))
+                    }
+                  >
+                    &times;
+                  </Button>
                 </div>
               ))}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={addMoreInfoFileInput}
-                className="mt-1"
-              >
-                + Add File
-              </Button>
             </div>
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">

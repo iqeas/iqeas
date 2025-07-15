@@ -15,7 +15,7 @@ export async function handleGetFilesByType(req, res) {
       return res.status(400).json({ error: "Invalid type parameter" });
     }
 
-    if (!["rfq", "estimation", "admin"].includes(role)) {
+    if (!["rfq", "estimation", "admin",'documentation','working'].includes(role)) {
       return res.status(400).json({ error: "Invalid role parameter" });
     }
 

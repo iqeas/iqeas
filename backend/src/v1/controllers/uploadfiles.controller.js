@@ -1,6 +1,7 @@
 import { uploadFileToDO } from "../utils/do-upload.js";
-
-const is_production = process.env.PRODUCTION === "False";
+import { saveUploadedFile } from "../services/uploadfiles.service.js";
+import {formatResponse} from '../utils/response.js'
+const is_production = process.env.PRODUCTION === "true";
 
 export const uploadFileHandler = async (req, res) => {
   try {

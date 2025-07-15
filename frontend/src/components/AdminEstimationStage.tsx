@@ -88,11 +88,7 @@ export default function AdminEstimationStage({
           <div>
             <span className="text-slate-500 font-semibold">Forwarded To:</span>
             <div className="text-slate-800 mt-1">
-              {typeof estimationDetails.forwarded_to === "object" &&
-              estimationDetails.forwarded_to !== null
-                ? estimationDetails.forwarded_to.name ||
-                  JSON.stringify(estimationDetails.forwarded_to)
-                : estimationDetails.forwarded_to || "-"}
+              {estimationDetails.forwarded_to.label}
             </div>
           </div>
           <div>

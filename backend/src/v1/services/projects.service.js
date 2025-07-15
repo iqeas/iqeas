@@ -192,150 +192,20 @@ export async function getProjectByPagination(page = 1, size = 10, query = "") {
     projects: dataResult.rows,
   };
 }
-
-export async function getProjectsEstimationProjects(
-  page = 1,
-  size = 10,
-  queryText = ""
-) {
+export async function getProjectsEstimationProjects({ page = 1, size = 10 }) {
   const offset = (page - 1) * size;
-  const search = `%${queryText}%`;
+
+  const values = [size, offset];
 
   const query = `
     WITH filtered_projects AS (
-      SELECT 
-        p.*,
-
-        json_build_object(
-          'id', u.id,
-          'name', u.name,
-          'email', u.email,
-          'phonenumber', u.phonenumber
-        ) AS user,
-
-        COALESCE((
-          SELECT json_agg(json_build_object(
-            'id', uf.id,
-            'file', uf.file,
-            'label', uf.label
-          ))
-          FROM projects_uploaded_files puf
-          JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
-          WHERE puf.project_id = p.id
-        ), '[]'::json) AS uploaded_files,
-
-        COALESCE((
-          SELECT json_agg(json_build_object(
-            'id', pm.id,
-            'notes', pm.notes,
-            'enquiry', pm.enquiry,
-            'uploaded_files', COALESCE((
-              SELECT json_agg(json_build_object(
-                'id', uf2.id,
-                'file', uf2.file,
-                'label', uf2.label
-              ))
-              FROM project_more_info_uploaded_files pmuf
-              JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
-              WHERE pmuf.project_more_info_id = pm.id
-            ), '[]'::json)
-          ))
-          FROM project_more_info pm
-          WHERE pm.project_id = p.id
-        ), '[]'::json) AS add_more_infos,
-
-        (
-          SELECT json_build_object(
-            'id', e.id,
-            'status', e.status,
-            'cost', e.cost,
-            'deadline', e.deadline,
-            'approval_date', e.approval_date,
-            'approved', e.approved,
-            'sent_to_pm', e.sent_to_pm,
-            'notes', e.notes,
-            'updates', e.updates,
-            'log', e.log,
-            'user', json_build_object(
-              'id', eu.id,
-              'name', eu.name,
-              'email', eu.email
-            ),
-            'forwarded_to', (
-              SELECT json_build_object(
-                'id', fuser.id,
-                'label', fuser.name,
-                'email', fuser.email
-              )
-              FROM users fuser
-              WHERE fuser.id = e.forwarded_user_id
-            ),
-            'uploaded_files', COALESCE((
-              SELECT json_agg(json_build_object(
-                'id', uf.id,
-                'label', uf.label,
-                'file', uf.file
-              ))
-              FROM estimation_uploaded_files euf
-              JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
-              WHERE euf.estimation_id = e.id
-            ), '[]'::json)
-          )
-          FROM estimations e
-          JOIN users eu ON e.user_id = eu.id
-          WHERE e.project_id = p.id
-          LIMIT 1
-        ) AS estimation,
-
-        (
-          SELECT json_build_object(
-            'id', pr.id,
-            'note', pr.note,
-            'created_at', pr.created_at,
-            'user', json_build_object(
-              'id', pru.id,
-              'name', pru.name
-            ),
-            'uploaded_files', COALESCE((
-              SELECT json_agg(json_build_object(
-                'id', uf3.id,
-                'file', uf3.file,
-                'label', uf3.label
-              ))
-              FROM project_rejection_uploaded_files prf
-              JOIN uploaded_files uf3 ON prf.uploaded_file_id = uf3.id
-              WHERE prf.project_rejection_id = pr.id
-            ), '[]'::json)
-          )
-          FROM project_rejections pr
-          JOIN users pru ON pr.user_id = pru.id
-          WHERE pr.project_id = p.id
-          ORDER BY pr.created_at DESC
-          LIMIT 1
-        ) AS project_rejection,
-
-        COUNT(*) OVER() AS total_count
-
-      FROM projects p
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.send_to_estimation = true
-        AND (
-          p.client_company ILIKE $1 OR
-          p.contact_person ILIKE $1 OR
-          p.project_id::text ILIKE $1 OR
-          p.name ILIKE $1 OR
-          p.client_name ILIKE $1
-
-  `;
-
-  const values = [limit, offset];
-
-  const result = await pool.query(query, values);
-  return result.rows;
-}
-
-export async function getProjectsEstimationProjects() {
-  const query = `
+      SELECT *
+      FROM projects
+      WHERE send_to_estimation = true
+      ORDER BY created_at DESC
+      LIMIT $1 OFFSET $2
+    )
+    
     SELECT 
       p.*,
 
@@ -414,23 +284,60 @@ export async function getProjectsEstimationProjects() {
             WHERE euf.estimation_id = e.id
           ), '[]'::json)
         )
-      ORDER BY p.created_at DESC
-      LIMIT $2 OFFSET $3
-    )
+        FROM estimations e
+        JOIN users eu ON e.user_id = eu.id
+        WHERE e.project_id = p.id
+        LIMIT 1
+      ) AS estimation,
 
-    SELECT * FROM filtered_projects;
+      (
+        SELECT json_build_object(
+          'id', pr.id,
+          'note', pr.note,
+          'created_at', pr.created_at,
+          'user', json_build_object(
+            'id', pru.id,
+            'name', pru.name
+          ),
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf3.id,
+              'file', uf3.file,
+              'label', uf3.label
+            ))
+            FROM project_rejection_uploaded_files prf
+            JOIN uploaded_files uf3 ON prf.uploaded_file_id = uf3.id
+            WHERE prf.project_rejection_id = pr.id
+          ), '[]'::json)
+        )
+        FROM project_rejections pr
+        JOIN users pru ON pr.user_id = pru.id
+        WHERE pr.project_id = p.id
+        ORDER BY pr.created_at DESC
+        LIMIT 1
+      ) AS project_rejection
+
+    FROM filtered_projects p
+    LEFT JOIN users u ON p.user_id = u.id;
   `;
 
-  const result = await pool.query(query, [search, size, offset]);
+  const totalQuery = `
+    SELECT COUNT(*) FROM projects WHERE send_to_estimation = true
+  `;
 
-  const total = result.rows[0]?.total_count || 0;
-  const totalPages = Math.ceil(total / size);
+  const [result, totalResult] = await Promise.all([
+    pool.query(query, values),
+    pool.query(totalQuery),
+  ]);
+
+  const totalPages = Math.ceil(Number(totalResult.rows[0].count) / size);
 
   return {
     total_pages: totalPages,
     projects: result.rows,
   };
 }
+
 export async function getPMProjects({ page = 1, size = 10, query = "" }) {
   const offset = (page - 1) * size;
   const search = `%${query.toLowerCase()}%`;

@@ -127,7 +127,7 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-50 flex ">
       <div
         className="absolute inset-0 bg-black bg-opacity-20"
         onClick={onClose}

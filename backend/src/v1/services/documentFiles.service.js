@@ -23,7 +23,11 @@ export async function getFilesByType(project_id, type, current_user_id, role) {
         query += ` AND uf.uploaded_by_id != $2`;
         values.push(current_user_id);
       }
-    } else if (role === "admin") {
+    } else if (
+      role === "admin" ||
+      role == "documentation" ||
+      role == "working"
+    ) {
       // Admin sees all, no condition needed
     } else {
       throw new Error("Invalid role");

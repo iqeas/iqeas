@@ -70,11 +70,27 @@ const App = () => (
                     </DashboardLayout>
                   }
                 />
-                <Route
+                {/* <Route
                   path="my-task"
                   element={
                     <DashboardLayout>
                       <MyTasks />
+                    </DashboardLayout>
+                  }
+                /> */}
+                <Route
+                  path="documents/:project_id"
+                  element={
+                    <DashboardLayout>
+                      <FileTypeSelection />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents/:project_id/:type"
+                  element={
+                    <DashboardLayout>
+                      <DocumentFiles />
                     </DashboardLayout>
                   }
                 />
@@ -196,6 +212,22 @@ const App = () => (
                     </DashboardLayout>
                   }
                 />
+                <Route
+                  path="documents/:project_id"
+                  element={
+                    <DashboardLayout>
+                      <FileTypeSelection />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents/:project_id/:type"
+                  element={
+                    <DashboardLayout>
+                      <DocumentFiles />
+                    </DashboardLayout>
+                  }
+                />
               </Route>
 
               {/* Working Team */}
@@ -221,6 +253,22 @@ const App = () => (
                   element={
                     <DashboardLayout>
                       <CommonCalendar />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents/:project_id"
+                  element={
+                    <DashboardLayout>
+                      <FileTypeSelection />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents/:project_id/:type"
+                  element={
+                    <DashboardLayout>
+                      <DocumentFiles />
                     </DashboardLayout>
                   }
                 />
