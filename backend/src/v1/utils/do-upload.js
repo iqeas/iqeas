@@ -1,5 +1,5 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { s3 } from "./do-space.js";
+import { s3 } from "./do-space-config.js";
 import { v4 as uuidv4 } from "uuid";
 import mime from "mime-types";
 

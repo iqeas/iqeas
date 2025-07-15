@@ -1,4 +1,4 @@
-import { uploadFileToDO } from "../utils/uploadFile.js";
+import { uploadFileToDO } from "../utils/do-upload.js";
 
 const is_production = process.env.PRODUCTION === "False";
 
