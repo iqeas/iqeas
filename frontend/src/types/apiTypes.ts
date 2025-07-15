@@ -158,6 +158,10 @@ export type DrawingStageLog = {
   notes: string;
   reason?: string;
   created_at: string;
+  is_sent: boolean;
+  action_taken: string;
+  step_order: 1;
+  created_by: { id: number; name: string };
   incoming_files: UploadedFile[];
   outgoing_files: UploadedFile[];
 };
@@ -175,6 +179,7 @@ export type Drawing = {
   created_at: string;
   client_dwg_no: string;
   iqeas_dwg_no: string;
+  final_files: UploadedFile[];
   uploaded_files: UploadedFile[];
   drawing_stage_logs: DrawingStageLog[];
 };
@@ -292,4 +297,73 @@ export type WorkerTask = {
   };
   action_taken: string;
   step_order: number;
+};
+export type DocumentationTaskFile = {
+  id: number;
+  label: string;
+  file: string;
+};
+export type DocumentationUser = {
+  id: number;
+  name: string;
+  email: string;
+};
+export type SentToUser = {
+  name: string;
+  role: string;
+  datetime: string;
+};
+export type DocumentationTask = {
+  id: number;
+  drawing_id: number;
+  drawing_title: string;
+  drawing_type: string;
+  revision: string;
+  drawing_weightage: string;
+  allocated_hours: number;
+  client_dwg_no: string;
+  iqeas_dwg_no: string;
+  stage_id: number;
+  step_name: string;
+  status: string;
+  is_sent: boolean;
+  action_taken: string;
+  step_order: number;
+  notes: string;
+  reason?: string;
+  created_at: string;
+  updated_at: string;
+  drawing;
+  drawing_created_at: string;
+  contact_person_email: string;
+  drawing_uploaded_by_user: DocumentationUser;
+  assigned_by: DocumentationUser;
+  sent_to?: SentToUser;
+
+  // Project info
+  project_id: number;
+  project_code: string;
+  client_company: string;
+  contact_person_phone: string;
+  contact_person: string;
+  project_description: string;
+  project_status: string;
+
+  // Estimation
+  estimation_due_date: string;
+  estimation_priority: string;
+  estimation_files: DocumentationTaskFile[];
+
+  // Drawing attachments
+  drawing_files: DocumentationTaskFile[];
+
+  // Task-specific files
+  incoming_files: DocumentationTaskFile[];
+  outgoing_files: DocumentationTaskFile[];
+
+  total_count: number;
+};
+export type DocumentationTaskResponse = {
+  total_pages: number;
+  tasks: DocumentationTask[];
 };

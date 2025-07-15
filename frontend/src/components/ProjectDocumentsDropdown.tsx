@@ -5,8 +5,7 @@ import { ChevronDown, ChevronUp, Search } from "lucide-react";
 
 export interface ProjectDocument {
   label: string;
-  projectId: string;
-  url: string;
+  file: string;
   [key: string]: unknown;
 }
 
@@ -22,9 +21,7 @@ const ProjectDocumentsDropdown: React.FC<ProjectDocumentsDropdownProps> = ({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  const filtered = documents.filter((doc) =>
-    doc.label.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = documents;
 
   return (
     <div className="mb-4 border rounded-lg bg-slate-50">
@@ -38,7 +35,7 @@ const ProjectDocumentsDropdown: React.FC<ProjectDocumentsDropdownProps> = ({
       </button>
       {open && (
         <div className="p-4 border-t bg-white rounded-b-lg">
-          <div className="flex items-center gap-2 mb-3">
+          {/* <div className="flex items-center gap-2 mb-3">
             <Search size={16} className="text-slate-400" />
             <Input
               type="text"
@@ -47,17 +44,14 @@ const ProjectDocumentsDropdown: React.FC<ProjectDocumentsDropdownProps> = ({
               onChange={(e) => setSearch(e.target.value)}
               className="w-full"
             />
-          </div>
+          </div> */}
           {filtered.length === 0 ? (
             <div className="text-slate-400 text-sm">No documents found.</div>
           ) : (
             <ul className="space-y-2">
               {filtered.map((doc, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <ShowFile label={doc.label} url={doc.url} size="medium" />
-                  <span className="text-xs text-slate-500 ml-2">
-                    [{doc.projectId}]
-                  </span>
+                  <ShowFile label={doc.label} url={doc.file} size="medium" />
                 </li>
               ))}
             </ul>

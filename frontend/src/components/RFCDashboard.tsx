@@ -104,7 +104,10 @@ const getStatusBadgeProps = (status: string) => {
 };
 
 export const RFCDashboard = () => {
+  const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [projects, setProjects] = useState<IRFCProject[]>([]);
@@ -125,11 +128,11 @@ export const RFCDashboard = () => {
   });
 
   useEffect(() => {
-    // Fetch initial projects data from API
+    // Fetch projects data from API with pagination and search
     const fetchProjects = async () => {
       const response = await makeApiCall(
         "get",
-        API_ENDPOINT.GET_ALL_RFQ_PROJECTS,
+        API_ENDPOINT.GET_ALL_RFQ_PROJECTS(searchTerm, page, 20),
         {},
         "application/json",
         authToken,
@@ -138,12 +141,13 @@ export const RFCDashboard = () => {
       if (response.status === 200) {
         setProjects(response.data.projects);
         setCards(response.data.cards);
+        setTotalPages(response.data.total_pages);
       } else {
         toast.error("failed to fetch projects");
       }
     };
     fetchProjects();
-  }, []);
+  }, [searchTerm, page]);
   // Handle form field changes
   const handleFormChange = (e) => {
     const { name, value, files } = e.target;
@@ -267,13 +271,8 @@ export const RFCDashboard = () => {
     setSendToEstimation(false);
   };
 
-  
-  // Filtered projects
-  const filteredProjects = projects.filter(
-    (project) =>
-      project.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.project_id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtered projects is now just projects (API handles filtering)
+  const filteredProjects = projects;
 
   // Add function to add a new update to a project
   const addProjectUpdate = (projectId, text) => {
@@ -792,120 +791,165 @@ export const RFCDashboard = () => {
 
       {/* Search */}
       <div className="mb-6">
-        <div className="relative">
+        <div className="relative flex items-center gap-2">
           <Search
             size={18}
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
           />
           <Input
             placeholder="Search RFQs by client name or project ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") setSearchTerm(searchInput);
+            }}
             className="pl-10"
           />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSearchTerm(searchInput)}
+            className="px-2"
+            aria-label="Search"
+          >
+            🔍
+          </Button>
         </div>
       </div>
 
       {/* RFQ Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
-          <Card
-            key={project.id}
-            className="hover:shadow-lg transition-shadow cursor-pointer p-2 mb-4"
-          >
-            <CardHeader className="pb-4 mb-2 border-b border-slate-100">
-              <div className="flex justify-between items-start gap-4">
-                <div className="space-y-2">
-                  <CardTitle className="text-lg">
-                    {project.project_id}
-                  </CardTitle>
-                  <p className="text-base font-bold text-slate-800 mb-1">
-                    {project.name}
-                  </p>
-                  <p className="text-slate-600 font-semibold flex items-center gap-1">
-                    <User size={14} /> {project.client_name}
-                  </p>
-                  <div className="text-xs text-slate-500 flex items-center gap-1">
-                    <Building2 size={12} /> {project.client_company}
+      {fetching || !isFetched ? (
+        <Loading full={false} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => (
+            <Card
+              key={project.id}
+              className="hover:shadow-lg transition-shadow cursor-pointer p-2 mb-4"
+            >
+              <CardHeader className="pb-4 mb-2 border-b border-slate-100">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="space-y-2">
+                    <CardTitle className="text-lg">
+                      {project.project_id}
+                    </CardTitle>
+                    <p className="text-base font-bold text-slate-800 mb-1">
+                      {project.name}
+                    </p>
+                    <p className="text-slate-600 font-semibold flex items-center gap-1">
+                      <User size={14} /> {project.client_name}
+                    </p>
+                    <div className="text-xs text-slate-500 flex items-center gap-1">
+                      <Building2 size={12} /> {project.client_company}
+                    </div>
+                    <div className="text-xs text-slate-500 flex items-center gap-1">
+                      <MapPin size={12} /> {project.location}
+                    </div>
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                      <Calendar size={12} /> Received:{" "}
+                      {project.received_date
+                        ? new Date(project.received_date).toLocaleDateString()
+                        : "-"}
+                    </p>
+                    <div className="text-xs text-slate-500 flex items-center gap-1">
+                      <FileText size={12} /> {project.project_type}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500 flex items-center gap-1">
-                    <MapPin size={12} /> {project.location}
-                  </div>
-                  <p className="text-xs text-slate-500 flex items-center gap-1">
-                    <Calendar size={12} /> Received:{" "}
-                    {project.received_date
-                      ? new Date(project.received_date).toLocaleDateString()
-                      : "-"}
-                  </p>
-                  <div className="text-xs text-slate-500 flex items-center gap-1">
-                    <FileText size={12} /> {project.project_type}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-3">
-                  <Badge
-                    className="capitalize"
-                    {...getPriorityBadgeProps(project.priority)}
-                  >
-                    {project.priority}
-                  </Badge>
-                  <Badge
-                    className="capitalize"
-                    {...getStatusBadgeProps(project.status)}
-                  >
-                    {project.status}
-                  </Badge>
-                  <div className="flex gap-2 mt-2">
-                    {/* <Button
-                      size="icon"
-                      variant="ghost"
-                    
-                      title="Edit"
+                  <div className="flex flex-col items-end gap-3">
+                    <Badge
+                      className="capitalize"
+                      {...getPriorityBadgeProps(project.priority)}
                     >
-                      <Edit size={16} />
-                    </Button> */}
-                    {/* <Button
-                      size="icon"
-                      variant="ghost"
+                      {project.priority}
+                    </Badge>
+                    <Badge
+                      className="capitalize"
+                      {...getStatusBadgeProps(project.status)}
+                    >
+                      {project.status}
+                    </Badge>
+                    <div className="flex gap-2 mt-2">
+                      {/* <Button
+                        size="icon"
+                        variant="ghost"
                       
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </Button> */}
+                        title="Edit"
+                      >
+                        <Edit size={16} />
+                      </Button> */}
+                      {/* <Button
+                        size="icon"
+                        variant="ghost"
+                        
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </Button> */}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex gap-3 mt-5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setDetailsProject(project)}
-                >
-                  <Info size={14} className="mr-1" /> Details
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setMoreInfoProject(project)}
-                >
-                  <StickyNote size={14} className="mr-1" /> Add More Info
-                </Button>
-                {!project.send_to_estimation && (
+                <div className="flex gap-3 mt-5">
                   <Button
                     size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                    loading={fetching && fetchType == "sentToEstimation"}
-                    onClick={() => {
-                      handleSentToEstimation(project.id);
-                    }}
+                    variant="outline"
+                    onClick={() => setDetailsProject(project)}
                   >
-                    <Send size={14} className="mr-1" /> Send to Estimation
+                    <Info size={14} className="mr-1" /> Details
                   </Button>
-                )}
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setMoreInfoProject(project)}
+                  >
+                    <StickyNote size={14} className="mr-1" /> Add More Info
+                  </Button>
+                  {!project.send_to_estimation && (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      loading={fetching && fetchType == "sentToEstimation"}
+                      onClick={() => {
+                        handleSentToEstimation(project.id);
+                      }}
+                    >
+                      <Send size={14} className="mr-1" /> Send to Estimation
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      )}
+      {!fetching && filteredProjects.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-slate-400 mb-4">No RFQ projects found.</div>
+        </div>
+      )}
+      {/* Pagination Controls */}
+      {!fetching && totalPages > 1 && (
+        <div className="flex justify-center mt-8 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </Button>
+          <span className="px-3 py-1 text-sm font-medium">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      )}
 
       {/* Details View Modal */}
       {detailsProject && (

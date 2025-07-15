@@ -14,12 +14,14 @@ export const API_ENDPOINT = {
   DELETE_USER: (id: any) => `${API_URL}/admin/users/${id}`,
   CREATE_TEAMS: `${API_URL}/teams`,
   EDIT_TEAMS: (id: any) => `${API_URL}/teams/${id}`,
-  GET_ALL_RFQ_PROJECTS: `${API_URL}/projects/rfq`,
+  GET_ALL_RFQ_PROJECTS: (query, page, size) =>
+    `${API_URL}/projects/rfq?page=${page}&size=${size}&query=${query}`,
   UPLOAD_FILE: `${API_URL}/upload-file`,
   PROJECT_ADD_MORE_INFO: `${API_URL}/project-more-info`,
   EDIT_PROJECT: (id: any) => `${API_URL}/projects/${id}`,
   GET_TEAMS_BY_ROLE: (role: any) => `${API_URL}/teams/role/${role}`,
-  GET_ALL_ESTIMATION_PROJECTS: `${API_URL}/projects/estimation`,
+  GET_ALL_ESTIMATION_PROJECTS: (query, page, size) =>
+    `${API_URL}/projects/estimation?page=${page}&size=${size}&query=${query}`,
   CREATE_ESTIMATION: `${API_URL}/estimation`,
   EDIT_ESTIMATION: (id: any) => `${API_URL}/patch/estimation/${id}`,
   CREATE_PROJECT_REJECTION: `${API_URL}/projects/reject`,
@@ -31,7 +33,10 @@ export const API_ENDPOINT = {
   GET_STAGES: (project_id: any) => `${API_URL}/stages/${project_id}`,
   GET_PROJECT_STAGE: (projectId: any, stageId: any) =>
     `${API_URL}/stages/drawings/${projectId}/${stageId}`,
-  GET_ALL_PM_PROJECTS: `${API_URL}/projects/pm`,
+  GET_ALL_PM_PROJECTS: (query, page, size) =>
+    `${API_URL}/projects/pm?page=${page}&query=${query}&size=${size}`,
+  GET_ALL_ADMIN_PROJECTS: (query, page, size) =>
+    `${API_URL}/projects/admin?page=${page}&query=${query}&size=${size}`,
   GET_STAGE_DRAWINGS: (project_id: any, stage_id: any) =>
     `${API_URL}/stages/drawings/${project_id}/${stage_id}`,
   CREATE_STAGE_DRAWING: `${API_URL}/drawings`,

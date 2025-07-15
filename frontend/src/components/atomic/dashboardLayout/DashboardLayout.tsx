@@ -24,7 +24,6 @@ const menuConfig = {
   pm: [
     { label: "Projects", to: "/pm", icon: Home },
     { label: "Document Center", to: "/pm/documents", icon: BookOpen },
-    { label: "My Tasks", to: "/pm/my-task", icon: Calendar },
     { label: "Calendar", to: "/pm/calendar", icon: Calendar },
   ],
   rfq: [

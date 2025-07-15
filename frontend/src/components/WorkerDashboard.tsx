@@ -59,7 +59,6 @@ export const WorkerDashboard = () => {
   const [completeFiles, setCompleteFiles] = useState<
     { file: File; label: string; tempUrl: string }[]
   >([]);
-  const [completeNotes, setCompleteNotes] = useState("");
 
   // Details modal state
   const [detailsModal, setDetailsModal] = useState<{
@@ -67,17 +66,11 @@ export const WorkerDashboard = () => {
     task: WorkerTask | null;
   }>({ open: false, task: null });
 
-  // Modal state for Send to Checking
-  const [showSendToChecking, setShowSendToChecking] = useState(false);
-  const [sendToCheckingTask, setSendToCheckingTask] =
-    useState<WorkerTask | null>(null);
-  const [checkingUsers, setCheckingUsers] = useState<IUser[]>([]);
   const [checkingUser, setCheckingUser] = useState<string>("");
   const [checkingNotes, setCheckingNotes] = useState("");
   const [checkingFiles, setCheckingFiles] = useState<
     { file: File; label: string; tempUrl: string }[]
   >([]);
-  const [fetchingCheckingUsers, setFetchingCheckingUsers] = useState(false);
   const [cards, setCards] = useState({
     total: 25,
     completed: 10,
@@ -95,6 +88,8 @@ export const WorkerDashboard = () => {
     open: false,
     taskId: null,
   });
+  const [sentToSelectedFiles, setSentToSelectedFiles] = useState([]);
+  const [currentSentToFiles, setCurrentSentToFiles] = useState([]);
   const [backToDraftingNotes, setBackToDraftingNotes] = useState("");
 
   useEffect(() => {
@@ -177,11 +172,7 @@ export const WorkerDashboard = () => {
     );
     if (response.status == 200) {
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id === completeModal.taskId
-            ? { ...t, status: "completed", outgoing_files: response.data }
-            : t
-        )
+        prev.map((t) => (t.id === completeModal.taskId ? response.data : t))
       );
       setCompleteFiles([]);
       setCompleteModal({
@@ -199,20 +190,6 @@ export const WorkerDashboard = () => {
       toast.error("Give label to all the uploaded files");
       return;
     }
-    // let uploadedFileIds = [];
-    // if (completeFiles.length > 0) {
-    //   try {
-    //     const uploadResults = await Promise.all(
-    //       completeFiles.map((f) => uploadFile(f.file, f.label))
-    //     );
-    //     uploadedFileIds = uploadResults.map((res) => res.id);
-    //   } catch (err) {
-    //     toast.error("File upload failed. Please try again.");
-    //     return;
-    //   }
-    // } else {
-    //   toast.error("Please upload at least one media");
-    // }
     const task = tasks.find((item) => item.id == completeModal.taskId);
     const completed_files_ids = task.outgoing_files.map((item) => item.id);
     const data = {
@@ -251,52 +228,12 @@ export const WorkerDashboard = () => {
       toast.error("Failed to sent to checking");
     }
   };
-  const handleSentToDrafting = async () => {
-    const task = tasks.find((item) => item.id == completeModal.taskId);
-    const completed_files_ids = task.outgoing_files.map((item) => item.id);
-    const data = {
-      uploaded_files_ids: [...completed_files_ids],
-      notes: checkingNotes,
-      forwarded_user_id: task.assigned_by.id,
-      status: "not_started",
-      step_name: "drafting",
-      log_id: task.id,
-    };
-    const drawing_id = task.drawing_id;
-    const response = await makeApiCall(
-      "post",
-      API_ENDPOINT.CREATE_DRAWING_LOGS(drawing_id),
-      data,
-      "application/json",
-      authToken,
-      "createBackToDrafting"
-    );
-    if (response.status == 201) {
-      toast.success("successfully sent to checking");
-      setCompleteModal({
-        open: false,
-        taskId: null,
-        type: "",
-      });
-      setTasks((prev) =>
-        prev.map((item) => {
-          if (item.id == task.id) {
-            return response.data;
-          }
-          return item;
-        })
-      );
-    } else {
-      toast.error("Failed to sent to checking");
-    }
-  };
   const handleSentToApproval = async () => {
     const task = tasks.find((item) => item.id == completeModal.taskId);
     const completed_files_ids = task.incoming_files.map((item) => item.id);
     const data = {
       uploaded_files_ids: [...completed_files_ids],
       notes: checkingNotes,
-      forwarded_user_id: task.project_uploaded_by,
       status: "not_started",
       step_name: "approval",
       log_id: task.id,
@@ -379,7 +316,7 @@ export const WorkerDashboard = () => {
       { action_taken: "approved", status: "completed" },
       "application/json",
       authToken,
-      "EditMarkAsApproved"
+      `EditMarkAsApproved${task.id}`
     );
     if (response.status == 200) {
       setTasks((prev) =>
@@ -411,9 +348,6 @@ export const WorkerDashboard = () => {
         toast.error("File upload failed. Please try again.");
         return;
       }
-    } else {
-      toast.error("Please upload at least one media");
-      return;
     }
     const task = tasks.find((item) => item.id == rejectModal.taskId);
     const data = {
@@ -450,14 +384,12 @@ export const WorkerDashboard = () => {
   // 3. Add handler for Back to Drafting with notes only
   const handleBackToDraftingWithNotes = async () => {
     const task = tasks.find((item) => item.id == backToDraftingModal.taskId);
-    const completed_files_ids = task.outgoing_files.map((item) => item.id);
     const data = {
-      uploaded_files_ids: [...completed_files_ids],
+      uploaded_files_ids: [...sentToSelectedFiles],
       status: "not_started",
       step_name: "drafting",
       notes: backToDraftingNotes,
       log_id: task.id,
-      forwarded_user_id: task.assigned_by.id,
     };
     const drawing_id = task.drawing_id;
     const response = await makeApiCall(
@@ -740,14 +672,14 @@ export const WorkerDashboard = () => {
                                   }}
                                   loading={
                                     fetching &&
-                                    fetchType == "EditMarkAsApproved"
+                                    fetchType == `EditMarkAsApproved${task.id}`
                                   }
                                   disabled={
                                     fetching &&
-                                    fetchType == "EditMarkAsApproved"
+                                    fetchType == `EditMarkAsApproved${task.id}`
                                   }
                                 >
-                                  Mark as Approved
+                                  Move Forward
                                 </Button>
                                 <Button
                                   size="sm"
@@ -758,20 +690,8 @@ export const WorkerDashboard = () => {
                                       taskId: task.id,
                                     });
                                   }}
-                                  loading={
-                                    fetching &&
-                                    (fetchType ==
-                                      "EditMarkAsRejectedWithFiles" ||
-                                      fetchType == "uploadFile")
-                                  }
-                                  disabled={
-                                    fetching &&
-                                    (fetchType ==
-                                      "EditMarkAsRejectedWithFiles" ||
-                                      fetchType == "uploadFile")
-                                  }
                                 >
-                                  Mark as Rejected
+                                  Go Back
                                 </Button>
                               </>
                             )}
@@ -785,9 +705,6 @@ export const WorkerDashboard = () => {
                                     type: "sent_to_checking",
                                     taskId: task.id,
                                   })
-                                }
-                                loading={
-                                  fetching && fetchType == "getWorkingUsers"
                                 }
                               >
                                 Send to Checking
@@ -1086,25 +1003,7 @@ export const WorkerDashboard = () => {
                   </Button>
                 );
               }
-              if (completeModal.type === "back_to_drafting") {
-                return (
-                  <Button
-                    onClick={() => handleSentToDrafting()}
-                    loading={
-                      fetching &&
-                      (fetchType == "createBackToDrafting" ||
-                        fetchType == "uploadFile")
-                    }
-                    disabled={
-                      fetching &&
-                      (fetchType == "createBackToDrafting" ||
-                        fetchType == "uploadFile")
-                    }
-                  >
-                    Back to Drafting
-                  </Button>
-                );
-              }
+          
               return null;
             })()}
           </div>
@@ -1400,6 +1299,33 @@ export const WorkerDashboard = () => {
               onChange={(e) => setBackToDraftingNotes(e.target.value)}
               placeholder="Add notes..."
             />
+
+            {/* File selection list */}
+            {currentSentToFiles.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-slate-500 mb-1">
+                  Select files to send back:
+                </div>
+                {currentSentToFiles.map((file) => (
+                  <label key={file.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={sentToSelectedFiles.includes(file.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSentToSelectedFiles((prev) => [...prev, file.id]);
+                        } else {
+                          setSentToSelectedFiles((prev) =>
+                            prev.filter((id) => id !== file.id)
+                          );
+                        }
+                      }}
+                    />
+                    <span>{file.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
             <div className="flex justify-end gap-2 mt-4">
               <Button
                 variant="outline"

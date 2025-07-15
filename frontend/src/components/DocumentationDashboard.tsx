@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Folder,
   Mail,
@@ -30,204 +30,237 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-
-// Mock deliverables needing documentation team action
-const docReviewDeliverables: Array<{
-  id: string;
-  projectId: string;
-  client: string;
-  clientEmail: string;
-  clientPhone: string;
-  stage: string;
-  deliverable: string;
-  submittedBy: string;
-  date: string;
-  status: string;
-  files: { label: string; url: string }[];
-  notes: string;
-  delivered?: boolean;
-  deliveryNote?: string;
-  deliveryFiles?: { name: string }[];
-}> = [
-  {
-    id: "D-001",
-    projectId: "PRJ-1024",
-    client: "Al Wajeeh",
-    clientEmail: "client1@email.com",
-    clientPhone: "+966500000001",
-    stage: "IDC",
-    deliverable: "Pipe GA Z1",
-    submittedBy: "Anand",
-    date: "2024-07-02",
-    status: "Awaiting Docs Approval",
-    files: [
-      { label: "Pipe GA Z1 v1.1", url: "/uploads/pipe-ga-z1-v1.1.pdf" },
-      { label: "Pipe GA Z1 v1.0", url: "/uploads/pipe-ga-z1-v1.0.pdf" },
-    ],
-    notes: "",
-  },
-  {
-    id: "D-002",
-    projectId: "PRJ-1025",
-    client: "Delta Oil",
-    clientEmail: "client2@email.com",
-    clientPhone: "+966500000002",
-    stage: "IFR",
-    deliverable: "P&ID Update",
-    submittedBy: "Priya",
-    date: "2024-07-03",
-    status: "Awaiting Docs Approval",
-    files: [
-      { label: "P&ID Update v2.0", url: "/uploads/pid-update-v2.0.pdf" },
-      { label: "P&ID Update v1.9", url: "/uploads/pid-update-v1.9.pdf" },
-    ],
-    notes: "",
-  },
-  {
-    id: "D-003",
-    projectId: "PRJ-1026",
-    client: "Test Client",
-    clientEmail: "test@email.com",
-    clientPhone: "+966500000003",
-    stage: "AFC",
-    deliverable: "Test Deliverable AFC",
-    submittedBy: "Test User",
-    date: "2024-07-04",
-    status: "not approved",
-    files: [{ label: "AFC File v1.0", url: "/uploads/afc-file-v1.0.pdf" }],
-    notes: "",
-  },
-];
-
-// Mock all project-related documents (could be fetched or filtered by projectId in real use)
-const allProjectDocuments: ProjectDocument[] = [
-  {
-    label: "Pipe GA Z1 v1.1",
-    url: "/uploads/pipe-ga-z1-v1.1.pdf",
-    projectId: "PRJ-1024",
-  },
-  {
-    label: "Pipe GA Z1 v1.0",
-    url: "/uploads/pipe-ga-z1-v1.0.pdf",
-    projectId: "PRJ-1024",
-  },
-  {
-    label: "P&ID Update v2.0",
-    url: "/uploads/pid-update-v2.0.pdf",
-    projectId: "PRJ-1025",
-  },
-  {
-    label: "P&ID Update v1.9",
-    url: "/uploads/pid-update-v1.9.pdf",
-    projectId: "PRJ-1025",
-  },
-  {
-    label: "Old Spec Sheet",
-    url: "/uploads/spec-sheet.pdf",
-    projectId: "PRJ-1024",
-  },
-];
-
-// Add dummy files for delivery selection
-const dummyDeliveryFiles = [
-  { label: "Spec Sheet.pdf", url: "/uploads/spec-sheet.pdf" },
-  { label: "Final Drawing.dwg", url: "/uploads/final-drawing.dwg" },
-  { label: "QA Report.docx", url: "/uploads/qa-report.docx" },
-];
+import { useAPICall } from "@/hooks/useApiCall";
+import { useAuth } from "@/contexts/AuthContext";
+import { API_ENDPOINT } from "@/config/backend";
+import type { DocumentationTask } from "@/types/apiTypes";
+import Loading from "./atomic/Loading";
+import toast from "react-hot-toast";
 
 export const DocumentationDashboard = () => {
-  const [deliverables, setDeliverables] = useState<
-    typeof docReviewDeliverables
-  >(docReviewDeliverables);
+  const { makeApiCall, fetching, fetchType, isFetched } = useAPICall();
+  const { authToken } = useAuth();
+  const [tasks, setTasks] = useState<DocumentationTask[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filter, setFilter] = useState<string>("all");
+  const [search, setSearch] = useState<string>("");
+  const [searchInput, setSearchInput] = useState("");
+  const [stageFilter, setStageFilter] = useState<string>("All");
+  const [viewDetail, setViewDetail] = useState<DocumentationTask | null>(null);
+  // Action modals
+  const [startLoadingId, setStartLoadingId] = useState<number | null>(null);
+  const [approveLoadingId, setApproveLoadingId] = useState<number | null>(null);
   const [rejectModal, setRejectModal] = useState<{
     open: boolean;
-    deliverableId: string | null;
-  }>({ open: false, deliverableId: null });
-  const [rejectNote, setRejectNote] = useState("");
-  const [rejectFiles, setRejectFiles] = useState<File[]>([]);
-  const [viewDetail, setViewDetail] = useState<
-    (typeof docReviewDeliverables)[0] | null
-  >(null);
-  // Delivery modal state
-  const [deliveryModal, setDeliveryModal] = useState<{
-    open: boolean;
-    deliverableId: string | null;
-  }>({ open: false, deliverableId: null });
-  const [deliveryFiles, setDeliveryFiles] = useState<
+    task: DocumentationTask | null;
+  }>({ open: false, task: null });
+  const [rejectFiles, setRejectFiles] = useState<
     { file: File; label: string; tempUrl: string }[]
   >([]);
-  const [deliveryNote, setDeliveryNote] = useState("");
-  // Filtering and searching state
-  const [stageFilter, setStageFilter] = useState<string>("All");
-  const [search, setSearch] = useState<string>("");
-  // State for selected dummy files
-  const [selectedDummyFiles, setSelectedDummyFiles] = useState<string[]>([]);
-
+  const [rejectNotes, setRejectNotes] = useState("");
+  const [backToApprovalModal, setBackToApprovalModal] = useState<{
+    open: boolean;
+    task: DocumentationTask | null;
+  }>({ open: false, task: null });
+  const [backToApprovalNotes, setBackToApprovalNotes] = useState("");
+  // Fetch tasks
+  useEffect(() => {
+    fetchTasks();
+  }, [search, page, filter]);
+  const fetchTasks = async () => {
+    const response = await makeApiCall(
+      "get",
+      API_ENDPOINT.GET_WORKER_TASKS(search, page, 20, filter),
+      {},
+      "application/json",
+      authToken,
+      "getDocumentationTasks"
+    );
+    if (
+      response.status === 200 &&
+      response.data &&
+      Array.isArray(response.data.tasks)
+    ) {
+      setTasks(response.data.tasks);
+      setTotalPages(response.data.total_pages || 1);
+    } else {
+      toast.error("Failed to fetch documentations");
+      setTasks([]);
+    }
+  };
+  // Mark as Started
+  const handleMarkAsStarted = async (task: DocumentationTask) => {
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_DRAWING_LOG(task.id),
+      { status: "in_progress" },
+      "application/json",
+      authToken,
+      `DocMarkAsStarted${task.id}`
+    );
+    if (response.status === 200) {
+      setTasks((prev) =>
+        prev.map((item) => {
+          if (item.id == task.id) {
+            return { ...item, status: "in_progress" };
+          } else {
+            return item;
+          }
+        })
+      );
+      toast.success("successfully marked as started");
+    } else {
+      toast.error("Failed to mark as started");
+    }
+  };
+  // Approve
+  const handleApprove = async (task: DocumentationTask) => {
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_DRAWING_LOG(task.id),
+      { action_taken: "approved", status: "completed", is_sent: true },
+      "application/json",
+      authToken,
+      `DocMarkAsApproved${task.id}`
+    );
+    if (response.status === 200) {
+      setTasks((prev) =>
+        prev.map((item) => {
+          if (item.id == task.id) {
+            return response.data;
+          }
+          return item;
+        })
+      );
+      toast.success("Successfully approved document");
+    } else {
+      toast.error("Failed to approve this document");
+    }
+  };
+  // Reject
+  const handleReject = async () => {
+    if (rejectFiles.find((item) => !item.label || !item.label.trim())) {
+      toast.error("All uploaded files must have a label.");
+      return;
+    }
+    let uploadedFileIds = [];
+    if (rejectFiles.length > 0) {
+      try {
+        const uploadResults = await Promise.all(
+          rejectFiles.map((f) => uploadFile(f.file, f.label))
+        );
+        uploadedFileIds = uploadResults.map((res) => res.id);
+      } catch (err) {
+        return;
+      }
+    }
+    const task = rejectModal.task;
+    const data = {
+      status: "completed",
+      action_taken: "rejected",
+      reason: rejectNotes,
+      uploaded_files_ids: uploadedFileIds,
+    };
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_DRAWING_LOG(task.id),
+      data,
+      "application/json",
+      authToken,
+      "DocMarkAsRejected"
+    );
+    if (response.status === 200) {
+      setTasks((prev) =>
+        prev.map((item) => {
+          if (item.id == task.id) {
+            return response.data;
+          } else {
+            return item;
+          }
+        })
+      );
+      setRejectModal({ open: false, task: null });
+      setRejectFiles([]);
+      setRejectNotes("");
+      toast.success("Successfully rejected thr drawing");
+    } else {
+      toast.error("Failed to reject drawing");
+    }
+  };
+  // Back to Approval
+  const handleBackToApproval = async () => {
+    const task = backToApprovalModal.task;
+    const completed_files_ids = [
+      ...task.outgoing_files.map((item) => item.id),
+      ...task.incoming_files.map((item) => item.id),
+    ];
+    const data = {
+      uploaded_files_ids: completed_files_ids,
+      status: "not_started",
+      step_name: "approval",
+      notes: backToApprovalNotes,
+      log_id: task.id,
+    };
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.CREATE_DRAWING_LOGS(task.drawing_id),
+      data,
+      "application/json",
+      authToken,
+      "DocBackToApproval"
+    );
+    if (response.status === 201) {
+      setTasks((prev) =>
+        prev.map((item) => {
+          if (item.id == task.id) {
+            return response.data;
+          } else {
+            return item;
+          }
+        })
+      );
+      setBackToApprovalModal({ open: false, task: null });
+      setBackToApprovalNotes("");
+      toast.success("Successfully sent back to approval");
+    } else {
+      toast.error("Failed to sent back to approval");
+    }
+  };
+  // File upload helper
+  const uploadFile = async (file: File, label: string) => {
+    const data = new FormData();
+    data.append("label", label);
+    data.append("file", file);
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.UPLOAD_FILE,
+      data,
+      "application/form-data",
+      authToken,
+      "uploadFile"
+    );
+    if (response.status == 201) {
+      return response.data;
+    } else {
+      return null;
+    }
+  };
   // Get unique stages for dropdown
   const stageOptions = [
     "All",
-    ...Array.from(new Set(docReviewDeliverables.map((d) => d.stage))),
+    ...Array.from(new Set(tasks.map((d) => d.step_name))),
   ];
-
-  // Filtered deliverables
-  const filteredDeliverables = deliverables.filter((d) => {
-    const matchesStage = stageFilter === "All" || d.stage === stageFilter;
+  // Filtered tasks
+  const filteredTasks = tasks.filter((d) => {
+    const matchesStage = stageFilter === "All" || d.step_name === stageFilter;
     const searchLower = search.toLowerCase();
     const matchesSearch =
-      d.client.toLowerCase().includes(searchLower) ||
-      d.projectId.toLowerCase().includes(searchLower) ||
-      d.deliverable.toLowerCase().includes(searchLower);
+      d.client_company?.toLowerCase().includes(searchLower) ||
+      d.project_code?.toLowerCase().includes(searchLower) ||
+      d.drawing_title?.toLowerCase().includes(searchLower);
     return matchesStage && (!search || matchesSearch);
   });
-
-  // Approve handler
-  const handleApprove = (id: string) => {
-    setDeliverables((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: "Approved" } : d))
-    );
-  };
-
-  // Reject handler
-  const handleReject = () => {
-    setDeliverables((prev) =>
-      prev.map((d) =>
-        d.id === rejectModal.deliverableId
-          ? { ...d, status: "Rejected", notes: rejectNote }
-          : d
-      )
-    );
-    setRejectModal({ open: false, deliverableId: null });
-    setRejectNote("");
-    setRejectFiles([]);
-  };
-
-  // Delivery handler
-  const handleDelivery = () => {
-    setDeliverables((prev) =>
-      prev.map((d) =>
-        d.id === deliveryModal.deliverableId
-          ? {
-              ...d,
-              delivered: true,
-              deliveryFiles: [
-                ...deliveryFiles.map((f) => ({
-                  label: f.label,
-                  name: f.file.name,
-                })),
-                ...dummyDeliveryFiles
-                  .filter((f) => selectedDummyFiles.includes(f.url))
-                  .map((f) => ({ label: f.label, name: f.label })),
-              ],
-              deliveryNote,
-            }
-          : d
-      )
-    );
-    setDeliveryModal({ open: false, deliverableId: null });
-    setDeliveryFiles([]);
-    setDeliveryNote("");
-    setSelectedDummyFiles([]);
-  };
 
   return (
     <div className="p-6 mx-auto">
@@ -236,216 +269,279 @@ export const DocumentationDashboard = () => {
       </h2>
       {/* Filter and Search Controls */}
       <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
-        <div className="min-w-[180px] flex flex-row items-center">
-          <label className="text-lg font-semibold text-slate-500 mr-2">
-            Stage:
-          </label>
-          <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select stage" />
-            </SelectTrigger>
-            <SelectContent>
-              {stageOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex-1">
+        <div className="flex-1 flex items-center gap-2">
           <input
             className="border rounded px-2 py-1 w-full"
             type="text"
             placeholder="Search by client, project ID, or deliverable..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") setSearch(searchInput);
+            }}
           />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSearch(searchInput)}
+            className="px-2"
+            aria-label="Search"
+          >
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                d="M21 21l-4.35-4.35"
+              />
+            </svg>
+          </Button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredDeliverables.map((d) => (
-          <Card
-            key={d.id}
-            className="hover:shadow-lg transition-shadow border-blue-100"
-          >
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{d.projectId}</CardTitle>
-                  <p className="text-slate-600">{d.client}</p>
-                </div>
-                <Badge
-                  variant={
-                    d.status === "Rejected"
-                      ? "destructive"
-                      : d.status === "Approved"
-                      ? "default"
-                      : "secondary"
-                  }
-                >
-                  {d.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-slate-500">Stage:</span>
-                  <p className="font-medium">{d.stage}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Deliverable:</span>
-                  <p className="font-medium">{d.deliverable}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Submitted By:</span>
-                  <p className="font-medium">{d.submittedBy}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Date:</span>
-                  <p className="font-medium">{d.date}</p>
-                </div>
-              </div>
-              {/* Actions Section */}
-              <div className="mt-3">
-                <div className="text-xs font-semibold text-slate-500 mb-1">
-                  Actions
-                </div>
-                <div className="flex flex-col md:flex-row gap-2 md:gap-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="md:flex-1"
-                    onClick={() => setViewDetail(d)}
-                  >
-                    View Project Detail
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white md:flex-1 shadow-sm"
-                    onClick={() => handleApprove(d.id)}
-                    disabled={d.status === "Approved"}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="bg-red-600 hover:bg-red-700 text-white md:flex-1 shadow-sm"
-                    onClick={() =>
-                      setRejectModal({ open: true, deliverableId: d.id })
-                    }
-                    disabled={d.status === "Approved"}
-                  >
-                    Reject
-                  </Button>
-                  {/* Make Project Delivery Button */}
-                  {d.stage === "AFC" &&
-                    d.status === "Approved" &&
-                    !d.delivered && (
+      {(fetching && fetchType == "getDocumentationTasks") || !isFetched ? (
+        <Loading full={false} />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filteredTasks.map((task) => (
+              <Card
+                key={task.id}
+                className="hover:shadow-lg transition-shadow border-blue-100"
+              >
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">
+                        {task.project_code}
+                      </CardTitle>
+                      <p className="text-slate-600">{task.client_company}</p>
+                    </div>
+                    <Badge
+                      variant={
+                        task.status === "rejected"
+                          ? "destructive"
+                          : task.status === "approved"
+                          ? "default"
+                          : "secondary"
+                      }
+                      className="capitalize"
+                    >
+                      {task.status}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-slate-500">Stage:</span>
+                      <p className="font-medium">{task.step_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Deliverable:</span>
+                      <p className="font-medium">{task.drawing_title}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Submitted By:</span>
+                      <p className="font-medium">{task.assigned_by.name}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Date:</span>
+                      <p className="font-medium">
+                        {new Date(task.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Actions Section */}
+                  <div className="mt-3">
+                    <div className="text-xs font-semibold text-slate-500 mb-1">
+                      Actions
+                    </div>
+                    <div className="flex flex-col md:flex-row gap-2 md:gap-3">
                       <Button
                         size="sm"
-                        className="bg-blue-700 hover:bg-blue-800 text-white md:flex-1 shadow-sm"
-                        onClick={() =>
-                          setDeliveryModal({ open: true, deliverableId: d.id })
-                        }
+                        variant="outline"
+                        className="md:flex-1"
+                        onClick={() => setViewDetail(task)}
+                        disabled={fetching}
                       >
-                        Make Project Delivery
+                        View Project Detail
                       </Button>
-                    )}
-                  {d.delivered && (
-                    <span className="text-green-700 font-semibold ml-2">
-                      Delivered
-                    </span>
-                  )}
-                </div>
+                      {task.status === "not_started" && (
+                        <Button
+                          size="sm"
+                          className=" text-white md:flex-1 shadow-sm"
+                          onClick={() => handleMarkAsStarted(task)}
+                          disabled={
+                            fetching &&
+                            fetchType == `DocMarkAsStarted${task.id}`
+                          }
+                          loading={
+                            fetching &&
+                            fetchType == `DocMarkAsStarted${task.id}`
+                          }
+                        >
+                          Mark as Started
+                        </Button>
+                      )}
+                      {task.status === "in_progress" && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white md:flex-1 shadow-sm"
+                            onClick={() => handleApprove(task)}
+                            disabled={
+                              fetching &&
+                              fetchType == `DocMarkAsApproved${task.id}`
+                            }
+                            loading={
+                              fetching &&
+                              fetchType == `DocMarkAsApproved${task.id}`
+                            }
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700 text-white md:flex-1 shadow-sm"
+                            onClick={() =>
+                              setRejectModal({ open: true, task: task })
+                            }
+                            disabled={fetching}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {task.status === "completed" &&
+                        task.action_taken === "rejected" &&
+                        !task.is_sent && (
+                          <Button
+                            size="sm"
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white md:flex-1 shadow-sm"
+                            onClick={() =>
+                              setBackToApprovalModal({ open: true, task })
+                            }
+                            disabled={fetching}
+                          >
+                            Back to Approval
+                          </Button>
+                        )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {!fetching && filteredTasks.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-slate-400 mb-4">
+                No documentation tasks found.
               </div>
-              {/* Contact Section */}
-              <div className="mt-3">
-                <div className="text-xs font-semibold text-slate-500 mb-1">
-                  Contact
-                </div>
-                <div className="flex gap-4 items-center">
-                  <a href={`mailto:${d.clientEmail}`} title="Email Client">
-                    <Mail className="w-5 h-5 text-blue-600 hover:text-blue-800 cursor-pointer" />
-                  </a>
-                  <a href={`tel:${d.clientPhone}`} title="Call Client">
-                    <Phone className="w-5 h-5 text-green-600 hover:text-green-800 cursor-pointer" />
-                  </a>
-                  <span className="text-xs text-slate-500 ml-2">
-                    {d.client}
-                  </span>
-                </div>
-              </div>
-              {/* Files Section */}
-              {d.status === "Rejected" && d.notes && (
-                <div className="mt-2 text-red-700 font-semibold">
-                  Rejection Note: {d.notes}
-                </div>
-              )}
-              {/* Delivery Note Section */}
-              {d.delivered && d.deliveryNote && (
-                <div className="mt-2 text-blue-700 font-semibold">
-                  Delivery Note: {d.deliveryNote}
-                </div>
-              )}
-              {/* Delivery Files Section */}
-              {d.delivered && d.deliveryFiles && d.deliveryFiles.length > 0 && (
-                <div className="mt-2">
-                  <span className="text-xs font-semibold text-slate-500 mb-1">
-                    Delivered Files:
-                  </span>
-                  <ul className="list-disc ml-6">
-                    {d.deliveryFiles.map((f, i) => (
-                      <li key={i} className="text-blue-700 text-xs">
-                        {f.name}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </div>
+          )}
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-8 gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="px-3 py-1 text-sm font-medium">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Reject Modal */}
       <Dialog
         open={rejectModal.open}
-        onOpenChange={() =>
-          setRejectModal({ open: false, deliverableId: null })
-        }
+        onOpenChange={() => setRejectModal({ open: false, task: null })}
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Reject Deliverable</DialogTitle>
+            <DialogTitle>Reject Drawing</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <Textarea
               placeholder="Enter rejection note..."
-              value={rejectNote}
-              onChange={(e) => setRejectNote(e.target.value)}
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
             />
             <Input
               type="file"
               multiple
               onChange={(e) => {
-                setRejectFiles(Array.from(e.target.files || []));
+                setRejectFiles(
+                  Array.from(e.target.files || []).map((f) => ({
+                    file: f,
+                    label: "",
+                    tempUrl: URL.createObjectURL(f),
+                  }))
+                );
               }}
             />
+            {/* File label inputs for each uploaded file */}
+            {rejectFiles.length > 0 && (
+              <div className="space-y-2">
+                {rejectFiles.map((f, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      placeholder="File label"
+                      value={f.label}
+                      onChange={(e) => {
+                        const newFiles = [...rejectFiles];
+                        newFiles[idx].label = e.target.value;
+                        setRejectFiles(newFiles);
+                      }}
+                      className={f.label.trim() ? "" : "border-red-400"}
+                    />
+                    <span className="text-xs text-gray-500">{f.file.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2 justify-end mt-4">
               <Button
                 variant="outline"
-                onClick={() =>
-                  setRejectModal({ open: false, deliverableId: null })
-                }
+                onClick={() => setRejectModal({ open: false, task: null })}
               >
                 Cancel
               </Button>
               <Button
                 className="bg-red-600 hover:bg-red-700 text-white"
                 onClick={handleReject}
-                disabled={!rejectNote.trim()}
+                disabled={
+                  fetching &&
+                  (fetchType == "DocMarkAsRejected" ||
+                    fetchType == "uploadFile")
+                }
+                loading={
+                  fetching &&
+                  (fetchType == "DocMarkAsRejected" ||
+                    fetchType == "uploadFile")
+                }
               >
                 Reject
               </Button>
@@ -454,118 +550,37 @@ export const DocumentationDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delivery Modal */}
+      {/* Back to Approval Modal */}
       <Dialog
-        open={deliveryModal.open}
-        onOpenChange={() => {
-          setDeliveryModal({ open: false, deliverableId: null });
-          setSelectedDummyFiles([]);
-        }}
+        open={backToApprovalModal.open}
+        onOpenChange={() => setBackToApprovalModal({ open: false, task: null })}
       >
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Project Delivery</DialogTitle>
+            <DialogTitle>Back to Approval</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <Textarea
-              placeholder="Delivery Note"
-              value={deliveryNote}
-              onChange={(e) => setDeliveryNote(e.target.value)}
+              placeholder="Enter notes for back to approval..."
+              value={backToApprovalNotes}
+              onChange={(e) => setBackToApprovalNotes(e.target.value)}
             />
-            {/* Dummy files selection */}
-            <div>
-              <div className="text-xs font-semibold text-slate-500 mb-1">
-                Select from existing files:
-              </div>
-              <div className="flex flex-col gap-2">
-                {dummyDeliveryFiles.map((file, idx) => (
-                  <label
-                    key={idx}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedDummyFiles.includes(file.url)}
-                      onChange={(e) => {
-                        setSelectedDummyFiles((prev) =>
-                          e.target.checked
-                            ? [...prev, file.url]
-                            : prev.filter((u) => u !== file.url)
-                        );
-                      }}
-                    />
-                    <ShowFile label={file.label} url={file.url} size="small" />
-                  </label>
-                ))}
-              </div>
-            </div>
-            <Input
-              type="file"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                setDeliveryFiles((prev) => [
-                  ...prev,
-                  ...files.map((file) => ({
-                    file,
-                    label: "",
-                    tempUrl: URL.createObjectURL(file),
-                  })),
-                ]);
-                e.target.value = "";
-              }}
-            />
-            {deliveryFiles.map((uf, idx) => (
-              <div key={idx} className="flex items-center gap-2 mt-1">
-                <Input
-                  type="text"
-                  placeholder="Label"
-                  value={uf.label}
-                  onChange={(e) =>
-                    setDeliveryFiles((prev) =>
-                      prev.map((u, i) =>
-                        i === idx ? { ...u, label: e.target.value } : u
-                      )
-                    )
-                  }
-                  className={uf.label.trim() ? "" : "border-red-400"}
-                />
-                <span className="text-xs">{uf.file.name}</span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    setDeliveryFiles((prev) => prev.filter((_, i) => i !== idx))
-                  }
-                >
-                  &times;
-                </Button>
-              </div>
-            ))}
             <div className="flex gap-2 justify-end mt-4">
               <Button
                 variant="outline"
-                onClick={() => {
-                  setDeliveryModal({ open: false, deliverableId: null });
-                  setSelectedDummyFiles([]);
-                }}
+                onClick={() =>
+                  setBackToApprovalModal({ open: false, task: null })
+                }
               >
                 Cancel
               </Button>
               <Button
-                className="bg-blue-700 hover:bg-blue-800 text-white"
-                onClick={() => {
-                  handleDelivery();
-                  setSelectedDummyFiles([]);
-                }}
-                disabled={
-                  (deliveryFiles.length === 0 &&
-                    selectedDummyFiles.length === 0) ||
-                  !deliveryNote.trim() ||
-                  deliveryFiles.some((f) => !f.label.trim())
-                }
+                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                onClick={handleBackToApproval}
+                disabled={!backToApprovalNotes.trim() || fetching}
+                loading={fetching && fetchType == "DocBackToApproval"}
               >
-                Confirm Delivery
+                Back to Approval
               </Button>
             </div>
           </div>
@@ -584,7 +599,7 @@ export const DocumentationDashboard = () => {
                   Project/Deliverable Details
                 </h2>
                 <span className="ml-auto text-white/80 font-mono text-sm">
-                  {viewDetail.projectId}
+                  {viewDetail.project_code}
                 </span>
                 <button
                   className="fixed z-50 top-6 right-6 text-white/80 hover:text-white text-2xl font-bold bg-blue-700/80 rounded-full p-1 shadow-lg"
@@ -600,33 +615,33 @@ export const DocumentationDashboard = () => {
                     Client Name:
                   </span>
                   <br />
-                  {viewDetail.client}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-700">Stage:</span>
-                  <br />
-                  {viewDetail.stage}
+                  {viewDetail.client_company}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
-                    Deliverable:
+                    Project Code:
                   </span>
                   <br />
-                  {viewDetail.deliverable}
+                  {viewDetail.project_code}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Drawing:</span>
+                  <br />
+                  {viewDetail.drawing_title}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
                     Submitted By:
                   </span>
                   <br />
-                  {viewDetail.submittedBy}
+                  {viewDetail.drawing_uploaded_by_user.name}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
                     Submission Date:
                   </span>
                   <br />
-                  {viewDetail.date}
+                  {new Date(viewDetail.created_at).toLocaleString()}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">Status:</span>
@@ -642,26 +657,28 @@ export const DocumentationDashboard = () => {
                     Contact Person:
                   </span>
                   <User size={18} className="text-blue-500" />
-                  <span className="text-slate-700">N/A</span>
+                  <span className="text-slate-700">
+                    {viewDetail.contact_person}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-700">Phone:</span>
                   <a
-                    href={`tel:${viewDetail.clientPhone}`}
+                    href={`tel:${viewDetail.contact_person_phone}`}
                     className="inline-flex items-center gap-1 border border-blue-200 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 transition-colors text-sm font-medium outline-none focus:ring-2 focus:ring-blue-400"
                   >
                     <Phone className="text-green-500" />
-                    {viewDetail.clientPhone}
+                    {/* {viewDetail.client_phone} */}
                   </a>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-700">Email:</span>
                   <a
-                    href={`mailto:${viewDetail.clientEmail}`}
+                    href={`mailto:${viewDetail.contact_person_email}`}
                     className="inline-flex items-center gap-1 border border-blue-200 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 transition-colors text-sm font-medium outline-none focus:ring-2 focus:ring-blue-400"
                   >
                     <Mail className="text-rose-500" />
-                    {viewDetail.clientEmail}
+                    {viewDetail.contact_person_email}
                   </a>
                 </div>
               </div>
@@ -677,37 +694,52 @@ export const DocumentationDashboard = () => {
               <div className="mx-8 my-4">
                 <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
                   <FileText size={18} className="text-blue-500" />
-                  Uploaded Files:
+                  Incoming Files:
                 </div>
                 <ul className="list-disc ml-8 space-y-1">
-                  {viewDetail.files.length === 0 && (
-                    <li className="text-slate-400">No files uploaded</li>
-                  )}
-                  {viewDetail.files.map((f, i) => (
-                    <li key={i}>
-                      <ShowFile label={f.label} url={f.url} size="medium" />
-                    </li>
-                  ))}
+                  {viewDetail.incoming_files &&
+                    viewDetail.incoming_files.length === 0 && (
+                      <li className="text-slate-400">No files uploaded</li>
+                    )}
+                  {viewDetail.incoming_files &&
+                    viewDetail.incoming_files.map((f, i) => (
+                      <li key={i}>
+                        <ShowFile label={f.label} url={f.file} size="medium" />
+                      </li>
+                    ))}
                 </ul>
               </div>
+              <div className="mx-8 my-4">
+                <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
+                  <FileText size={18} className="text-blue-500" />
+                  Outgoing Files:
+                </div>
+                <ul className="list-disc ml-8 space-y-1">
+                  {viewDetail.outgoing_files &&
+                    viewDetail.outgoing_files.length === 0 && (
+                      <li className="text-slate-400">No files uploaded</li>
+                    )}
+                  {viewDetail.outgoing_files &&
+                    viewDetail.outgoing_files.map((f, i) => (
+                      <li key={i}>
+                        <ShowFile label={f.label} url={f.file} size="medium" />
+                      </li>
+                    ))}
+                </ul>
+              </div>
+              {viewDetail.status === "rejected" && viewDetail.reason && (
+                <div className="mt-2 text-red-700 font-semibold">
+                  Rejection Note: {viewDetail.reason}
+                </div>
+              )}
               {/* Project Related Documents Dropdown */}
               <div className="mx-8 my-4">
                 <ProjectDocumentsDropdown
-                  documents={allProjectDocuments.filter(
-                    (doc) => doc.projectId === viewDetail.projectId
-                  )}
-                  title="Project Related Documents"
+                  documents={viewDetail.drawing_files} // No mock documents for now, as they are not part of the task
+                  title="Drawing Related Documents"
                 />
               </div>
-              {/* Updates Section */}
-              <div className="mx-8 my-4">
-                <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
-                  <AlertCircle size={18} className="text-yellow-500" />
-                  Updates:
-                </div>
-                <div className="text-slate-400">No updates yet.</div>
-              </div>
-              {/* Close Button */}
+
               <div className="flex justify-end px-8 pb-6">
                 <Button variant="outline" onClick={() => setViewDetail(null)}>
                   Close

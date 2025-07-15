@@ -8,29 +8,9 @@ import TaskAssignmentPage from "./TaskAssignmentPage";
 import Submission from "./Submission";
 import ShowFile from "./ShowFile";
 import AdminEstimationStage from "./AdminEstimationStage";
+import { Project } from "@/types/apiTypes";
 
-interface Project {
-  id: string;
-  clientName: string;
-  location: string;
-  createdDate: string;
-  status: string;
-  assignedTeams: string[];
-  progress: number;
-  priority: string;
-  estimatedCompletion: string;
-  estimationDetails: {
-    costEstimate: string;
-    costBreakdownFile: { label: string; url: string } | null;
-    estimationPDF: { label: string; url: string } | null;
-    deadline: string;
-    approvalDate?: string;
-    remarks: string;
-    uploadedFiles: { label: string; url: string }[];
-  };
-}
 
-type PanelTab = "deliverable" | "task" | "documentation";
 
 interface ProjectSlidingPanelProps {
   selectedProject: Project;
@@ -69,18 +49,15 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
   selectedProject,
   onClose,
 }) => {
-  const [panelTab, setPanelTab] = useState<PanelTab>("deliverable");
   const [showEstimationDetails, setShowEstimationDetails] = useState(false);
-  const isOverdue =
-    new Date(selectedProject.estimatedCompletion) < new Date() &&
-    selectedProject.status !== "Finalized";
+ 
   return (
-    <div className="fixed top-0 left-64 right-0 bottom-0 z-50 h-full w-[calc(100vw-16rem)] flex overflow-y-scroll max-h-screen">
+    <div className="fixed inset-0 z-50 flex">
       <div
         className="absolute inset-0 bg-black bg-opacity-20"
         onClick={onClose}
       />
-      <div className="relative w-full h-full bg-white p-6 flex flex-col">
+      <div className="relative w-full h-full bg-white p-6 flex flex-col overflow-y-auto">
         {/* Project Details */}
         <div className="mb-6">
           <div className="border rounded-xl p-6 bg-slate-50 mb-2">
@@ -93,12 +70,12 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
                   <Badge className={getStatusColor(selectedProject.status)}>
                     {selectedProject.status}
                   </Badge>
-                  {isOverdue && (
+                  {/* {isOverdue && (
                     <AlertCircle size={16} className="text-red-500" />
-                  )}
+                  )} */}
                 </div>
                 <h2 className="text-xl font-semibold text-slate-800 mb-1">
-                  {selectedProject.clientName}
+                  {selectedProject.client_name}
                 </h2>
                 <div className="flex items-center text-sm text-slate-500 space-x-4 mb-1">
                   <span className="flex items-center">
@@ -107,16 +84,7 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
                   </span>
                   <span className="flex items-center">
                     <Calendar size={14} className="mr-1" />
-                    {new Date(selectedProject.createdDate).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center text-sm text-slate-600 pt-2">
-                  <Clock size={14} className="mr-2" />
-                  <span>
-                    Due:{" "}
-                    {new Date(
-                      selectedProject.estimatedCompletion
-                    ).toLocaleDateString()}
+                    {new Date(selectedProject.created_at).toLocaleDateString()}
                   </span>
                 </div>
               </div>
@@ -125,11 +93,11 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
                   <p className="text-sm text-slate-500 mb-1">Progress</p>
                   <div className="flex items-center space-x-2">
                     <Progress
-                      value={selectedProject.progress}
+                      value={20}
                       className="w-20"
                     />
                     <span className="text-sm font-medium">
-                      {selectedProject.progress}%
+                      {20}%
                     </span>
                   </div>
                 </div>
@@ -159,9 +127,11 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
             </span>
             <span>{showEstimationDetails ? "▲" : "▼"}</span>
           </button>
-          {showEstimationDetails && selectedProject.estimationDetails && (
+          {showEstimationDetails && selectedProject.estimation && (
             <div className="p-0">
-              <AdminEstimationStage project={selectedProject} />
+              <AdminEstimationStage
+                estimationDetails={selectedProject.estimation}
+              />
             </div>
           )}
         </div>
