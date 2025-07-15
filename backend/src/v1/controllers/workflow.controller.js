@@ -1,4 +1,9 @@
+import { updateProjectPartial } from "../services/projects.service.js";
 import * as WorkflowService from "../services/workflow.service.js";
+import getNextStage, {
+  getNewProgressOfProject,
+  getNextRevision,
+} from "../utils/getNextStage.js";
 import { formatResponse } from "../utils/response.js";
 
 export async function createStage(req, res) {
@@ -84,12 +89,19 @@ export async function addDrawingStageLog(req, res) {
       userId: req.user.id,
       ...req.body,
     });
-    
+    let logData;
     const current_log_id = req.body.log_id;
-    await WorkflowService.updateLogStatus(current_log_id, true);
-    const logData = await WorkflowService.getUserAssignedTaskByLogId(
-      current_log_id
-    );
+    if (current_log_id) {
+      await WorkflowService.updateLogStatus(current_log_id, true);
+      logData = await WorkflowService.getUserAssignedTaskByLogId(
+        current_log_id
+      );
+    } else {
+      const current_log_id = result.id;
+      logData = await WorkflowService.getUserAssignedTaskByLogId(
+        current_log_id
+      );
+    }
     res.status(201).json(
       formatResponse({
         statusCode: 201,
@@ -99,7 +111,7 @@ export async function addDrawingStageLog(req, res) {
     );
   } catch (err) {
     console.log(err);
-    if(result) {
+    if (result) {
       await WorkflowService.deleteDrawingLog(result.id);
     }
     res.status(500).json(
@@ -214,17 +226,76 @@ export async function getAssignedTasksController(req, res) {
 export async function EditDrawingLogsController(req, res) {
   try {
     const { id } = req.params;
-    const { status, uploaded_files_ids, action_taken,reason } = req.body;
+    const { status, uploaded_files_ids, action_taken, reason, is_sent } =
+      req.body;
 
     await WorkflowService.updateDrawingLog(
       id,
       status,
       action_taken,
       reason,
+      is_sent,
       uploaded_files_ids
     );
     const logData = await WorkflowService.getUserAssignedTaskByLogId(id);
 
+    if (
+      status == "completed" &&
+      action_taken == "approved" &&
+      logData.step_name == "documentation"
+    ) {
+      await WorkflowService.partialUpdateStage(logData.stage_id, {
+        status: "completed",
+      });
+      const nextStage = getNextStage(logData.stage_name);
+      if (nextStage) {
+        const nextStageId = await WorkflowService.getStageIdByProjectAndName(
+          logData.project_id,
+          nextStage
+        );
+        if (nextStageId) {
+          await WorkflowService.partialUpdateStage(nextStageId, {
+            status: "pending",
+          });
+        }
+      }
+      const newProgress = await getNewProgressOfProject(
+        logData.stage_name,
+        logData.project_id,
+        logData.project_progress
+      );
+      const projectUpdateData = { progress: newProgress };
+      if (logData.stage_name == "AFC") {
+        projectUpdateData["status"] = "completed";
+      }
+      await updateProjectPartial(logData.project_id, {
+        progress: newProgress,
+      });
+      const incomingFIlesIds = Array.isArray(logData.incoming_files)
+        ? logData.incoming_files.map((item) => item.id)
+        : [];
+      if (incomingFIlesIds.length) {
+        await WorkflowService.addFinalFiles(
+          logData.drawing_id,
+          incomingFIlesIds
+        );
+      }
+    }
+    if (
+      status == "completed" &&
+      action_taken == "rejected" &&
+      logData.step_name == "documentation"
+    ) {
+      const stage = await WorkflowService.getStageById(logData.stage_id);
+      const currentRevision = stage.revision;
+
+      const newRevision = getNextRevision(currentRevision);
+      console.log(newRevision);
+      // Update stage with new revision
+      await WorkflowService.partialUpdateStage(logData.stage_id, {
+        revision: newRevision,
+      });
+    }
     res.status(200).json(
       formatResponse({
         statusCode: 200,
@@ -261,6 +332,72 @@ export async function getDrawingLogByIdController(req, res) {
       formatResponse({
         statusCode: 500,
         detail: "Failed to fetch drawing log",
+        data: err.message,
+      })
+    );
+  }
+}
+
+export async function createDrawingFinalFile(req, res) {
+  try {
+    const { id } = req.params;
+    const { status, uploaded_files_ids, action_taken, reason } = req.body;
+
+    await WorkflowService.updateDrawingLog(
+      id,
+      status,
+      action_taken,
+      reason,
+      uploaded_files_ids
+    );
+    const logData = await WorkflowService.getUserAssignedTaskByLogId(id);
+    res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Drawing log updated successfully",
+        data: logData,
+      })
+    );
+  } catch (err) {
+    console.error("Error updating drawing log:", err);
+    res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: "Failed to update drawing log",
+        data: err.message,
+      })
+    );
+  }
+}
+
+export async function getStageFinalFiles(req,res){
+  const projectId = parseInt(req.params.id, 10);
+
+  if (isNaN(projectId)) {
+    return res.status(400).json(
+      formatResponse({
+        statusCode: 400,
+        detail: "Invalid project ID",
+      })
+    );
+  }
+
+  try {
+    const files = await WorkflowService.getFinalFilesByProjectId(projectId);
+    console.log(files);
+    res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Final files fetched successfully",
+        data: files,
+      })
+    );
+  } catch (err) {
+    console.error("Error fetching final files:", err);
+    res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: "Internal server error",
         data: err.message,
       })
     );

@@ -9,6 +9,7 @@ export async function createStage(project_id, stagesData) {
         allocated_hours: stage.allocated_hours,
         project_id,
         status: "pending",
+        revision: "A",
       };
     } else {
       return {
@@ -17,20 +18,22 @@ export async function createStage(project_id, stagesData) {
         allocated_hours: stage.allocated_hours,
         project_id,
         status: "not_started",
+        revision: index == 1 ? "B" : index == 2 ? "C" : "1",
       };
     }
   });
 
   const insertions = stages.map((stage) =>
     pool.query(
-      `INSERT INTO stages (name, weight, allocated_hours, project_id, status)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      `INSERT INTO stages (name, weight, allocated_hours, project_id, status,revision)
+       VALUES ($1, $2, $3, $4, $5,$6) RETURNING *`,
       [
         stage.name,
         stage.weight,
         stage.allocated_hours,
         project_id,
         stage.status,
+        stage.revision,
       ]
     )
   );
@@ -39,10 +42,43 @@ export async function createStage(project_id, stagesData) {
     const grouped = {};
     results.forEach((res) => {
       const stage = res.rows[0];
-      grouped[stage.name] = stage;
+      if (!grouped[stage.name]) {
+        grouped[stage.name] = {};
+      }
+      grouped[stage.name]["stage"] = stage;
+      grouped[stage.name]["drawing"] = null;
+      grouped[stage.name]["drawingLogs"] = [];
     });
     return grouped;
   });
+}
+
+export async function partialUpdateStage(stageId, updateData) {
+  const fields = [];
+  const values = [];
+  let index = 1;
+  console.log(stageId, updateData);
+  for (const key in updateData) {
+    fields.push(`${key} = $${index}`);
+    values.push(updateData[key]);
+    index++;
+  }
+
+  if (fields.length === 0) {
+    throw new Error("No fields provided for update.");
+  }
+
+  values.push(stageId); // for WHERE clause
+
+  const query = `
+    UPDATE stages
+    SET ${fields.join(", ")}, updated_at = NOW()
+    WHERE id = $${index}
+    RETURNING *;
+  `;
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
 }
 
 export async function uploadStageFiles(stageId, files) {
@@ -100,7 +136,6 @@ export async function createDrawing(data, uploaded_by) {
   }
   return result.rows[0];
 }
-
 export async function addDrawingStageLog({
   drawingId,
   step_name,
@@ -115,12 +150,38 @@ export async function addDrawingStageLog({
   try {
     await client.query("BEGIN");
 
+    // Get current step order
     const stepOrderRes = await client.query(
       `SELECT COUNT(*) AS count FROM drawing_stage_logs WHERE drawing_id = $1`,
       [drawingId]
     );
     const step_order = parseInt(stepOrderRes.rows[0].count, 10) + 1;
 
+    // === Determine forwarded_user_id ===
+    if (!forwarded_user_id) {
+      if (step_name.toLowerCase() === "approval") {
+        // Get uploaded_by from the drawing
+        const drawingRes = await client.query(
+          `SELECT uploaded_by FROM drawings WHERE id = $1`,
+          [drawingId]
+        );
+        forwarded_user_id = drawingRes.rows[0]?.uploaded_by || null;
+      } else {
+        // Get from last similar step
+        const lastForwardedRes = await client.query(
+          `SELECT forwarded_user_id FROM drawing_stage_logs
+           WHERE drawing_id = $1 AND step_name = $2 AND forwarded_user_id IS NOT NULL
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [drawingId, step_name]
+        );
+        if (lastForwardedRes.rows.length > 0) {
+          forwarded_user_id = lastForwardedRes.rows[0].forwarded_user_id;
+        }
+      }
+    }
+
+    // === Insert the log ===
     const logRes = await client.query(
       `INSERT INTO drawing_stage_logs 
       (drawing_id, step_name, status, notes, created_by, forwarded_user_id, action_taken, step_order)
@@ -140,6 +201,7 @@ export async function addDrawingStageLog({
 
     const logId = logRes.rows[0].id;
 
+    // === Insert uploaded files ===
     if (uploaded_files_ids?.length) {
       const fileInsertions = uploaded_files_ids.map((fileId) =>
         client.query(
@@ -159,6 +221,23 @@ export async function addDrawingStageLog({
   } finally {
     client.release();
   }
+}
+
+export async function addFinalFiles(drawingId, uploadedFileIds = []) {
+  if (!drawingId || !uploadedFileIds.length) return [];
+
+  const values = uploadedFileIds
+    .map((fileId) => `(${drawingId}, ${fileId})`)
+    .join(", ");
+
+  const query = `
+    INSERT INTO final_files (drawing_id, uploaded_file_id)
+    VALUES ${values}
+    RETURNING *;
+  `;
+
+  const result = await pool.query(query);
+  return result.rows;
 }
 
 export async function getDrawingLogs(drawingId) {
@@ -205,6 +284,18 @@ export async function getDrawingsWithLogs(projectId, stageId) {
         WHERE duf.drawing_id = d.id
       ), '[]'::json) AS uploaded_files,
 
+      -- Final files
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM final_files ff
+        JOIN uploaded_files uf ON ff.uploaded_file_id = uf.id
+        WHERE ff.drawing_id = d.id
+      ), '[]'::json) AS final_files,
+
       -- Drawing stage logs (ordered by created_at ASC)
       COALESCE((
         SELECT json_agg(log_entry ORDER BY log_entry->>'created_at')
@@ -219,7 +310,7 @@ export async function getDrawingsWithLogs(projectId, stageId) {
             'is_sent', l.is_sent,
             'action_taken', l.action_taken,
             'created_at', l.created_at,
-            'updated_at', l.updated_at,
+            'updated_at', l.updated_at, 
             'created_by', json_build_object(
               'id', u.id,
               'name', u.name,
@@ -260,7 +351,6 @@ export async function getDrawingsWithLogs(projectId, stageId) {
   const result = await pool.query(query, [projectId, stageId]);
   return result.rows[0];
 }
-
 
 export async function getDrawingsWithLogsById(drawing_id) {
   const query = `
@@ -415,17 +505,62 @@ export async function getUserAssignedTasks(
       SELECT 
         l.*,
         d.title AS drawing_title,
+        d.revision,
+        d.drawing_type,
+        d.client_dwg_no,
+        d.iqeas_dwg_no,
+        d.allocated_hours,
+        d.drawing_weightage,
+        d.uploaded_by AS drawing_uploaded_by,
+        d.stage_id,
         p.id AS project_id,
         p.project_id AS project_code,
-        d.uploaded_by AS project_uploaded_by,
         p.client_company,
+        p.contact_person_phone,
+        p.contact_person,
+        p.progress As project_progress,
+        p.status AS project_status,
         p.priority AS estimation_priority,
         e.deadline AS estimation_due_date,
         u.name AS assigned_by_name,
         u.email AS assigned_by_email,
         u.id AS assigned_by_id,
+        p.contact_person_email,
+        d.created_at AS drawing_created_at,
 
-        -- Sent to user (get from the next log for same drawing)
+        -- Drawing Creator
+        json_build_object(
+          'id', du.id,
+          'name', du.name,
+          'email', du.email
+        ) AS drawing_uploaded_by_user,
+
+       -- Estimation uploaded files
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM estimations e2
+        JOIN estimation_uploaded_files ef ON ef.estimation_id = e2.id
+        JOIN uploaded_files uf ON uf.id = ef.uploaded_file_id
+        WHERE e2.project_id = p.id
+      ), '[]'::json) AS estimation_files,
+
+        -- Drawing uploaded files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file
+          ))
+          FROM drawings_uploaded_files duf
+          JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
+          WHERE duf.drawing_id = d.id
+        ), '[]'::json) AS drawing_files,
+
+        -- Sent to user
         (
           SELECT json_build_object(
             'name', fu.name,
@@ -468,12 +603,12 @@ export async function getUserAssignedTasks(
 
       FROM drawing_stage_logs l
       JOIN drawings d ON d.id = l.drawing_id
+      JOIN users du ON du.id = d.uploaded_by
       JOIN projects p ON p.id = d.project_id
-      JOIN users u ON u.id = l.created_by
       LEFT JOIN estimations e ON e.project_id = p.id
+      JOIN users u ON u.id = l.created_by
 
       WHERE l.forwarded_user_id = $1
-        AND (l.step_name = 'drafting' OR l.step_name = 'checking')
         AND (
           d.title ILIKE $2 OR
           p.client_company ILIKE $2 OR
@@ -486,25 +621,44 @@ export async function getUserAssignedTasks(
 
     SELECT 
       id,
-      project_uploaded_by,
       drawing_id,
       drawing_title,
-      step_name,
+      drawing_type,
+      revision,
+      drawing_weightage,
+      allocated_hours,
+      client_dwg_no,
+      iqeas_dwg_no,
+      project_progress,
+      stage_id,
       status,
+      step_name,
       is_sent,
       action_taken,
       step_order,
+      drawing_created_at,
       notes,
       reason,
       created_at,
       updated_at,
+      drawing_uploaded_by_user,
       json_build_object('id', assigned_by_id, 'name', assigned_by_name, 'email', assigned_by_email) AS assigned_by,
       sent_to,
+      -- Project details
       project_id,
       project_code,
       client_company,
+      contact_person_phone,
+      contact_person_email,  
+      contact_person,   
+      project_status,
+      -- Estimation
       estimation_due_date,
       estimation_priority,
+      estimation_files,
+      -- Drawing
+      drawing_files,
+      -- Files
       incoming_files,
       outgoing_files,
       total_count
@@ -520,11 +674,13 @@ export async function getUserAssignedTasks(
     tasks: result.rows,
   };
 }
+
 export async function updateDrawingLog(
   logId,
   status,
   action_taken = "not_yet",
   reason = "",
+  is_sent = false,
   uploaded_files_ids = []
 ) {
   const client = await pool.connect();
@@ -532,13 +688,22 @@ export async function updateDrawingLog(
 
   try {
     await client.query("BEGIN");
-
-    const result = await client.query(
-      `UPDATE drawing_stage_logs
-      SET status = $1, action_taken = $2, reason = $3, updated_at = NOW()
-       WHERE id = $4 RETURNING *`,
-      [status, action_taken, reason, logId]
-    );
+    let result;
+    if (is_sent != null || is_sent == undefined) {
+      result = await client.query(
+        `UPDATE drawing_stage_logs
+        SET status = $1, action_taken = $2, reason = $3, updated_at = NOW()
+         WHERE id = $4 RETURNING *`,
+        [status, action_taken, reason, logId]
+      );
+    } else {
+      result = await client.query(
+        `UPDATE drawing_stage_logs
+        SET status = $1, action_taken = $2, reason = $3,is_sent=$6, updated_at = NOW()
+         WHERE id = $4 RETURNING *`,
+        [status, action_taken, reason, logId, is_sent]
+      );
+    }
 
     if (uploaded_files_ids.length > 0) {
       const insertPromises = uploaded_files_ids.map((fileId) =>
@@ -651,15 +816,63 @@ export async function getUserAssignedTaskByLogId(logId) {
       SELECT 
         l.*,
         d.title AS drawing_title,
+        d.revision,
+        d.drawing_type,
+        d.client_dwg_no,
+        d.iqeas_dwg_no,
+        d.allocated_hours,
+        d.drawing_weightage,
+        d.uploaded_by AS drawing_uploaded_by,
+        d.stage_id,
+        p.progress AS project_progress,
+        d.created_at AS drawing_created_at,
+        s.name AS stage_name,
         p.id AS project_id,
         p.project_id AS project_code,
         p.client_company,
-        d.uploaded_by AS project_uploaded_by,
+        p.contact_person,
+        p.contact_person_email,
+        p.contact_person_phone,
+        p.status AS project_status,
         p.priority AS estimation_priority,
+
         e.deadline AS estimation_due_date,
+
         u.name AS assigned_by_name,
-        u.id AS assigned_by_id,
         u.email AS assigned_by_email,
+        u.id AS assigned_by_id,
+
+        -- Drawing Creator
+        json_build_object(
+          'id', du.id,
+          'name', du.name,
+          'email', du.email
+        ) AS drawing_uploaded_by_user,
+
+        -- Estimation uploaded files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file
+          ))
+          FROM estimations e2
+          JOIN estimation_uploaded_files ef ON ef.estimation_id = e2.id
+          JOIN uploaded_files uf ON uf.id = ef.uploaded_file_id
+          WHERE e2.project_id = p.id
+        ), '[]'::json) AS estimation_files,
+
+        -- Drawing uploaded files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file
+          ))
+          FROM drawings_uploaded_files duf
+          JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
+          WHERE duf.drawing_id = d.id
+        ), '[]'::json) AS drawing_files,
 
         -- Sent to user (next log)
         (
@@ -702,8 +915,10 @@ export async function getUserAssignedTaskByLogId(logId) {
 
       FROM drawing_stage_logs l
       JOIN drawings d ON d.id = l.drawing_id
+      JOIN users du ON du.id = d.uploaded_by
       JOIN projects p ON p.id = d.project_id
       JOIN users u ON u.id = l.created_by
+      JOIN stages s ON s.id = d.stage_id
       LEFT JOIN estimations e ON e.project_id = p.id
       WHERE l.id = $1
     )
@@ -712,23 +927,43 @@ export async function getUserAssignedTaskByLogId(logId) {
       id,
       drawing_id,
       drawing_title,
-      step_name,
+      drawing_type,
+      revision,
+      drawing_weightage,
+      allocated_hours,
+      stage_name,
+      project_progress,
+      client_dwg_no,
+      iqeas_dwg_no,
+      stage_id,
       status,
+      step_name,
       is_sent,
       action_taken,
       step_order,
+      drawing_created_at,
       notes,
       reason,
-      project_uploaded_by,
       created_at,
       updated_at,
-      json_build_object('id', assigned_by_id, 'name', assigned_by_name, 'email', assigned_by_email) AS assigned_by,      
+      drawing_uploaded_by_user,
+      json_build_object('id', assigned_by_id, 'name', assigned_by_name, 'email', assigned_by_email) AS assigned_by,
       sent_to,
+      -- Project details
       project_id,
       project_code,
       client_company,
+      contact_person,
+      contact_person_phone,
+      contact_person_email,
+      project_status,
+      -- Estimation
       estimation_due_date,
       estimation_priority,
+      estimation_files,
+      -- Drawing
+      drawing_files,
+      -- Files
       incoming_files,
       outgoing_files
     FROM filtered_log;
@@ -736,4 +971,50 @@ export async function getUserAssignedTaskByLogId(logId) {
 
   const result = await pool.query(query, [logId]);
   return result.rows[0] || null;
+}
+
+export async function getStageIdByProjectAndName(project_id, name) {
+  const result = await pool.query(
+    `SELECT id FROM stages WHERE project_id = $1 AND name = $2 LIMIT 1`,
+    [project_id, name]
+  );
+  return result.rows[0]?.id || null;
+}
+export async function getStageById(stageId) {
+  const query = `
+    SELECT 
+      id,
+      project_id,
+      name,
+      weight,
+      allocated_hours,
+      created_at,
+      updated_at,
+      status,
+      revision
+    FROM stages
+    WHERE id = $1
+  `;
+
+  const result = await pool.query(query, [stageId]);
+  return result.rows[0] || null;
+}
+
+export async function getFinalFilesByProjectId(projectId) {
+  const { rows } = await pool.query(
+    `
+    SELECT 
+      uf.id,
+      uf.label,
+      uf.file
+    FROM final_files ff
+    JOIN uploaded_files uf ON ff.uploaded_file_id = uf.id
+    JOIN drawings d ON ff.drawing_id = d.id
+    WHERE d.project_id = $1
+    `,
+    [projectId]
+  );
+  console.log(rows);
+
+  return rows;
 }

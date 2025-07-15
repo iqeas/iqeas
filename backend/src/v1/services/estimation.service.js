@@ -11,8 +11,7 @@ export async function createEstimation(data) {
     approval_date = null,
     approved = false,
     sent_to_pm = false,
-    forward_id = null,
-    forward_type = null,
+    forwarded_user_id = null,
     notes = null,
     uploaded_file_ids = [],
   } = data;
@@ -21,11 +20,11 @@ export async function createEstimation(data) {
   INSERT INTO estimations (
     project_id, user_id, status, log, cost,
     deadline, approval_date, approved, sent_to_pm,
-    forward_id, forward_type, notes
+    forwarded_user_id, notes
   ) VALUES (
     $1, $2, $3, $4, $5,
     $6, $7, $8, $9, $10,
-    $11, $12
+    $11
   ) RETURNING *;
 `;
 
@@ -39,8 +38,7 @@ export async function createEstimation(data) {
     approval_date,
     approved,
     sent_to_pm,
-    forward_id,
-    forward_type,
+    forwarded_user_id,
     notes,
   ];
 
@@ -77,8 +75,7 @@ export async function getEstimationById(estimationId) {
       e.approval_date,
       e.approved,
       e.sent_to_pm,
-      e.forward_type,
-      e.forward_id,
+      e.forwarded_user_id,
       e.notes,
       e.updates,
 
@@ -105,39 +102,16 @@ export async function getEstimationById(estimationId) {
         ), '[]'::json
       ) AS uploaded_files,
 
-      -- Forward object (user or team)
-      CASE
-        WHEN e.forward_type = 'user' THEN (
-          SELECT json_build_object(
-            'id', u.id,
-            'label', u.name,
-            'users', NULL
-          )
-          FROM users u
-          WHERE u.id = e.forward_id
+      -- Forwarded user info
+      (
+        SELECT json_build_object(
+          'id', u.id,
+          'label', u.name,
+          'email', u.email
         )
-        WHEN e.forward_type = 'team' THEN (
-          SELECT json_build_object(
-            'type', 'team',
-            'id', t.id,
-            'label', t.title,
-            'users', COALESCE((
-              SELECT json_agg(
-                json_build_object(
-                  'id', u2.id,
-                  'name', u2.name,
-                  'email', u2.email
-                )
-              )
-              FROM teams_users tu
-              JOIN users u2 ON u2.id = tu.user_id
-              WHERE tu.team_id = t.id
-            ), '[]'::json)
-          )
-          FROM teams t WHERE t.id = e.forward_id
-        )
-        ELSE NULL
-      END AS forward
+        FROM users u
+        WHERE u.id = e.forwarded_user_id
+      ) AS forwarded_to
 
     FROM estimations e
     JOIN users eu ON e.user_id = eu.id
@@ -149,6 +123,7 @@ export async function getEstimationById(estimationId) {
   const result = await pool.query(query, values);
   return result.rows[0] || null;
 }
+
 
 export async function updateEstimation(id, data) {
   const fields = [];

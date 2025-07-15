@@ -9,6 +9,8 @@ import {
   createProjectRejection,
   projectRejectionById,
   getPMProjects,
+  getAdminProjects,
+  addProjectDeliveryFiles,
 } from "../services/projects.service.js";
 
 import { formatResponse } from "../utils/response.js";
@@ -87,15 +89,16 @@ export async function getProjectsPaginatedController(req, res) {
   try {
     const page = parseInt(req.query.page) || 1;
     const size = parseInt(req.query.size) || 10;
-
-    const data = await getProjectByPagination(page, size);
+    const query = req.query.query || "";
+    const data = await getProjectByPagination(page, size, query);
     const cardData = await getRFQCardData();
     res.status(200).json(
       formatResponse({
         statusCode: 200,
         detail: "Project fetched sucessfully",
         data: {
-          projects: data,
+          total_pages: data.total_pages,
+          projects: data.projects,
           cards: cardData,
         },
       })
@@ -116,13 +119,17 @@ export const getEstimationProjects = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const size = parseInt(req.query.size) || 10;
     const query = req.query.search || "";
-    const projects = await getProjectsEstimationProjects();
+    const projects = await getProjectsEstimationProjects(page, size, query);
     const cards = await getEstimationCardData();
     return res.status(200).json(
       formatResponse({
         statusCode: 200,
         detail: "Projects sent to estimation fetched successfully",
-        data: { total_pages: 10, projects, cards },
+        data: {
+          total_pages: projects.total_pages,
+          projects: projects.projects,
+          cards,
+        },
       })
     );
   } catch (error) {
@@ -136,17 +143,56 @@ export const getEstimationProjects = async (req, res) => {
 };
 export const getPMProjectsController = async (req, res) => {
   try {
-    // edit-needed i will pase page and size from query params and alse search as query
     const page = parseInt(req.query.page) || 1;
     const size = parseInt(req.query.size) || 10;
     const query = req.query.search || "";
-    const projects = await getPMProjects();
+    const projects = await getPMProjects({
+      page: page,
+      size,
+      query,
+    });
     const cards = await getEstimationCardData();
     return res.status(200).json(
       formatResponse({
         statusCode: 200,
         detail: "Projects sent to estimation fetched successfully",
-        data: { total_pages: 10, projects, cards },
+        data: {
+          total_pages: projects.total_pages,
+          projects: projects.projects,
+          cards,
+        },
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching estimation projects:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+
+export const getAdminProjectsController = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+    const query = req.query.search || "";
+    const projects = await getAdminProjects({
+      page: page,
+      size,
+      query,
+    });
+    const cards = await getEstimationCardData();
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Projects sent to estimation fetched successfully",
+        data: {
+          total_pages: projects.total_pages,
+          projects: projects.projects,
+          cards,
+        },
       })
     );
   } catch (error) {
@@ -194,3 +240,37 @@ export const projectRejectCreateHandler = async (req, res) => {
       );
   }
 };
+
+export async function addDeliveryFilesController(req, res) {
+  const projectId = parseInt(req.params.id, 10);
+  const { file_ids } = req.body;
+
+  if (!Array.isArray(file_ids) || file_ids.length === 0) {
+    return res.status(400).json(
+      formatResponse({
+        statusCode: 400,
+        detail: "file_ids must be a non-empty array",
+      })
+    );
+  }
+
+  try {
+    const files = await addProjectDeliveryFiles(projectId, file_ids);
+    res.status(201).json(
+      formatResponse({
+        statusCode: 201,
+        detail: "Files added to project delivery successfully",
+        data: files,
+      })
+    );
+  } catch (err) {
+    console.error("Error adding delivery files:", err);
+    res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: "Internal server error",
+        data: err.message,
+      })
+    );
+  }
+}

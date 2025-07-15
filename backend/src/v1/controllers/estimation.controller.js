@@ -6,6 +6,7 @@ import {
   getProjectsApproved,
   getProjectsDraft
 } from "../services/estimation.service.js";
+import { updateProjectPartial } from "../services/projects.service.js";
 import { formatResponse } from "../utils/response.js";
 
 export const createEstimationHandler = async (req, res) => {
@@ -87,15 +88,17 @@ export const updateEstimationHandler = async (req, res) => {
         .json(formatResponse({ statusCode: 400, detail: "ID is required" }));
     }
 
-    const updatedEstimation = await updateEstimation(id, updateData);
-
-    if (!updatedEstimation) {
-      return res
-        .status(404)
-        .json(
-          formatResponse({ statusCode: 404, detail: "Estimation not found" })
-        );
-    }
+      const updatedEstimation = await updateEstimation(id, updateData);
+      if (updatedEstimation.sent_to_pm==true){
+        await updateProjectPartial(updatedEstimation.project_id,{status:'working',progress:0});
+      }
+      if (!updatedEstimation) {
+        return res
+          .status(404)
+          .json(
+            formatResponse({ statusCode: 404, detail: "Estimation not found" })
+          );
+      }
 
     return res.status(200).json(
       formatResponse({

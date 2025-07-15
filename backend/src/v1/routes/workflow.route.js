@@ -10,6 +10,7 @@ import {
   getAssignedTasksController,
   EditDrawingLogsController,
   getDrawingLogByIdController,
+  getStageFinalFiles,
 } from "../controllers/workflow.controller.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import { getDrawingLogById } from "../services/workflow.service.js";
@@ -23,12 +24,12 @@ router.get(
   getStageDrawingsController
 );
 router.post("/stages/:id/files", authenticateToken, uploadStageFiles);
-
 router.post("/drawings", authenticateToken, createDrawing);
 router.post("/drawings/:id/logs", authenticateToken, addDrawingStageLog);
 router.get("/drawings/:id/logs", getDrawingLogs);
 router.get("/workers/tasks", authenticateToken, getAssignedTasksController);
 router.patch("/logs/:id", authenticateToken, EditDrawingLogsController);
 router.get("/logs/:id", authenticateToken, getDrawingLogByIdController);
+router.get("/stages/final-files/:id", authenticateToken, getStageFinalFiles);
 
 export default router;

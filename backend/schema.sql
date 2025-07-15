@@ -77,6 +77,13 @@ CREATE TABLE projects (
     send_to_estimation BOOLEAN DEFAULT FALSE NOT NULL
 );
 
+CREATE TABLE project_delivery_files (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE projects_uploaded_files (
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
@@ -319,14 +326,15 @@ CREATE TABLE stages (
     weight NUMERIC(5,2) NOT NULL,          -- % contribution to progress
     allocated_hours INT NOT NULL,         -- time allocated for the stage
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    status VARCHAR(20)
+    status VARCHAR(20),
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    revision VARCHAR(50),
 );
 
 CREATE TABLE drawings (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     drawing_type VARCHAR(100),
-    revision VARCHAR(50),
     drawing_weightage NUMERIC(5,2),      
     allocated_hours INT,                  
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -367,3 +375,9 @@ CREATE TABLE drawing_stage_log_files (
 );
 
 
+CREATE TABLE final_files (
+    id SERIAL PRIMARY KEY,
+    drawing_id INTEGER NOT NULL REFERENCES drawings(id) ON DELETE CASCADE,
+    uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
