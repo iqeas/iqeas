@@ -12,6 +12,8 @@ export async function saveUploadedFile({ label, filename, uploaded_by }) {
   return result.rows[0];
 }
 
+
+
 export async function getUploadedFilesByRolePaginated(
   userId,
   role,
@@ -23,18 +25,14 @@ export async function getUploadedFilesByRolePaginated(
   const offset = Math.max((Number(page) - 1) * limit, 0);
 
   let baseWhere = "";
-  let joinClause = "";
   let queryParams = [];
   let countParams = [];
 
-  let searchClause = "";
-  if (searchQuery) {
-    searchClause = ` AND uf.label ILIKE $${queryParams.length + 2}`;
-  }
+  const hasSearch = searchQuery.trim() !== "";
 
   switch (role) {
     case "rfq":
-      baseWhere = `WHERE uf.uploaded_by_id = $1${searchClause}`;
+      baseWhere = `WHERE uf.uploaded_by_id = $1`;
       queryParams = [userId];
       countParams = [userId];
       break;
@@ -43,7 +41,6 @@ export async function getUploadedFilesByRolePaginated(
       baseWhere = `
         WHERE (uf.uploaded_by_id = $1
            OR uf.uploaded_by_id IN (SELECT id FROM users WHERE role = 'rfq'))
-        ${searchClause}
       `;
       queryParams = [userId];
       countParams = [userId];
@@ -57,7 +54,6 @@ export async function getUploadedFilesByRolePaginated(
           JOIN projects p ON puf.project_id = p.id
           WHERE p.leader_id = $1
         )
-        ${searchClause}
       `;
       queryParams = [userId];
       countParams = [userId];
@@ -74,7 +70,6 @@ export async function getUploadedFilesByRolePaginated(
           JOIN deliveries d ON du.delivery_id = d.id
           WHERE d.user_id = $1
         )
-        ${searchClause}
       `;
       queryParams = [userId];
       countParams = [userId];
@@ -91,26 +86,33 @@ export async function getUploadedFilesByRolePaginated(
               SELECT team_id FROM teams_users WHERE user_id = $1
             )
           ))
-        ${searchClause}
       `;
       queryParams = [userId];
       countParams = [userId];
       break;
 
     case "admin":
-      baseWhere = searchQuery ? `WHERE uf.label ILIKE $1` : "";
-      queryParams = searchQuery ? [`%${searchQuery}%`] : [];
-      countParams = queryParams;
+      // admin does not filter by userId, only search
+      if (hasSearch) {
+        baseWhere = `WHERE uf.label ILIKE $1`;
+        queryParams = [`%${searchQuery}%`];
+        countParams = [`%${searchQuery}%`];
+      } else {
+        baseWhere = "";
+        queryParams = [];
+        countParams = [];
+      }
       break;
 
     default:
       throw new Error("Unauthorized role");
   }
 
-  if (searchQuery && role !== "admin") {
-    const q = `%${searchQuery}%`;
-    queryParams.push(q);
-    countParams.push(q);
+  if (hasSearch && role !== "admin") {
+    baseWhere += ` AND uf.label ILIKE $${queryParams.length + 1}`;
+    const searchParam = `%${searchQuery}%`;
+    queryParams.push(searchParam);
+    countParams.push(searchParam);
   }
 
   queryParams.push(limit, offset);

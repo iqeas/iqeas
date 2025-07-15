@@ -325,6 +325,94 @@ export async function getProjectsEstimationProjects(
           p.project_id::text ILIKE $1 OR
           p.name ILIKE $1 OR
           p.client_name ILIKE $1
+
+  `;
+
+  const values = [limit, offset];
+
+  const result = await pool.query(query, values);
+  return result.rows;
+}
+
+export async function getProjectsEstimationProjects() {
+  const query = `
+    SELECT 
+      p.*,
+
+      json_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email,
+        'phonenumber', u.phonenumber
+      ) AS user,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'file', uf.file,
+          'label', uf.label
+        ))
+        FROM projects_uploaded_files puf
+        JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
+        WHERE puf.project_id = p.id
+      ), '[]'::json) AS uploaded_files,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', pm.id,
+          'notes', pm.notes,
+          'enquiry', pm.enquiry,
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf2.id,
+              'file', uf2.file,
+              'label', uf2.label
+            ))
+            FROM project_more_info_uploaded_files pmuf
+            JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
+            WHERE pmuf.project_more_info_id = pm.id
+          ), '[]'::json)
+        ))
+        FROM project_more_info pm
+        WHERE pm.project_id = p.id
+      ), '[]'::json) AS add_more_infos,
+
+      (
+        SELECT json_build_object(
+          'id', e.id,
+          'status', e.status,
+          'cost', e.cost,
+          'deadline', e.deadline,
+          'approval_date', e.approval_date,
+          'approved', e.approved,
+          'sent_to_pm', e.sent_to_pm,
+          'notes', e.notes,
+          'updates', e.updates,
+          'log', e.log,
+          'user', json_build_object(
+            'id', eu.id,
+            'name', eu.name,
+            'email', eu.email
+          ),
+          'forwarded_to', (
+            SELECT json_build_object(
+              'id', fuser.id,
+              'label', fuser.name,
+              'email', fuser.email
+            )
+            FROM users fuser
+            WHERE fuser.id = e.forwarded_user_id
+          ),
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf.id,
+              'label', uf.label,
+              'file', uf.file
+            ))
+            FROM estimation_uploaded_files euf
+            JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+            WHERE euf.estimation_id = e.id
+          ), '[]'::json)
         )
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
@@ -842,4 +930,155 @@ export async function addProjectDeliveryFiles(projectId, fileIds) {
   } finally {
     client.release();
   }
+}
+export async function getAllProjects({ page = 1, size = 10 }) {
+  const limit = Math.max(Number(size), 1);
+  const offset = (Math.max(Number(page), 1) - 1) * limit;
+
+  const query = `
+    SELECT * FROM projects
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+  `;
+
+  const result = await pool.query(query, [limit, offset]);
+
+  const countResult = await pool.query(`SELECT COUNT(*) FROM projects`);
+  const total = Number(countResult.rows[0].count);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    projects: result.rows,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
+}
+
+
+
+export async function fetchUploadedFilesByRoles({
+  role,
+  user_id,
+  page,
+  limit,
+}) {
+  const offset = (page - 1) * limit;
+  let dataQuery = "";
+  let countQuery = "";
+  let values = [];
+
+  if (role === "admin") {
+    dataQuery = `
+      SELECT uf.*, p.project_id, u.name AS uploaded_by_name
+      FROM uploaded_files uf
+      JOIN users u ON uf.uploaded_by_id = u.id
+      JOIN projects_uploaded_files puf ON puf.uploaded_file_id = uf.id
+      JOIN projects p ON p.id = puf.project_id
+      ORDER BY uf.created_at DESC
+      LIMIT $1 OFFSET $2
+    `;
+
+    countQuery = `
+      SELECT COUNT(*) AS total
+      FROM uploaded_files uf
+      JOIN projects_uploaded_files puf ON puf.uploaded_file_id = uf.id
+    `;
+
+    values = [limit, offset];
+  } else if (role === "rfq") {
+    dataQuery = `
+      SELECT uf.*, p.project_id, u.name AS uploaded_by_name
+      FROM uploaded_files uf
+      JOIN users u ON uf.uploaded_by_id = u.id
+      JOIN projects_uploaded_files puf ON puf.uploaded_file_id = uf.id
+      JOIN projects p ON p.id = puf.project_id
+      WHERE u.id = $1
+      ORDER BY uf.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    countQuery = `
+      SELECT COUNT(*) AS total
+      FROM uploaded_files uf
+      JOIN users u ON uf.uploaded_by_id = u.id
+      JOIN projects_uploaded_files puf ON puf.uploaded_file_id = uf.id
+      WHERE u.id = $1
+    `;
+
+    values = [user_id, limit, offset];
+  } else if (role === "estimation") {
+    dataQuery = `
+      SELECT * FROM (
+        SELECT uf.*, p.project_id, u.name AS uploaded_by_name
+        FROM uploaded_files uf
+        JOIN users u ON uf.uploaded_by_id = u.id
+        JOIN estimation_uploaded_files euf ON euf.uploaded_file_id = uf.id
+        JOIN estimations e ON e.id = euf.estimation_id
+        JOIN projects p ON p.id = e.project_id
+        WHERE u.id = $1
+
+        UNION
+
+        SELECT uf.*, p.project_id, uploader.name AS uploaded_by_name
+        FROM uploaded_files uf
+        JOIN users uploader ON uploader.id = uf.uploaded_by_id
+        JOIN estimation_uploaded_files euf ON euf.uploaded_file_id = uf.id
+        JOIN estimations e ON e.id = euf.estimation_id
+        JOIN projects p ON p.id = e.project_id
+        WHERE e.user_id = $1
+      ) AS all_estimation_files
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    countQuery = `
+      SELECT COUNT(*) FROM (
+        SELECT uf.id
+        FROM uploaded_files uf
+        JOIN users u ON uf.uploaded_by_id = u.id
+        JOIN estimation_uploaded_files euf ON euf.uploaded_file_id = uf.id
+        JOIN estimations e ON e.id = euf.estimation_id
+        WHERE u.id = $1
+
+        UNION
+
+        SELECT uf.id
+        FROM uploaded_files uf
+        JOIN estimation_uploaded_files euf ON euf.uploaded_file_id = uf.id
+        JOIN estimations e ON e.id = euf.estimation_id
+        WHERE e.user_id = $1
+      ) AS count_rows
+    `;
+
+    values = [user_id, limit, offset];
+  } else {
+    throw new Error("Invalid role");
+  }
+
+  // Pass parameters to countQuery only if needed (not for admin)
+  const countParams = role === "admin" ? [] : [user_id];
+
+  const [dataResult, countResult] = await Promise.all([
+    pool.query(dataQuery, values),
+    pool.query(countQuery, countParams),
+  ]);
+
+  const total = parseInt(
+    countResult.rows[0].total || countResult.rows[0].count
+  );
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: dataResult.rows,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
 }

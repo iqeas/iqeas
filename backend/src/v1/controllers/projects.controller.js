@@ -11,6 +11,8 @@ import {
   getPMProjects,
   getAdminProjects,
   addProjectDeliveryFiles,
+  getAllProjects,
+  fetchUploadedFilesByRoles,
 } from "../services/projects.service.js";
 
 import { formatResponse } from "../utils/response.js";
@@ -272,5 +274,38 @@ export async function addDeliveryFilesController(req, res) {
         data: err.message,
       })
     );
+  }
+}
+export async function fetchAllProjects(req, res) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+
+    const projects = await getAllProjects({ page, size });
+
+    res.status(200).json({
+      success: true,
+      data: projects.projects,
+      pagination: projects.pagination,
+    });
+  } catch (error) {
+    console.error("Error fetching all projects:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+}
+export async function getUploadedFilesForRoles(req, res) {
+  const { role, user_id, page = 1, limit = 10 } = req.query;
+
+  try {
+    const result = await fetchUploadedFilesByRoles({
+      role,
+      user_id: parseInt(user_id),
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching files:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 }

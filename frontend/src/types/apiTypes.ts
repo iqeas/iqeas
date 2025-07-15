@@ -123,19 +123,42 @@ export interface IEstimationProject extends IRFCProject {
 export type { IUser };
 
 // Document Center API types
+// export interface IDocumentFile {
+//   id: number;
+//   created_at: string;
+//   updated_at: string;
+//   label: string;
+//   file: string;
+//   uploaded_by_id: number;
+//   uploaded_by: {
+//     id: number;
+//     name: string;
+//   };
+// }
+
+  // src/types/apiTypes.ts
 export interface IDocumentFile {
   id: number;
   created_at: string;
   updated_at: string;
-  label: string;
-  file: string;
-  uploaded_by_id: number;
-  uploaded_by: {
-    id: number;
-    name: string;
-  };
+  user_id: number;
+  name: string; // Match your JSON
+  project_id: string;
+  received_date: string;
+  client_name: string; // Match your JSON
+  client_company: string;
+  location: string;
+  project_type: string;
+  priority: string;
+  contact_person: string;
+  contact_person_phone: string;
+  contact_person_email: string;
+  notes: string;
+  status: string;
+  send_to_estimation: boolean;
+  estimation_status: string;
+  // Add any other properties if they exist and are relevant
 }
-
 export interface IDocumentFileListResponse {
   files: IDocumentFile[];
   pagination: {
