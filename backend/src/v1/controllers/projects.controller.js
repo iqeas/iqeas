@@ -9,6 +9,7 @@ import {
   createProjectRejection,
   projectRejectionById,
   getPMProjects,
+  getAllProjects,
 } from "../services/projects.service.js";
 
 import { formatResponse } from "../utils/response.js";
@@ -194,3 +195,21 @@ export const projectRejectCreateHandler = async (req, res) => {
       );
   }
 };
+
+export async function fetchAllProjects(req, res) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+
+    const projects = await getAllProjects({ page, size });
+
+    res.status(200).json({
+      success: true,
+      data: projects.projects,
+      pagination: projects.pagination,
+    });
+  } catch (error) {
+    console.error("Error fetching all projects:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+}

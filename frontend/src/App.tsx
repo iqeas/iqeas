@@ -22,6 +22,8 @@ import AdminMembers from "./components/AdminMembers";
 import { ConfirmDialogProvider } from "@/components/ui/alert-dialog";
 import { Toaster } from "react-hot-toast";
 import AuthVerification from "./components/AuthVerification";
+import FileTypeSelection from "./components/FileTypeSelection";
+import DocumentFiles from "./components/DocumentFiles";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -207,6 +209,30 @@ const App = () => (
                   element={
                     <DashboardLayout>
                       <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents"
+                  element={
+                    <DashboardLayout>
+                      <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                ></Route>
+                <Route
+                  path="documents/:project_id"
+                  element={
+                    <DashboardLayout>
+                      <FileTypeSelection />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents/:project_id/:type"
+                  element={
+                    <DashboardLayout>
+                      <DocumentFiles />
                     </DashboardLayout>
                   }
                 />

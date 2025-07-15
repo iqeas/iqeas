@@ -1,12 +1,10 @@
-import {
-  getUploadedFilesByRolePaginated,
-  saveUploadedFile,
-} from "../services/uploadfiles.service.js";
-import { formatResponse } from "../utils/response.js";
+import { uploadFileToDO } from "../utils/uploadFile.js";
+
+const is_production = process.env.PRODUCTION === "False";
 
 export const uploadFileHandler = async (req, res) => {
   try {
-    const { label } = req.body;
+    const { label, role } = req.body;
     const file = req.file;
     const uploaded_by = req.user.id;
 
@@ -16,9 +14,17 @@ export const uploadFileHandler = async (req, res) => {
         .json(formatResponse({ statusCode: 400, detail: "No file uploaded" }));
     }
 
+    let filenameOrUrl;
+
+    if (is_production) {
+      filenameOrUrl = await uploadFileToDO(file, role);
+    } else {
+      filenameOrUrl = file.filename;
+    }
+
     const saved = await saveUploadedFile({
       label,
-      filename: file.filename,
+      filename: filenameOrUrl,
       uploaded_by,
     });
 
@@ -67,7 +73,3 @@ export async function getFiles(req, res) {
     });
   }
 }
-
-
-
-

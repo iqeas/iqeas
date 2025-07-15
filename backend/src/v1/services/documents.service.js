@@ -11,7 +11,6 @@ export async function getDocuments({
   const limit = Math.max(Number(size), 1);
   const offset = Math.max((Number(page) - 1) * limit, 0);
 
-  // Base query and params array
   let baseQuery = `
     SELECT d.*, 
       json_build_object(

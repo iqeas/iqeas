@@ -173,6 +173,7 @@ export async function getProjectByPagination(page = 1, size = 10) {
   const result = await pool.query(query, values);
   return result.rows;
 }
+
 export async function getProjectsEstimationProjects() {
   const query = `
     SELECT 
@@ -543,4 +544,31 @@ export async function projectRejectionById(rejectionId) {
   const result = await pool.query(query, [rejectionId]);
   console.log([rejectionId], result.rows[0]);
   return result.rows[0] || null;
+}
+
+export async function getAllProjects({ page = 1, size = 10 }) {
+  const limit = Math.max(Number(size), 1);
+  const offset = (Math.max(Number(page), 1) - 1) * limit;
+
+  const query = `
+    SELECT * FROM projects
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+  `;
+
+  const result = await pool.query(query, [limit, offset]);
+
+  const countResult = await pool.query(`SELECT COUNT(*) FROM projects`);
+  const total = Number(countResult.rows[0].count);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    projects: result.rows,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
 }
