@@ -572,3 +572,128 @@ export async function getAllProjects({ page = 1, size = 10 }) {
     },
   };
 }
+
+
+
+export async function fetchUploadedFilesByRoles({
+  role,
+  user_id,
+  page,
+  limit,
+}) {
+  const offset = (page - 1) * limit;
+  let dataQuery = "";
+  let countQuery = "";
+  let values = [];
+
+  if (role === "admin") {
+    dataQuery = `
+      SELECT uf.*, p.project_id, u.name AS uploaded_by_name
+      FROM uploaded_files uf
+      JOIN users u ON uf.uploaded_by_id = u.id
+      JOIN projects_uploaded_files puf ON puf.uploaded_file_id = uf.id
+      JOIN projects p ON p.id = puf.project_id
+      ORDER BY uf.created_at DESC
+      LIMIT $1 OFFSET $2
+    `;
+
+    countQuery = `
+      SELECT COUNT(*) AS total
+      FROM uploaded_files uf
+      JOIN projects_uploaded_files puf ON puf.uploaded_file_id = uf.id
+    `;
+
+    values = [limit, offset];
+  } else if (role === "rfq") {
+    dataQuery = `
+      SELECT uf.*, p.project_id, u.name AS uploaded_by_name
+      FROM uploaded_files uf
+      JOIN users u ON uf.uploaded_by_id = u.id
+      JOIN projects_uploaded_files puf ON puf.uploaded_file_id = uf.id
+      JOIN projects p ON p.id = puf.project_id
+      WHERE u.id = $1
+      ORDER BY uf.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    countQuery = `
+      SELECT COUNT(*) AS total
+      FROM uploaded_files uf
+      JOIN users u ON uf.uploaded_by_id = u.id
+      JOIN projects_uploaded_files puf ON puf.uploaded_file_id = uf.id
+      WHERE u.id = $1
+    `;
+
+    values = [user_id, limit, offset];
+  } else if (role === "estimation") {
+    dataQuery = `
+      SELECT * FROM (
+        SELECT uf.*, p.project_id, u.name AS uploaded_by_name
+        FROM uploaded_files uf
+        JOIN users u ON uf.uploaded_by_id = u.id
+        JOIN estimation_uploaded_files euf ON euf.uploaded_file_id = uf.id
+        JOIN estimations e ON e.id = euf.estimation_id
+        JOIN projects p ON p.id = e.project_id
+        WHERE u.id = $1
+
+        UNION
+
+        SELECT uf.*, p.project_id, uploader.name AS uploaded_by_name
+        FROM uploaded_files uf
+        JOIN users uploader ON uploader.id = uf.uploaded_by_id
+        JOIN estimation_uploaded_files euf ON euf.uploaded_file_id = uf.id
+        JOIN estimations e ON e.id = euf.estimation_id
+        JOIN projects p ON p.id = e.project_id
+        WHERE e.user_id = $1
+      ) AS all_estimation_files
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    countQuery = `
+      SELECT COUNT(*) FROM (
+        SELECT uf.id
+        FROM uploaded_files uf
+        JOIN users u ON uf.uploaded_by_id = u.id
+        JOIN estimation_uploaded_files euf ON euf.uploaded_file_id = uf.id
+        JOIN estimations e ON e.id = euf.estimation_id
+        WHERE u.id = $1
+
+        UNION
+
+        SELECT uf.id
+        FROM uploaded_files uf
+        JOIN estimation_uploaded_files euf ON euf.uploaded_file_id = uf.id
+        JOIN estimations e ON e.id = euf.estimation_id
+        WHERE e.user_id = $1
+      ) AS count_rows
+    `;
+
+    values = [user_id, limit, offset];
+  } else {
+    throw new Error("Invalid role");
+  }
+
+  // Pass parameters to countQuery only if needed (not for admin)
+  const countParams = role === "admin" ? [] : [user_id];
+
+  const [dataResult, countResult] = await Promise.all([
+    pool.query(dataQuery, values),
+    pool.query(countQuery, countParams),
+  ]);
+
+  const total = parseInt(
+    countResult.rows[0].total || countResult.rows[0].count
+  );
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: dataResult.rows,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
+}

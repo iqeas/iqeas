@@ -244,10 +244,10 @@
 //     </div>
 //   );
 //};
-
 import { useEffect, useState, useCallback } from "react";
 import { FileText, Eye, Download } from "lucide-react";
 
+// Assuming these are correctly aliased in your tsconfig.json or similar
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -285,9 +285,9 @@ export const DocumentCenter = () => {
       case "admin":
         return API_ENDPOINT.GET_ALL_PROJECTS_FOR_ADMIN;
       case "rfq":
-        return API_ENDPOINT.GET_ALL_RFQ_PROJECTS;
+        return API_ENDPOINT.GET_ALL_PROJECTS_FOR_ADMIN;
       case "estimation":
-        return API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS;
+        return API_ENDPOINT.GET_ALL_PROJECTS_FOR_ADMIN;
       default:
         return null;
     }
@@ -388,7 +388,6 @@ export const DocumentCenter = () => {
     files
   );
   console.log("DocumentCenter: Total files count:", totalFiles);
-
   return (
     <div className="space-y-6 p-6 font-inter">
       {/* Header */}
@@ -445,12 +444,12 @@ export const DocumentCenter = () => {
           <CardTitle>All Projects</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4 flex">
+          <div className="space-y-4 flex flex-wrap">
             {fetching && fetchType === "getFiles" ? (
               <Loading />
             ) : files.length > 0 ? (
               files.map((file: IDocumentFile) => (
-                <a href={`/admin/documents/${file.id}`} target="_self">
+                <a href={`/${user.role}/documents/${file.id}`} target="_self">
                   <div
                     key={file.id}
                     className="flex items-center justify-center p-4 cursor-pointer"

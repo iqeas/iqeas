@@ -2,20 +2,25 @@ import { getFilesByType } from "../services/documentFiles.service.js";
 
 export async function handleGetFilesByType(req, res) {
   try {
-    const projectId = parseInt(req.query.project_id, 10);
-    const type = req.query.type;
-    const id = parseInt(req.query.id, 10);
+    const project_id = parseInt(req.query.project_id, 10);
+    const type = req.query.type; // "incoming" or "ongoing"
+    const user_id = parseInt(req.query.user_id, 10); // logged in user id
+    const role = req.query.role; // "rfq", "estimation", "admin"
 
-    if (isNaN(projectId) || isNaN(id)) {
-      return res
-        .status(400)
-        .json({ error: "project_id and id must be valid integers" });
+    if (isNaN(project_id) || isNaN(user_id)) {
+      return res.status(400).json({ error: "Invalid project_id or user_id" });
     }
-    if (!["ongoing", "incoming"].includes(type)) {
+
+    if (!["incoming", "ongoing"].includes(type)) {
       return res.status(400).json({ error: "Invalid type parameter" });
     }
 
-    const files = await getFilesByType(projectId, type, id);
+    if (!["rfq", "estimation", "admin"].includes(role)) {
+      return res.status(400).json({ error: "Invalid role parameter" });
+    }
+
+    const files = await getFilesByType(project_id, type, user_id, role);
+
     return res.json({ success: true, data: files });
   } catch (error) {
     console.error("Error in handleGetFilesByType:", error);

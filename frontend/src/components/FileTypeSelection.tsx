@@ -1,7 +1,11 @@
 import { useParams } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function FileTypeSelection() {
   const { project_id } = useParams();
+  const { authToken, user } = useAuth();
+
+  const role = user?.role;
 
   return (
     <section className="mt-4">
@@ -9,20 +13,20 @@ export default function FileTypeSelection() {
       <div>
         <div className="flex items-center justify-center gap-20 h-screen">
           <div>
-            <a href={`/admin/documents/${project_id}/ongoing`}>
+            <a href={`/${role}/documents/${project_id}/ongoing`}>
               <img
                 src="../../public/file-explorer.png"
                 alt=""
                 width={200}
                 height={200}
               />
-              <h3 className="text-center text-xl font-medium text-neutral-700">
+              <h3 className="text-center text-xl font-medium text-neutral-700">``
                 Ongoing Files
               </h3>
             </a>
           </div>
           <div>
-            <a href={`/admin/documents/${project_id}/incomming`}>
+            <a href={`/${role}/documents/${project_id}/incoming`}>
               <img
                 src="../../public/file-explorer.png"
                 alt=""
@@ -30,7 +34,7 @@ export default function FileTypeSelection() {
                 height={200}
               />
               <h3 className="text-center text-xl font-medium text-neutral-700">
-                Incomming Files
+                Incoming Files
               </h3>
             </a>
           </div>

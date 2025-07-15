@@ -18,6 +18,7 @@ export const API_ENDPOINT = {
     `${API_URL}/projects/rfq?page=${page}&size=${size}&query=${query}`,
   UPLOAD_FILE: `${API_URL}/upload-file`,
   PROJECT_ADD_MORE_INFO: `${API_URL}/project-more-info`,
+  GET_ALL_PROJECTS_FOR_ADMIN: `${API_URL}/projects/admin`,
   EDIT_PROJECT: (id: any) => `${API_URL}/projects/${id}`,
   GET_TEAMS_BY_ROLE: (role: any) => `${API_URL}/teams/role/${role}`,
   GET_ALL_ESTIMATION_PROJECTS: (query, page, size) =>
@@ -25,7 +26,7 @@ export const API_ENDPOINT = {
   CREATE_ESTIMATION: `${API_URL}/estimation`,
   EDIT_ESTIMATION: (id: any) => `${API_URL}/patch/estimation/${id}`,
   CREATE_PROJECT_REJECTION: `${API_URL}/projects/reject`,
-  GET_ALL_PROJECT_UPLOAD_FILES: `${API_URL}/get/get-all-uploaded-files`,
+  GET_ALL_PROJECT_UPLOAD_FILES: `${API_URL}/get/get-all-uploaded-filess`,
   GET_ALL_FILES: (query, page, pageSize) =>
     `${API_URL}/get-files/all-files?page=${page}&query=${query}&size=${pageSize}`,
   CREATE_PASSWORD: `${API_URL}/auth/reset-password`,
@@ -47,4 +48,5 @@ export const API_ENDPOINT = {
     `${API_URL}/drawings/${drawing_id}/logs`,
   EDIT_DRAWING_LOG: (log_id: any) => `${API_URL}/logs/${log_id}`,
   GET_DRAWING_LOG: (log_id: any) => `${API_URL}/logs/${log_id}`,
+  GET_ALL_UPLOAD_DATA_BY_ROLES: `${API_URL}/projects/uploaded-files-data-by-roles`,
 };

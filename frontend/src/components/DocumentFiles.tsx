@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext"; // your auth context with user info
-import { API_ENDPOINT } from "@/config/backend"; // your API urls
+import { useAuth } from "@/contexts/AuthContext";
+import { API_ENDPOINT } from "@/config/backend";
 import Loading from "./atomic/Loading";
 
 interface IDocumentFile {
@@ -16,20 +16,29 @@ interface IDocumentFile {
 
 export default function DocumentFiles() {
   const { project_id, type } = useParams<{
-    project_id: string;
-    type: string;
+    project_id?: string;
+    type?: string;
   }>();
+
   const { user, authToken } = useAuth();
+
   const [files, setFiles] = useState<IDocumentFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Assuming your 'id' param is related to the current user (or uploaded_file_id) from auth context
-  // Replace this with the correct logic if different
-  const id = user?.uploaded_file_id || user?.id;
+  const userId = user?.id;
+  const role = user?.role;
+
+  // Debug logging
+  useEffect(() => {
+    console.log("User ID:", userId);
+    console.log("Role:", role);
+    console.log("Project ID:", project_id);
+    console.log("Type:", type);
+  }, [userId, role, project_id, type]);
 
   const fetchFiles = useCallback(async () => {
-    if (!project_id || !type || !id) {
+    if (!project_id || !type || !userId || !role) {
       setError("Missing required parameters.");
       setIsLoading(false);
       return;
@@ -42,7 +51,8 @@ export default function DocumentFiles() {
       const url = new URL(API_ENDPOINT.GET_ALL_PROJECT_UPLOAD_FILES);
       url.searchParams.append("project_id", project_id);
       url.searchParams.append("type", type);
-      url.searchParams.append("id", id.toString());
+      url.searchParams.append("user_id", userId.toString());
+      url.searchParams.append("role", role);
 
       const response = await fetch(url.toString(), {
         headers: {
@@ -68,11 +78,19 @@ export default function DocumentFiles() {
     } finally {
       setIsLoading(false);
     }
-  }, [project_id, type, id, authToken]);
+  }, [project_id, type, userId, role, authToken]);
 
   useEffect(() => {
     fetchFiles();
   }, [fetchFiles]);
+
+  if (!project_id || !type) {
+    return (
+      <div className="text-red-600 font-bold p-4">
+        Missing route parameters: `project_id` or `type`
+      </div>
+    );
+  }
 
   if (isLoading) return <Loading full />;
 

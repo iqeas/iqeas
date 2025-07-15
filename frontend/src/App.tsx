@@ -100,6 +100,22 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="documents/:project_id"
+                  element={
+                    <DashboardLayout>
+                      <FileTypeSelection />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents/:project_id/:type"
+                  element={
+                    <DashboardLayout>
+                      <DocumentFiles />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
                   path="calendar"
                   element={
                     <DashboardLayout>
@@ -124,6 +140,22 @@ const App = () => (
                   element={
                     <DashboardLayout>
                       <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents/:project_id"
+                  element={
+                    <DashboardLayout>
+                      <FileTypeSelection />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents/:project_id/:type"
+                  element={
+                    <DashboardLayout>
+                      <DocumentFiles />
                     </DashboardLayout>
                   }
                 />

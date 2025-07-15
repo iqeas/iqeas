@@ -10,6 +10,7 @@ import {
   projectRejectionById,
   getPMProjects,
   getAllProjects,
+  fetchUploadedFilesByRoles,
 } from "../services/projects.service.js";
 
 import { formatResponse } from "../utils/response.js";
@@ -211,5 +212,21 @@ export async function fetchAllProjects(req, res) {
   } catch (error) {
     console.error("Error fetching all projects:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+}
+export async function getUploadedFilesForRoles(req, res) {
+  const { role, user_id, page = 1, limit = 10 } = req.query;
+
+  try {
+    const result = await fetchUploadedFilesByRoles({
+      role,
+      user_id: parseInt(user_id),
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching files:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 }
