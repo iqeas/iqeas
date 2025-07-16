@@ -42,8 +42,10 @@ export const API_ENDPOINT = {
   GET_STAGE_DRAWINGS: (project_id: any, stage_id: any) =>
     `${API_URL}/stages/drawings/${project_id}/${stage_id}`,
   CREATE_STAGE_DRAWING: `${API_URL}/drawings`,
-  GET_WORKER_TASKS: (query, page, size, filter) =>
-    `${API_URL}/workers/tasks?page=${page}&size=${size}&filter=${filter}&query=${query}`,
+  GET_WORKER_TASKS: (projectId, page, size) =>
+    `${API_URL}/workers/tasks/${projectId}?page=${page}&size=${size}`,
+  GET_ALL_WORKERS_PROJECTS: (query, page, size) =>
+    `${API_URL}/projects/working?page=${page}&size=${size}&query=${query}`,
   CREATE_DRAWING_LOGS: (drawing_id: any) =>
     `${API_URL}/drawings/${drawing_id}/logs`,
   EDIT_DRAWING_LOG: (log_id: any) => `${API_URL}/logs/${log_id}`,

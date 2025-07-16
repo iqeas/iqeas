@@ -136,7 +136,7 @@ export type { IUser };
 //   };
 // }
 
-  // src/types/apiTypes.ts
+// src/types/apiTypes.ts
 export interface IDocumentFile {
   id: number;
   created_at: string;
@@ -298,6 +298,9 @@ export type WorkerTask = {
   step_name: string;
   status: string;
   notes: string;
+  client_dwg_no: string;
+  iqeas_dwg_no: string;
+  allocated_hours: string;
   reason?: string;
   created_at: string;
   updated_at: string;

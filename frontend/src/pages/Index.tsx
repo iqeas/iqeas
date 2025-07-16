@@ -3,7 +3,7 @@ import { ProjectsDashboard } from "@/components/ProjectsDashboard";
 import { ProjectDetail } from "@/components/ProjectDetail";
 import { RFCDashboard } from "@/components/RFCDashboard";
 import { EstimationDashboard } from "@/components/EstimationDashboard";
-import { WorkerDashboard } from "@/components/WorkerDashboard";
+import { WorkerDashboard } from "@/components/WorkerTasks";
 import { DocumentationDashboard } from "@/components/DocumentationDashboard";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";

@@ -13,6 +13,7 @@ import {
   addProjectDeliveryFiles,
   getAllProjects,
   fetchUploadedFilesByRoles,
+  getWorkerProjectsPaginated,
 } from "../services/projects.service.js";
 
 import { formatResponse } from "../utils/response.js";
@@ -307,5 +308,28 @@ export async function getUploadedFilesForRoles(req, res) {
   } catch (error) {
     console.error("Error fetching files:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function listWorkerProjectsController(req, res) {
+  try {
+    const userId = req.user.id;
+
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+    const query = req.query.query || "";
+
+    const data = await getWorkerProjectsPaginated(userId, page, size, query);
+    res.status(200).json({
+      status_code: 200,
+      detail: "Worker projects fetched successfully",
+      data: data,
+    });
+  } catch (err) {
+    console.error("Error fetching worker projects:", err);
+    res.status(500).json({
+      status_code: 500,
+      detail: "Internal server error",
+    });
   }
 }

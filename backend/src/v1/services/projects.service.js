@@ -989,3 +989,118 @@ export async function fetchUploadedFilesByRoles({
     },
   };
 }
+
+export async function getWorkerProjectsPaginated(
+  userId,
+  page = 1,
+  size = 10,
+  query = ""
+) {
+  const offset = (page - 1) * size;
+  const search = `%${query.toLowerCase()}%`;
+
+  const values = [userId, userId, search, search, search, size, offset];
+  const countValues = [userId, userId, search, search, search];
+
+  // Main paginated query
+  const queryText = `
+    WITH filtered AS (
+      SELECT 
+        p.id AS project_id,
+        p.project_id AS project_code,
+        p.name AS project_name,
+        p.client_company AS company_name,
+        p.created_at
+
+      FROM drawing_stage_logs dsl
+      JOIN drawings d ON dsl.drawing_id = d.id
+      JOIN projects p ON d.project_id = p.id
+
+      WHERE (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+      AND (
+        LOWER(p.name) ILIKE $3 OR
+        LOWER(p.project_id) ILIKE $4 OR
+        LOWER(p.client_company) ILIKE $5
+      )
+
+      GROUP BY p.id
+    )
+    SELECT 
+      f.*,
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = f.project_id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+      ) AS total_works,
+
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = f.project_id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status = 'completed'
+      ) AS completed_works,
+
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = f.project_id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status != 'completed'
+      ) AS pending_works
+
+    FROM filtered f
+    ORDER BY f.created_at DESC
+    LIMIT $6 OFFSET $7
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*) AS count FROM (
+      SELECT p.id
+      FROM drawing_stage_logs dsl
+      JOIN drawings d ON dsl.drawing_id = d.id
+      JOIN projects p ON d.project_id = p.id
+      WHERE (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+      AND (
+        LOWER(p.name) ILIKE $3 OR
+        LOWER(p.project_id) ILIKE $4 OR
+        LOWER(p.client_company) ILIKE $5
+      )
+      GROUP BY p.id
+    ) AS sub
+  `;
+
+  const cardQuery = `
+    SELECT 
+      COUNT(DISTINCT p.id) AS total_projects,
+      COUNT(dsl.id) AS total_works,
+      COUNT(*) FILTER (WHERE dsl.status = 'completed') AS completed_works,
+      COUNT(*) FILTER (WHERE dsl.status != 'completed') AS pending_works
+
+    FROM drawing_stage_logs dsl
+    JOIN drawings d ON dsl.drawing_id = d.id
+    JOIN projects p ON d.project_id = p.id
+    WHERE (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+    AND (
+      LOWER(p.name) ILIKE $3 OR
+      LOWER(p.project_id) ILIKE $4 OR
+      LOWER(p.client_company) ILIKE $5
+    )
+  `;
+
+  const [result, totalResult, cardResult] = await Promise.all([
+    pool.query(queryText, values),
+    pool.query(countQuery, countValues),
+    pool.query(cardQuery, countValues),
+  ]);
+
+  const totalProjects = parseInt(totalResult.rows[0].count, 10);
+  const totalPages = Math.ceil(totalProjects / size);
+
+  return {
+    projects: result.rows,
+    total_pages: totalPages,
+    cards: cardResult.rows[0] || {
+      total_projects: 0,
+      total_works: 0,
+      completed_works: 0,
+      pending_works: 0,
+    },
+  };
+}

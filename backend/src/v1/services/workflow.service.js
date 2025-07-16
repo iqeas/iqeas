@@ -480,25 +480,14 @@ export async function getDrawingLogById(drawingLogId) {
   const result = await pool.query(query, [drawingLogId]);
   return result.rows[0] || null;
 }
-export async function getUserAssignedTasks(
+export async function getUserAssignedTasksForProject(
   userId,
-  queryText = "",
+  projectId,
   page = 1,
-  size = 10,
-  filter = "all"
+  size = 10
 ) {
   const offset = (page - 1) * size;
-
-  let filterCondition = "";
-  if (filter === "not_started") {
-    filterCondition = "AND l.status = 'pending'";
-  } else if (filter === "in_progress") {
-    filterCondition = "AND l.status = 'in_progress'";
-  } else if (filter === "completed") {
-    filterCondition = "AND l.status = 'completed'";
-  }
-
-  const values = [userId, `%${queryText}%`, size, offset];
+  const values = [userId, projectId, size, offset];
 
   const query = `
     WITH filtered_logs AS (
@@ -511,42 +500,29 @@ export async function getUserAssignedTasks(
         d.iqeas_dwg_no,
         d.allocated_hours,
         d.drawing_weightage,
-        d.uploaded_by AS drawing_uploaded_by,
-        d.stage_id,
-        p.id AS project_id,
-        p.project_id AS project_code,
-        p.client_company,
-        p.contact_person_phone,
-        p.contact_person,
-        p.progress As project_progress,
-        p.status AS project_status,
-        p.priority AS estimation_priority,
-        e.deadline AS estimation_due_date,
-        u.name AS assigned_by_name,
-        u.email AS assigned_by_email,
-        u.id AS assigned_by_id,
-        p.contact_person_email,
         d.created_at AS drawing_created_at,
-
-        -- Drawing Creator
+        d.stage_id,
         json_build_object(
           'id', du.id,
           'name', du.name,
           'email', du.email
         ) AS drawing_uploaded_by_user,
+        u.id AS assigned_by_id,
+        u.name AS assigned_by_name,
+        u.email AS assigned_by_email,
 
-       -- Estimation uploaded files
-      COALESCE((
-        SELECT json_agg(json_build_object(
-          'id', uf.id,
-          'label', uf.label,
-          'file', uf.file
-        ))
-        FROM estimations e2
-        JOIN estimation_uploaded_files ef ON ef.estimation_id = e2.id
-        JOIN uploaded_files uf ON uf.id = ef.uploaded_file_id
-        WHERE e2.project_id = p.id
-      ), '[]'::json) AS estimation_files,
+        -- Estimation uploaded files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file
+          ))
+          FROM estimations e
+          JOIN estimation_uploaded_files ef ON ef.estimation_id = e.id
+          JOIN uploaded_files uf ON uf.id = ef.uploaded_file_id
+          WHERE e.project_id = d.project_id
+        ), '[]'::json) AS estimation_files,
 
         -- Drawing uploaded files
         COALESCE((
@@ -569,8 +545,7 @@ export async function getUserAssignedTasks(
           )
           FROM drawing_stage_logs next_l
           JOIN users fu ON fu.id = next_l.forwarded_user_id
-          WHERE next_l.drawing_id = l.drawing_id
-            AND next_l.id > l.id
+          WHERE next_l.drawing_id = l.drawing_id AND next_l.id > l.id
           ORDER BY next_l.id ASC
           LIMIT 1
         ) AS sent_to,
@@ -604,17 +579,8 @@ export async function getUserAssignedTasks(
       FROM drawing_stage_logs l
       JOIN drawings d ON d.id = l.drawing_id
       JOIN users du ON du.id = d.uploaded_by
-      JOIN projects p ON p.id = d.project_id
-      LEFT JOIN estimations e ON e.project_id = p.id
       JOIN users u ON u.id = l.created_by
-
-      WHERE l.forwarded_user_id = $1
-        AND (
-          d.title ILIKE $2 OR
-          p.client_company ILIKE $2 OR
-          p.project_id ILIKE $2
-        )
-        ${filterCondition}
+      WHERE l.forwarded_user_id = $1 AND d.project_id = $2
       ORDER BY l.created_at DESC
       LIMIT $3 OFFSET $4
     )
@@ -629,7 +595,6 @@ export async function getUserAssignedTasks(
       allocated_hours,
       client_dwg_no,
       iqeas_dwg_no,
-      project_progress,
       stage_id,
       status,
       step_name,
@@ -644,21 +609,8 @@ export async function getUserAssignedTasks(
       drawing_uploaded_by_user,
       json_build_object('id', assigned_by_id, 'name', assigned_by_name, 'email', assigned_by_email) AS assigned_by,
       sent_to,
-      -- Project details
-      project_id,
-      project_code,
-      client_company,
-      contact_person_phone,
-      contact_person_email,  
-      contact_person,   
-      project_status,
-      -- Estimation
-      estimation_due_date,
-      estimation_priority,
       estimation_files,
-      -- Drawing
       drawing_files,
-      -- Files
       incoming_files,
       outgoing_files,
       total_count

@@ -198,20 +198,18 @@ export async function getStageDrawingsController(req, res) {
 export async function getAssignedTasksController(req, res) {
   try {
     const userId = req.user.id;
-    const { page = 1, size = 10, filter = "all", query = "" } = req.query;
-    const result = await WorkflowService.getUserAssignedTasks(
+    const projectId = req.params.project_id;
+    const { page = 1, size = 10 } = req.query;
+    const result = await WorkflowService.getUserAssignedTasksForProject(
       userId,
-      query,
+      projectId,
       page,
-      size,
-      filter
+      size
     );
-    const cards = await WorkflowService.getUserTaskStats(userId);
-
     res.json({
       status_code: 200,
       detail: "Success",
-      data: { ...result, cards },
+      data: { ...result },
     });
   } catch (error) {
     console.error("Worker task error:", error);

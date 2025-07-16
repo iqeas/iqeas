@@ -13,10 +13,8 @@ import { DocumentCenter } from "./components/DocumentCenter";
 import { ProjectsDashboard } from "./components/ProjectsDashboard";
 import { DocumentationDashboard } from "./components/DocumentationDashboard";
 import { EstimationDashboard } from "./components/EstimationDashboard";
-import { WorkerDashboard } from "./components/WorkerDashboard";
 import Home from "./components/Home";
-import MyTasks from "./components/MyTasks";
-import { AdminProjectsDashboard } from "./components/AdminProjectDashboard";
+
 import AdminMembers from "./components/AdminMembers";
 
 import { ConfirmDialogProvider } from "@/components/ui/alert-dialog";
@@ -24,6 +22,8 @@ import { Toaster } from "react-hot-toast";
 import AuthVerification from "./components/AuthVerification";
 import FileTypeSelection from "./components/FileTypeSelection";
 import DocumentFiles from "./components/DocumentFiles";
+import WorkerProjectList from "./components/WorkerProjectList";
+import { WorkerTasks } from "./components/WorkerTasks";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -236,7 +236,15 @@ const App = () => (
                   path=""
                   element={
                     <DashboardLayout>
-                      <WorkerDashboard />
+                      <WorkerProjectList />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path=":projectId"
+                  element={
+                    <DashboardLayout>
+                      <WorkerTasks />
                     </DashboardLayout>
                   }
                 />

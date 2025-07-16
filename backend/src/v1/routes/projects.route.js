@@ -9,6 +9,7 @@ import {
   addDeliveryFilesController,
   fetchAllProjects,
   getUploadedFilesForRoles,
+  listWorkerProjectsController,
 } from "../controllers/projects.controller.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -23,5 +24,5 @@ router.get("/projects/admin", authenticateToken, getPMProjectsController);
 router.post("/projects/reject", authenticateToken, projectRejectCreateHandler);
 router.post("/project-delivery/:id", addDeliveryFilesController);
 router.get("/projects/uploaded-files-data-by-roles", getUploadedFilesForRoles)
-
+router.get("/projects/working", authenticateToken, listWorkerProjectsController);
 export default router;
