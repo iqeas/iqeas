@@ -36,10 +36,12 @@ export const useAPICall = () => {
         header = {
           Authorization: `Bearer ${token}`,
           "Content-Type": dataType || "application/json",
+          "Cache-Control": "no-cache", // <--- Add this
         };
       } else {
         header = {
           "Content-Type": dataType || "application/json",
+          "Cache-Control": "no-cache", // <--- Add this
         };
       }
 

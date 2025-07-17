@@ -1,29 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import type { WorkerTask } from "@/types/apiTypes";
 import {
-  Wrench,
-  CheckCircle,
   Clock,
-  AlertTriangle,
-  Calendar,
   CheckCircle2,
-  Mail,
-  Phone,
-  User2,
   FileText,
-  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -45,7 +30,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { API_ENDPOINT } from "@/config/backend";
 import toast from "react-hot-toast";
 import Loading from "./atomic/Loading";
-import { toReadableText } from "@/utils/utils";
 import type { IUser } from "@/types/apiTypes";
 import { useLocation, useParams } from "react-router-dom";
 import {
@@ -60,10 +44,8 @@ import {
 export const WorkerTasks = () => {
   const location = useLocation();
   const { projectId } = useParams();
-  const project = location.state?.project;
+  const [project,setProject] = useState<any>()
   const [tasks, setTasks] = useState<WorkerTask[]>([]);
-  const [filter, setFilter] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState<string>("");
   const { makeApiCall, fetchType, fetching, isFetched } = useAPICall();
   const { authToken } = useAuth();
   const [page, setPage] = useState(1);
@@ -103,7 +85,7 @@ export const WorkerTasks = () => {
 
   useEffect(() => {
     fetchTasks();
-  }, [searchTerm, page, filter]);
+  }, [ page]);
   const fetchTasks = async () => {
     const response = await makeApiCall(
       "get",
@@ -120,6 +102,7 @@ export const WorkerTasks = () => {
     ) {
       setTasks(response.data.tasks);
       setTotalPages(response.data.total_pages || 1);
+      setProject(response.data.project );
     } else {
       setTasks([]);
       toast.error("Failed to fetch tasks");

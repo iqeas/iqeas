@@ -13,7 +13,7 @@ import {
 
 const menuConfig = {
   pm: [
-    { label: "Projects", to: "/pm", icon: Home },
+    { label: "Projects", to: "/pm", icon: Home, match: ["/project/"] },
     { label: "Document Center", to: "/pm/documents", icon: BookOpen },
     { label: "Calendar", to: "/pm/calendar", icon: Calendar },
   ],
@@ -28,7 +28,12 @@ const menuConfig = {
     { label: "Calendar", to: "/estimation/calendar", icon: Calendar },
   ],
   documentation: [
-    { label: "Document submission", to: "/documentation", icon: Home },
+    {
+      label: "Document submission",
+      to: "/documentation",
+      icon: Home,
+      match: ["/documentation/project/"],
+    },
     {
       label: "Document Center",
       to: "/documentation/documents",
@@ -37,12 +42,17 @@ const menuConfig = {
     { label: "Calendar", to: "/documentation/calendar", icon: Calendar },
   ],
   working: [
-    { label: "My Task", to: "/working", icon: Home },
+    {
+      label: "My Task",
+      to: "/working",
+      icon: Home,
+      match: ["/working", "/working/project/"],
+    },
     { label: "Document Center", to: "/working/documents", icon: BookOpen },
     { label: "Calendar", to: "/working/calendar", icon: Calendar },
   ],
   admin: [
-    { label: "Projects", to: "/admin", icon: Folder },
+    { label: "Projects", to: "/admin", icon: Folder, match: ["/project/"] },
     { label: "Members", to: "/admin/members", icon: Calendar },
     { label: "Document Center", to: "/admin/documents", icon: Calendar },
     { label: "Calendar", to: "/admin/calendar", icon: Calendar },
@@ -70,9 +80,22 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     setOpenMenu(false);
   }, [pathname]);
 
+  // Disable background scroll on mobile menu open
+  useEffect(() => {
+    document.body.style.overflow = openMenu ? "hidden" : "";
+  }, [openMenu]);
+
   return (
-    <div className="flex">
-      {/* Mobile menu button (top right, hidden when menu is open) */}
+    <div className="flex h-screen overflow-hidden">
+      {/* Mobile menu overlay */}
+      {openMenu && (
+        <div
+          className="fixed inset-0 z-30 bg-black bg-opacity-30 md:hidden"
+          onClick={() => setOpenMenu(false)}
+        />
+      )}
+
+      {/* Mobile menu button */}
       {!openMenu && (
         <button
           className="md:hidden fixed top-3 right-3 z-50 bg-white rounded-full p-2 shadow border border-slate-200"
@@ -82,6 +105,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <Menu size={24} />
         </button>
       )}
+
       {/* Sidebar */}
       <aside
         className={`
@@ -106,33 +130,42 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
               <X size={24} />
             </button>
           </div>
+
+          {/* Sidebar content */}
           <div>
             <div className="max-md:hidden p-4 pb-2 border-b border-slate-100">
               <h2 className="text-lg font-bold text-blue-700 mb-1">
                 {roleLabel}
               </h2>
             </div>
-            <nav className="flex flex-col space-y-1 ">
-              {links.map(({ label, to, icon: Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) =>
-                    `flex items-center px-4 py-2 rounded-lg font-medium transition ${
-                      to === pathname
+            <nav className="flex flex-col space-y-1">
+              {links.map(({ label, match, to, icon: Icon }) => {
+                const isMatch =
+                  (Array.isArray(match) &&
+                    match.some((m) => pathname.startsWith(m))) ||
+                  pathname === to;
+
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition ${
+                      isMatch
                         ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
                         : "text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
-                  onClick={() => setOpenMenu(false)}
-                >
-                  {Icon && <Icon size={18} className="mr-3" />}
-                  {label}
-                </NavLink>
-              ))}
+                    }`}
+                    onClick={() => setOpenMenu(false)}
+                  >
+                    {Icon && <Icon size={18} className="mr-3" />}
+                    {label}
+                  </NavLink>
+                );
+              })}
             </nav>
           </div>
         </div>
+
+        {/* Logout button */}
         <div className="p-0">
           <button
             onClick={logout}
@@ -144,7 +177,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           </button>
         </div>
       </aside>
-      <main className="flex-1 max-md:pt-12  ">{children}</main>
+
+      {/* Main content */}
+      <main className="flex-1 max-md:pt-12 overflow-y-auto ">{children}</main>
     </div>
   );
 };

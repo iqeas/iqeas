@@ -56,12 +56,6 @@ import { formatRevenue, toReadableText } from "@/utils/utils";
 import ShowFile from "./ShowFile";
 import { validateRequiredFields } from "@/utils/validation";
 
-const initialEstimators = [
-  "Ahmed Al-Rashid",
-  "Sarah Mohammed",
-  "John Doe",
-  "Jane Smith",
-];
 
 export const EstimationDashboard = () => {
   // State for the Ready for Execution toggle in the Approved form
@@ -86,7 +80,6 @@ export const EstimationDashboard = () => {
   });
   const [viewEstimationProject, setViewEstimationProject] = useState(null);
   const [users, setUsers] = useState<IUser[]>([]);
-  const [teams, setTeams] = useState<ITeam[]>([]);
   const [approvedForm, setApprovedForm] = useState({
     forward_type: "user",
     forward_id: "",
@@ -121,7 +114,6 @@ export const EstimationDashboard = () => {
   };
 
   // Add local state to track workflow step for each project
-  const [workflowStep, setWorkflowStep] = useState({});
   const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
   const { authToken } = useAuth();
   const [searchInput, setSearchInput] = useState("");
@@ -153,7 +145,7 @@ export const EstimationDashboard = () => {
   const getUsersAndTeams = async () => {
     const response = await makeApiCall(
       "get",
-      API_ENDPOINT.GET_ALL_USERS_AND_TEAMS,
+      API_ENDPOINT.GET_USERS_BY_ROLE('pm'),
       {},
       "application/json",
       authToken,
@@ -161,19 +153,18 @@ export const EstimationDashboard = () => {
     );
     if (response.status === 200) {
       setUsers(response.data.users);
-      setTeams(response.data.teams);
     }
   };
 
   const handleStatusTransition = async (project, nextStatus) => {
     if (nextStatus === "Rejected") {
-      if (users.length == 0 || teams.length == 0) {
+      if (users.length == 0 ) {
         getUsersAndTeams();
       }
       openRejectModal(project);
     } else if (nextStatus === "Approved") {
       resetApprovedForm();
-      if (users.length == 0 || teams.length == 0) {
+      if (users.length == 0) {
         getUsersAndTeams();
       }
       setSelectedProject(project);
@@ -206,18 +197,6 @@ export const EstimationDashboard = () => {
     setApprovedForm((f) => ({ ...f, [field]: e.target.files[0] }));
   };
 
-  const handleEstimationLabelChange = (idx, e) => {
-    const label = e.target.value;
-    setEstimationFiles((files) =>
-      files.map((uf, i) => (i === idx ? { ...uf, label } : uf))
-    );
-  };
-  const addEstimationFileInput = () => {
-    setEstimationFiles((files) => [...files, { label: "", file: null }]);
-  };
-  const removeEstimationFileInput = (idx) => {
-    setEstimationFiles((files) => files.filter((_, i) => i !== idx));
-  };
 
   const SubmitEstimation = async () => {
     // Validation
@@ -753,8 +732,7 @@ export const EstimationDashboard = () => {
                     </Button>
                   )}
                   {/* Status workflow buttons */}
-                  {project.estimation_status === "not_started" &&
-                    (workflowStep[project.id] || 0) === 0 && (
+                  {project.estimation_status === "not_started"&& (
                       <Button
                         size="sm"
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
@@ -998,30 +976,13 @@ export const EstimationDashboard = () => {
                       setApprovedForm({ ...approvedForm, forward_id: value });
                     }}
                   >
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          approvedForm.forward_type === "user"
-                            ? "Select User"
-                            : "Select Team"
-                        }
-                      />
-                    </SelectTrigger>
                     <SelectContent>
-                      {approvedForm.forward_type === "user"
-                        ? users.map((u) => (
-                            <SelectItem key={u.id} value={u.id}>
-                              {u.name}
-                            </SelectItem>
-                          ))
-                        : teams.map((t) => (
-                            <SelectItem
-                              key={t.id.toString()}
-                              value={t.id.toString()}
-                            >
-                              {t.title}
-                            </SelectItem>
-                          ))}
+                      {users.map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name}
+                          </SelectItem>
+                        ))}
+                      
                     </SelectContent>
                   </Select>
                 </div>

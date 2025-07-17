@@ -10,6 +10,7 @@ import {
   fetchAllProjects,
   getUploadedFilesForRoles,
   listWorkerProjectsController,
+  getAdminProjectsController,
 } from "../controllers/projects.controller.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -20,7 +21,7 @@ router.patch("/projects/:id", authenticateToken, patchProject);
 router.get("/projects/rfq", authenticateToken, getProjectsPaginatedController);
 router.get("/projects/estimation", authenticateToken, getEstimationProjects);
 router.get("/projects/pm", authenticateToken, getPMProjectsController);
-router.get("/projects/admin", authenticateToken, getPMProjectsController);
+router.get("/projects/admin", authenticateToken, getAdminProjectsController);
 router.post("/projects/reject", authenticateToken, projectRejectCreateHandler);
 router.post("/project-delivery/:id", addDeliveryFilesController);
 router.get("/projects/uploaded-files-data-by-roles", getUploadedFilesForRoles)

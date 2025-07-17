@@ -11,7 +11,7 @@ import RoleProtectedRoute from "./components/atomic/protectedRoute/RoleProtected
 import { RFCDashboard } from "./components/RFCDashboard";
 import { DocumentCenter } from "./components/DocumentCenter";
 import { ProjectsDashboard } from "./components/ProjectsDashboard";
-import { DocumentationDashboard } from "./components/DocumentationDashboard";
+import { DocumentationDashboard } from "./components/DocumentationTasks";
 import { EstimationDashboard } from "./components/EstimationDashboard";
 import Home from "./components/Home";
 
@@ -24,6 +24,7 @@ import FileTypeSelection from "./components/FileTypeSelection";
 import DocumentFiles from "./components/DocumentFiles";
 import WorkerProjectList from "./components/WorkerProjectList";
 import { WorkerTasks } from "./components/WorkerTasks";
+import DocumentationProjectList from "./components/DocumentationProjectList";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -47,6 +48,14 @@ const App = () => (
               <Route path="/pm" element={<RoleProtectedRoute />}>
                 <Route
                   path=""
+                  element={
+                    <DashboardLayout>
+                      <ProjectsDashboard />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="project/:projectId"
                   element={
                     <DashboardLayout>
                       <ProjectsDashboard />
@@ -191,6 +200,14 @@ const App = () => (
                   path=""
                   element={
                     <DashboardLayout>
+                      <DocumentationProjectList />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="project/:projectId"
+                  element={
+                    <DashboardLayout>
                       <DocumentationDashboard />
                     </DashboardLayout>
                   }
@@ -241,7 +258,7 @@ const App = () => (
                   }
                 />
                 <Route
-                  path=":projectId"
+                  path="project/:projectId"
                   element={
                     <DashboardLayout>
                       <WorkerTasks />
@@ -286,6 +303,14 @@ const App = () => (
               <Route path="/admin" element={<RoleProtectedRoute />}>
                 <Route
                   path=""
+                  element={
+                    <DashboardLayout>
+                      <ProjectsDashboard />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="project/:projectId"
                   element={
                     <DashboardLayout>
                       <ProjectsDashboard />

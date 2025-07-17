@@ -26,7 +26,6 @@ const Login = () => {
   const [error, setError] = useState("");
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const { makeApiCall, fetching, fetchType } = useAPICall();
-
   useEffect(() => {
     console.log(user);
     if (user) {
@@ -96,7 +95,9 @@ const Login = () => {
       setForgotPasswordLoading(false);
     }
   };
-
+  if (user) {
+    return null;
+  }
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-slate-200">
       <div className="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-md flex flex-col items-center">
