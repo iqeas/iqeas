@@ -257,152 +257,60 @@ export async function getStagesByProjectId(projectId) {
   return result.rows;
 }
 export async function getDrawingsWithLogs(projectId, stageId) {
-  try {
-    await pool.query("BEGIN");
+  const query = `
+    SELECT 
+      d.id,
+      d.title,
+      d.drawing_type,
+      d.revision,
+      d.drawing_weightage,
+      d.allocated_hours,
+      d.project_id,
+      d.stage_id,
+      d.uploaded_by,
+      d.created_at,
+      d.client_dwg_no,
+      d.iqeas_dwg_no,
 
-    const query = `
-      SELECT 
-        d.id,
-        d.title,
-        d.drawing_type,
-        d.revision,
-        d.drawing_weightage,
-        d.allocated_hours,
-        d.project_id,
-        d.stage_id,
-        d.uploaded_by,
-        d.created_at,
-        d.client_dwg_no,
-        d.iqeas_dwg_no,
+      -- Drawing uploaded_files
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM drawings_uploaded_files duf
+        JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
+        WHERE duf.drawing_id = d.id
+      ), '[]'::json) AS uploaded_files,
 
-        -- Drawing uploaded_files
-        COALESCE((
-          SELECT json_agg(json_build_object(
-            'id', uf.id,
-            'label', uf.label,
-            'file', uf.file
-          ))
-          FROM drawings_uploaded_files duf
-          JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
-          WHERE duf.drawing_id = d.id
-        ), '[]'::json) AS uploaded_files,
+      -- Final files
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM final_files ff
+        JOIN uploaded_files uf ON ff.uploaded_file_id = uf.id
+        WHERE ff.drawing_id = d.id
+      ), '[]'::json) AS final_files,
 
-        -- Final files
-        COALESCE((
-          SELECT json_agg(json_build_object(
-            'id', uf.id,
-            'label', uf.label,
-            'file', uf.file
-          ))
-          FROM final_files ff
-          JOIN uploaded_files uf ON ff.uploaded_file_id = uf.id
-          WHERE ff.drawing_id = d.id
-        ), '[]'::json) AS final_files,
-
-        -- Drawing stage logs (ordered by created_at ASC)
-        COALESCE((
-          SELECT json_agg(log_entry ORDER BY log_entry->>'created_at')
-          FROM (
-            SELECT json_build_object(
-              'id', l.id,
-              'step_name', l.step_name,
-              'status', l.status,
-              'notes', l.notes,
-              'reason', l.reason,
-              'step_order', l.step_order,
-              'is_sent', l.is_sent,
-              'action_taken', l.action_taken,
-              'created_at', l.created_at,
-              'updated_at', l.updated_at, 
-              'created_by', json_build_object(
-                'id', u.id,
-                'name', u.name,
-                'email', u.email
-              ),
-              'incoming_files', COALESCE((
-                SELECT json_agg(json_build_object(
-                  'id', uf1.id,
-                  'label', uf1.label,
-                  'file', uf1.file
-                ))
-                FROM drawing_stage_log_files dslf1
-                JOIN uploaded_files uf1 ON dslf1.uploaded_file_id = uf1.id
-                WHERE dslf1.log_id = l.id AND dslf1.type = 'incoming'
-              ), '[]'::json),
-              'outgoing_files', COALESCE((
-                SELECT json_agg(json_build_object(
-                  'id', uf2.id,
-                  'label', uf2.label,
-                  'file', uf2.file
-                ))
-                FROM drawing_stage_log_files dslf2
-                JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
-                WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
-              ), '[]'::json)
-            ) AS log_entry
-            FROM drawing_stage_logs l
-            LEFT JOIN users u ON l.created_by = u.id
-            WHERE l.drawing_id = d.id
-            ORDER BY l.created_at ASC
-          ) AS ordered_logs
-        ), '[]'::json) AS drawing_stage_logs
-
-      FROM drawings d
-      WHERE d.project_id = $1 AND d.stage_id = $2;
-    `;
-
-    const result = await pool.query(query, [projectId, stageId]);
-
-    await pool.query("COMMIT");
-    return result.rows;
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    throw error;
-  }
-}
-
-export async function getDrawingsWithLogsById(drawing_id) {
-  try {
-    await pool.query("BEGIN");
-
-    const query = `
-      SELECT 
-        d.id,
-        d.title,
-        d.drawing_type,
-        d.revision,
-        d.drawing_weightage,
-        d.allocated_hours,
-        d.project_id,
-        d.stage_id,
-        d.uploaded_by,
-        d.created_at,
-        d.client_dwg_no,
-        d.iqeas_dwg_no,
-
-        COALESCE((
-          SELECT json_agg(json_build_object(
-            'id', uf.id,
-            'label', uf.label,
-            'file', uf.file
-          ))
-          FROM drawings_uploaded_files duf
-          JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
-          WHERE duf.drawing_id = d.id
-        ), '[]'::json) AS uploaded_files,
-
-        COALESCE((
-          SELECT json_agg(json_build_object(
+      -- Drawing stage logs (ordered by created_at ASC)
+      COALESCE((
+        SELECT json_agg(log_entry ORDER BY log_entry->>'created_at')
+        FROM (
+          SELECT json_build_object(
             'id', l.id,
             'step_name', l.step_name,
             'status', l.status,
             'notes', l.notes,
+            'reason', l.reason,
             'step_order', l.step_order,
             'is_sent', l.is_sent,
             'action_taken', l.action_taken,
-            'reason', l.reason,
             'created_at', l.created_at,
-            'updated_at', l.updated_at,
+            'updated_at', l.updated_at, 
             'created_by', json_build_object(
               'id', u.id,
               'name', u.name,
@@ -428,51 +336,221 @@ export async function getDrawingsWithLogsById(drawing_id) {
               JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
               WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
             ), '[]'::json)
-          ))
+          ) AS log_entry
           FROM drawing_stage_logs l
           LEFT JOIN users u ON l.created_by = u.id
           WHERE l.drawing_id = d.id
-        ), '[]'::json) AS drawing_stage_logs
+          ORDER BY l.created_at ASC
+        ) AS ordered_logs
+      ), '[]'::json) AS drawing_stage_logs
 
-      FROM drawings d
-      WHERE d.id = $1;
-    `;
+    FROM drawings d
+    WHERE d.project_id = $1 AND d.stage_id = $2;
+  `;
 
-    const result = await pool.query(query, [drawing_id]);
-
-    await pool.query("COMMIT");
-
-    return result.rows[0];
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    throw error;
-  }
+  const result = await pool.query(query, [projectId, stageId]);
+  return result.rows[0];
 }
 
+export async function getDrawingsWithLogsById(drawing_id) {
+  const query = `
+    SELECT 
+      d.id,
+      d.title,
+      d.drawing_type,
+      d.revision,
+      d.drawing_weightage,
+      d.allocated_hours,
+      d.project_id,
+      d.stage_id,
+      d.uploaded_by,
+      d.created_at,
+      d.client_dwg_no,
+      d.iqeas_dwg_no,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM drawings_uploaded_files duf
+        JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
+        WHERE duf.drawing_id = d.id
+      ), '[]'::json) AS uploaded_files,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', l.id,
+          'step_name', l.step_name,
+          'status', l.status,
+          'notes', l.notes,
+          'step_order', l.step_order,
+          'is_sent', l.is_sent,
+          'action_taken', l.action_taken,
+          'reason', l.reason,
+          'created_at', l.created_at,
+          'updated_at', l.updated_at,
+          'created_by', json_build_object(
+            'id', u.id,
+            'name', u.name,
+            'email', u.email
+          ),
+          'incoming_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf1.id,
+              'label', uf1.label,
+              'file', uf1.file
+            ))
+            FROM drawing_stage_log_files dslf1
+            JOIN uploaded_files uf1 ON dslf1.uploaded_file_id = uf1.id
+            WHERE dslf1.log_id = l.id AND dslf1.type = 'incoming'
+          ), '[]'::json),
+          'outgoing_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf2.id,
+              'label', uf2.label,
+              'file', uf2.file
+            ))
+            FROM drawing_stage_log_files dslf2
+            JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
+            WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
+          ), '[]'::json)
+        ))
+        FROM drawing_stage_logs l
+        LEFT JOIN users u ON l.created_by = u.id
+        WHERE l.drawing_id = d.id
+      ), '[]'::json) AS drawing_stage_logs
+
+    FROM drawings d
+    WHERE d.id = $1;
+  `;
+
+  const result = await pool.query(query, [drawing_id]);
+  return result.rows[0];
+}
 export async function getDrawingLogById(drawingLogId) {
-  try {
-    await pool.query("BEGIN");
+  const query = `
+    SELECT 
+      l.id,
+      l.drawing_id,
+      l.step_name,
+      l.status,
+      l.notes,
+      l.reason,
+      l.step_order,
+      l.is_sent,
+      l.action_taken,
+      l.created_at,
+      l.updated_at,
 
-    const query = `
+      json_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email
+      ) AS created_by,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf1.id,
+          'label', uf1.label,
+          'file', uf1.file
+        ))
+        FROM drawing_stage_log_files dslf1
+        JOIN uploaded_files uf1 ON dslf1.uploaded_file_id = uf1.id
+        WHERE dslf1.log_id = l.id AND dslf1.type = 'incoming'
+      ), '[]'::json) AS incoming_files,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf2.id,
+          'label', uf2.label,
+          'file', uf2.file
+        ))
+        FROM drawing_stage_log_files dslf2
+        JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
+        WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
+      ), '[]'::json) AS outgoing_files
+
+    FROM drawing_stage_logs l
+    LEFT JOIN users u ON l.created_by = u.id
+    WHERE l.id = $1;
+  `;
+
+  const result = await pool.query(query, [drawingLogId]);
+  return result.rows[0] || null;
+}
+export async function getUserAssignedTasksForProject(
+  userId,
+  projectId,
+  page = 1,
+  size = 10
+) {
+  const offset = (page - 1) * size;
+  const values = [userId, projectId, size, offset];
+
+  const query = `
+    WITH filtered_logs AS (
       SELECT 
-        l.id,
-        l.drawing_id,
-        l.step_name,
-        l.status,
-        l.notes,
-        l.reason,
-        l.step_order,
-        l.is_sent,
-        l.action_taken,
-        l.created_at,
-        l.updated_at,
-
+        l.*,
+        d.title AS drawing_title,
+        d.revision,
+        d.drawing_type,
+        d.client_dwg_no,
+        d.iqeas_dwg_no,
+        d.allocated_hours,
+        d.drawing_weightage,
+        d.created_at AS drawing_created_at,
+        d.stage_id,
         json_build_object(
-          'id', u.id,
-          'name', u.name,
-          'email', u.email
-        ) AS created_by,
+          'id', du.id,
+          'name', du.name,
+          'email', du.email
+        ) AS drawing_uploaded_by_user,
+        u.id AS assigned_by_id,
+        u.name AS assigned_by_name,
+        u.email AS assigned_by_email,
 
+        -- Estimation uploaded files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file
+          ))
+          FROM estimations e
+          JOIN estimation_uploaded_files ef ON ef.estimation_id = e.id
+          JOIN uploaded_files uf ON uf.id = ef.uploaded_file_id
+          WHERE e.project_id = d.project_id
+        ), '[]'::json) AS estimation_files,
+
+        -- Drawing uploaded files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file
+          ))
+          FROM drawings_uploaded_files duf
+          JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
+          WHERE duf.drawing_id = d.id
+        ), '[]'::json) AS drawing_files,
+
+        -- Sent to user
+        (
+          SELECT json_build_object(
+            'name', fu.name,
+            'role', fu.role,
+            'datetime', next_l.created_at
+          )
+          FROM drawing_stage_logs next_l
+          JOIN users fu ON fu.id = next_l.forwarded_user_id
+          WHERE next_l.drawing_id = l.drawing_id AND next_l.id > l.id
+          ORDER BY next_l.id ASC
+          LIMIT 1
+        ) AS sent_to,
+
+        -- Incoming files
         COALESCE((
           SELECT json_agg(json_build_object(
             'id', uf1.id,
@@ -484,6 +562,7 @@ export async function getDrawingLogById(drawingLogId) {
           WHERE dslf1.log_id = l.id AND dslf1.type = 'incoming'
         ), '[]'::json) AS incoming_files,
 
+        -- Outgoing files
         COALESCE((
           SELECT json_agg(json_build_object(
             'id', uf2.id,
@@ -493,178 +572,59 @@ export async function getDrawingLogById(drawingLogId) {
           FROM drawing_stage_log_files dslf2
           JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
           WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
-        ), '[]'::json) AS outgoing_files
+        ), '[]'::json) AS outgoing_files,
+
+        COUNT(*) OVER() AS total_count
 
       FROM drawing_stage_logs l
-      LEFT JOIN users u ON l.created_by = u.id
-      WHERE l.id = $1;
-    `;
+      JOIN drawings d ON d.id = l.drawing_id
+      JOIN users du ON du.id = d.uploaded_by
+      JOIN users u ON u.id = l.created_by
+      WHERE l.forwarded_user_id = $1 AND d.project_id = $2
+      ORDER BY l.created_at DESC
+      LIMIT $3 OFFSET $4
+    )
 
-    const result = await pool.query(query, [drawingLogId]);
+    SELECT 
+      id,
+      drawing_id,
+      drawing_title,
+      drawing_type,
+      revision,
+      drawing_weightage,
+      allocated_hours,
+      client_dwg_no,
+      iqeas_dwg_no,
+      stage_id,
+      status,
+      step_name,
+      is_sent,
+      action_taken,
+      step_order,
+      drawing_created_at,
+      notes,
+      reason,
+      created_at,
+      updated_at,
+      drawing_uploaded_by_user,
+      json_build_object('id', assigned_by_id, 'name', assigned_by_name, 'email', assigned_by_email) AS assigned_by,
+      sent_to,
+      estimation_files,
+      drawing_files,
+      incoming_files,
+      outgoing_files,
+      total_count
+    FROM filtered_logs;
+  `;
 
-    await pool.query("COMMIT");
+  const result = await pool.query(query, values);
+  const total = result.rows[0]?.total_count || 0;
+  const totalPages = Math.ceil(total / size);
 
-    return result.rows[0] || null;
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    throw error;
-  }
-}
-export async function getUserAssignedTasksForProject(
-  userId,
-  projectId,
-  page = 1,
-  size = 10
-) {
-  const offset = (page - 1) * size;
-  const values = [userId, projectId, size, offset];
-
-  try {
-    await pool.query("BEGIN");
-
-    const query = `
-      WITH filtered_logs AS (
-        SELECT 
-          l.*,
-          d.title AS drawing_title,
-          d.revision,
-          d.drawing_type,
-          d.client_dwg_no,
-          d.iqeas_dwg_no,
-          d.allocated_hours,
-          d.drawing_weightage,
-          d.created_at AS drawing_created_at,
-          d.stage_id,
-          json_build_object(
-            'id', du.id,
-            'name', du.name,
-            'email', du.email
-          ) AS drawing_uploaded_by_user,
-          u.id AS assigned_by_id,
-          u.name AS assigned_by_name,
-          u.email AS assigned_by_email,
-
-          -- Estimation uploaded files
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf.id,
-              'label', uf.label,
-              'file', uf.file
-            ))
-            FROM estimations e
-            JOIN estimation_uploaded_files ef ON ef.estimation_id = e.id
-            JOIN uploaded_files uf ON uf.id = ef.uploaded_file_id
-            WHERE e.project_id = d.project_id
-          ), '[]'::json) AS estimation_files,
-
-          -- Drawing uploaded files
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf.id,
-              'label', uf.label,
-              'file', uf.file
-            ))
-            FROM drawings_uploaded_files duf
-            JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
-            WHERE duf.drawing_id = d.id
-          ), '[]'::json) AS drawing_files,
-
-          -- Sent to user
-          (
-            SELECT json_build_object(
-              'name', fu.name,
-              'role', fu.role,
-              'datetime', next_l.created_at
-            )
-            FROM drawing_stage_logs next_l
-            JOIN users fu ON fu.id = next_l.forwarded_user_id
-            WHERE next_l.drawing_id = l.drawing_id AND next_l.id > l.id
-            ORDER BY next_l.id ASC
-            LIMIT 1
-          ) AS sent_to,
-
-          -- Incoming files
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf1.id,
-              'label', uf1.label,
-              'file', uf1.file
-            ))
-            FROM drawing_stage_log_files dslf1
-            JOIN uploaded_files uf1 ON dslf1.uploaded_file_id = uf1.id
-            WHERE dslf1.log_id = l.id AND dslf1.type = 'incoming'
-          ), '[]'::json) AS incoming_files,
-
-          -- Outgoing files
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf2.id,
-              'label', uf2.label,
-              'file', uf2.file
-            ))
-            FROM drawing_stage_log_files dslf2
-            JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
-            WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
-          ), '[]'::json) AS outgoing_files,
-
-          COUNT(*) OVER() AS total_count
-
-        FROM drawing_stage_logs l
-        JOIN drawings d ON d.id = l.drawing_id
-        JOIN users du ON du.id = d.uploaded_by
-        JOIN users u ON u.id = l.created_by
-        WHERE l.forwarded_user_id = $1 AND d.project_id = $2
-        ORDER BY l.created_at DESC
-        LIMIT $3 OFFSET $4
-      )
-
-      SELECT 
-        id,
-        drawing_id,
-        drawing_title,
-        drawing_type,
-        revision,
-        drawing_weightage,
-        allocated_hours,
-        client_dwg_no,
-        iqeas_dwg_no,
-        stage_id,
-        status,
-        step_name,
-        is_sent,
-        action_taken,
-        step_order,
-        drawing_created_at,
-        notes,
-        reason,
-        created_at,
-        updated_at,
-        drawing_uploaded_by_user,
-        json_build_object('id', assigned_by_id, 'name', assigned_by_name, 'email', assigned_by_email) AS assigned_by,
-        sent_to,
-        estimation_files,
-        drawing_files,
-        incoming_files,
-        outgoing_files,
-        total_count
-      FROM filtered_logs;
-    `;
-
-    const result = await pool.query(query, values);
-
-    await pool.query("COMMIT");
-
-    const total = result.rows[0]?.total_count || 0;
-    const totalPages = Math.ceil(total / size);
-
-    return {
-      total_pages: totalPages,
-      tasks: result.rows,
-    };
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    throw error;
-  }
+  return {
+    total_pages: totalPages,
+    tasks: result.rows,
+  };
 }
 
 export async function updateDrawingLog(
@@ -680,26 +640,20 @@ export async function updateDrawingLog(
 
   try {
     await client.query("BEGIN");
-
     let result;
-
-    // Check if is_sent is explicitly provided (not undefined or null)
-    if (typeof is_sent === "boolean") {
+    if (is_sent != null || is_sent == undefined) {
       result = await client.query(
         `UPDATE drawing_stage_logs
-         SET status = $1, action_taken = $2, reason = $3, is_sent = $4, updated_at = NOW()
-         WHERE id = $5
-         RETURNING *`,
-        [status, action_taken, reason, is_sent, logId]
+        SET status = $1, action_taken = $2, reason = $3, updated_at = NOW()
+         WHERE id = $4 RETURNING *`,
+        [status, action_taken, reason, logId]
       );
     } else {
-      // is_sent not provided, update without it
       result = await client.query(
         `UPDATE drawing_stage_logs
-         SET status = $1, action_taken = $2, reason = $3, updated_at = NOW()
-         WHERE id = $4
-         RETURNING *`,
-        [status, action_taken, reason, logId]
+        SET status = $1, action_taken = $2, reason = $3,is_sent=$6, updated_at = NOW()
+         WHERE id = $4 RETURNING *`,
+        [status, action_taken, reason, logId, is_sent]
       );
     }
 
@@ -800,229 +754,184 @@ export async function updateLogStatus(logId, isSent) {
 }
 
 export async function deleteDrawingLog(logId) {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    const result = await client.query(
-      `DELETE FROM drawing_stage_logs 
-       WHERE id = $1 
-       RETURNING *`,
-      [logId]
-    );
-
-    await client.query("COMMIT");
-
-    return result.rows[0];
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  const result = await pool.query(
+    `DELETE FROM drawing_stage_logs 
+     WHERE id = $1 RETURNING *`,
+    [logId]
+  );
+  return result.rows[0];
 }
 
-
 export async function getUserAssignedTaskByLogId(logId) {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-
-    const query = `
-      WITH filtered_log AS (
-        SELECT 
-          l.*,
-          d.title AS drawing_title,
-          d.revision,
-          d.drawing_type,
-          d.client_dwg_no,
-          d.iqeas_dwg_no,
-          d.allocated_hours,
-          d.drawing_weightage,
-          d.uploaded_by AS drawing_uploaded_by,
-          d.stage_id,
-          p.progress AS project_progress,
-          d.created_at AS drawing_created_at,
-          s.name AS stage_name,
-          p.id AS project_id,
-          p.project_id AS project_code,
-          p.client_company,
-          p.contact_person,
-          p.contact_person_email,
-          p.contact_person_phone,
-          p.status AS project_status,
-          p.priority AS estimation_priority,
-
-          e.deadline AS estimation_due_date,
-
-          u.name AS assigned_by_name,
-          u.email AS assigned_by_email,
-          u.id AS assigned_by_id,
-
-          -- Drawing Creator
-          json_build_object(
-            'id', du.id,
-            'name', du.name,
-            'email', du.email
-          ) AS drawing_uploaded_by_user,
-
-          -- Estimation uploaded files
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf.id,
-              'label', uf.label,
-              'file', uf.file
-            ))
-            FROM estimations e2
-            JOIN estimation_uploaded_files ef ON ef.estimation_id = e2.id
-            JOIN uploaded_files uf ON uf.id = ef.uploaded_file_id
-            WHERE e2.project_id = p.id
-          ), '[]'::json) AS estimation_files,
-
-          -- Drawing uploaded files
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf.id,
-              'label', uf.label,
-              'file', uf.file
-            ))
-            FROM drawings_uploaded_files duf
-            JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
-            WHERE duf.drawing_id = d.id
-          ), '[]'::json) AS drawing_files,
-
-          -- Sent to user (next log)
-          (
-            SELECT json_build_object(
-              'name', fu.name,
-              'role', fu.role,
-              'datetime', next_l.created_at
-            )
-            FROM drawing_stage_logs next_l
-            JOIN users fu ON fu.id = next_l.forwarded_user_id
-            WHERE next_l.drawing_id = l.drawing_id
-              AND next_l.id > l.id
-            ORDER BY next_l.id ASC
-            LIMIT 1
-          ) AS sent_to,
-
-          -- Incoming files
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf1.id,
-              'label', uf1.label,
-              'file', uf1.file
-            ))
-            FROM drawing_stage_log_files dslf1
-            JOIN uploaded_files uf1 ON dslf1.uploaded_file_id = uf1.id
-            WHERE dslf1.log_id = l.id AND dslf1.type = 'incoming'
-          ), '[]'::json) AS incoming_files,
-
-          -- Outgoing files
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf2.id,
-              'label', uf2.label,
-              'file', uf2.file
-            ))
-            FROM drawing_stage_log_files dslf2
-            JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
-            WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
-          ), '[]'::json) AS outgoing_files
-
-        FROM drawing_stage_logs l
-        JOIN drawings d ON d.id = l.drawing_id
-        JOIN users du ON du.id = d.uploaded_by
-        JOIN projects p ON p.id = d.project_id
-        JOIN users u ON u.id = l.created_by
-        JOIN stages s ON s.id = d.stage_id
-        LEFT JOIN estimations e ON e.project_id = p.id
-        WHERE l.id = $1
-      )
-
+  const query = `
+    WITH filtered_log AS (
       SELECT 
-        id,
-        drawing_id,
-        drawing_title,
-        drawing_type,
-        revision,
-        drawing_weightage,
-        allocated_hours,
-        stage_name,
-        project_progress,
-        client_dwg_no,
-        iqeas_dwg_no,
-        stage_id,
-        status,
-        step_name,
-        is_sent,
-        action_taken,
-        step_order,
-        drawing_created_at,
-        notes,
-        reason,
-        created_at,
-        updated_at,
-        drawing_uploaded_by_user,
-        json_build_object('id', assigned_by_id, 'name', assigned_by_name, 'email', assigned_by_email) AS assigned_by,
-        sent_to,
-        -- Project details
-        project_id,
-        project_code,
-        client_company,
-        contact_person,
-        contact_person_phone,
-        contact_person_email,
-        project_status,
-        -- Estimation
-        estimation_due_date,
-        estimation_priority,
-        estimation_files,
-        -- Drawing
-        drawing_files,
-        -- Files
-        incoming_files,
-        outgoing_files
-      FROM filtered_log;
-    `;
+        l.*,
+        d.title AS drawing_title,
+        d.revision,
+        d.drawing_type,
+        d.client_dwg_no,
+        d.iqeas_dwg_no,
+        d.allocated_hours,
+        d.drawing_weightage,
+        d.uploaded_by AS drawing_uploaded_by,
+        d.stage_id,
+        p.progress AS project_progress,
+        d.created_at AS drawing_created_at,
+        s.name AS stage_name,
+        p.id AS project_id,
+        p.project_id AS project_code,
+        p.client_company,
+        p.contact_person,
+        p.contact_person_email,
+        p.contact_person_phone,
+        p.status AS project_status,
+        p.priority AS estimation_priority,
 
-    const result = await client.query(query, [logId]);
-    await client.query("COMMIT");
+        e.deadline AS estimation_due_date,
 
-    return result.rows[0] || null;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+        u.name AS assigned_by_name,
+        u.email AS assigned_by_email,
+        u.id AS assigned_by_id,
+
+        -- Drawing Creator
+        json_build_object(
+          'id', du.id,
+          'name', du.name,
+          'email', du.email
+        ) AS drawing_uploaded_by_user,
+
+        -- Estimation uploaded files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file
+          ))
+          FROM estimations e2
+          JOIN estimation_uploaded_files ef ON ef.estimation_id = e2.id
+          JOIN uploaded_files uf ON uf.id = ef.uploaded_file_id
+          WHERE e2.project_id = p.id
+        ), '[]'::json) AS estimation_files,
+
+        -- Drawing uploaded files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file
+          ))
+          FROM drawings_uploaded_files duf
+          JOIN uploaded_files uf ON duf.uploaded_file_id = uf.id
+          WHERE duf.drawing_id = d.id
+        ), '[]'::json) AS drawing_files,
+
+        -- Sent to user (next log)
+        (
+          SELECT json_build_object(
+            'name', fu.name,
+            'role', fu.role,
+            'datetime', next_l.created_at
+          )
+          FROM drawing_stage_logs next_l
+          JOIN users fu ON fu.id = next_l.forwarded_user_id
+          WHERE next_l.drawing_id = l.drawing_id
+            AND next_l.id > l.id
+          ORDER BY next_l.id ASC
+          LIMIT 1
+        ) AS sent_to,
+
+        -- Incoming files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf1.id,
+            'label', uf1.label,
+            'file', uf1.file
+          ))
+          FROM drawing_stage_log_files dslf1
+          JOIN uploaded_files uf1 ON dslf1.uploaded_file_id = uf1.id
+          WHERE dslf1.log_id = l.id AND dslf1.type = 'incoming'
+        ), '[]'::json) AS incoming_files,
+
+        -- Outgoing files
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', uf2.id,
+            'label', uf2.label,
+            'file', uf2.file
+          ))
+          FROM drawing_stage_log_files dslf2
+          JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
+          WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
+        ), '[]'::json) AS outgoing_files
+
+      FROM drawing_stage_logs l
+      JOIN drawings d ON d.id = l.drawing_id
+      JOIN users du ON du.id = d.uploaded_by
+      JOIN projects p ON p.id = d.project_id
+      JOIN users u ON u.id = l.created_by
+      JOIN stages s ON s.id = d.stage_id
+      LEFT JOIN estimations e ON e.project_id = p.id
+      WHERE l.id = $1
+    )
+
+    SELECT 
+      id,
+      drawing_id,
+      drawing_title,
+      drawing_type,
+      revision,
+      drawing_weightage,
+      allocated_hours,
+      stage_name,
+      project_progress,
+      client_dwg_no,
+      iqeas_dwg_no,
+      stage_id,
+      status,
+      step_name,
+      is_sent,
+      action_taken,
+      step_order,
+      drawing_created_at,
+      notes,
+      reason,
+      created_at,
+      updated_at,
+      drawing_uploaded_by_user,
+      json_build_object('id', assigned_by_id, 'name', assigned_by_name, 'email', assigned_by_email) AS assigned_by,
+      sent_to,
+      -- Project details
+      project_id,
+      project_code,
+      client_company,
+      contact_person,
+      contact_person_phone,
+      contact_person_email,
+      project_status,
+      -- Estimation
+      estimation_due_date,
+      estimation_priority,
+      estimation_files,
+      -- Drawing
+      drawing_files,
+      -- Files
+      incoming_files,
+      outgoing_files
+    FROM filtered_log;
+  `;
+
+  const result = await pool.query(query, [logId]);
+  return result.rows[0] || null;
 }
 
 export async function getStageIdByProjectAndName(project_id, name) {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    const result = await client.query(
-      `SELECT id FROM stages WHERE project_id = $1 AND name = $2 LIMIT 1`,
-      [project_id, name]
-    );
-
-    await client.query("COMMIT");
-
-    return result.rows[0]?.id || null;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  const result = await pool.query(
+    `SELECT id FROM stages WHERE project_id = $1 AND name = $2 LIMIT 1`,
+    [project_id, name]
+  );
+  return result.rows[0]?.id || null;
 }
-
-
-
 export async function getStageById(stageId) {
   const query = `
     SELECT 
@@ -1060,36 +969,4 @@ export async function getFinalFilesByProjectId(projectId) {
   console.log(rows);
 
   return rows;
-}
-
-export async function getFinalFilesByProjectId(projectId) {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-
-    const { rows } = await client.query(
-      `
-      SELECT 
-        uf.id,
-        uf.label,
-        uf.file
-      FROM final_files ff
-      JOIN uploaded_files uf ON ff.uploaded_file_id = uf.id
-      JOIN drawings d ON ff.drawing_id = d.id
-      WHERE d.project_id = $1
-      `,
-      [projectId]
-    );
-
-    await client.query("COMMIT");
-
-    console.log(rows);
-
-    return rows;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
 }
