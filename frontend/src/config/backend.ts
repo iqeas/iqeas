@@ -8,7 +8,6 @@ export const API_ENDPOINT = {
   ADD_NEW_USER: `${API_URL}/admin/create/create-user`,
   EDIT_USER_STATUS: (id: any) => `${API_URL}/admin/user/${id}/status`,
   CREATE_PROJECT: `${API_URL}/projects`,
-  GET_ALL_USERS_AND_TEAMS: `${API_URL}/admin/get-users`,
   GET_USERS_BY_ROLE: (role: any) => `${API_URL}/admin/get-users/${role}`,
   EDIT_USER: (id: any) => `${API_URL}/admin/users/${id}`,
   DELETE_USER: (id: any) => `${API_URL}/admin/users/${id}`,

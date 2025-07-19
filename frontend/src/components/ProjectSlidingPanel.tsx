@@ -43,7 +43,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
+const ProjectFullPanel: React.FC<ProjectSlidingPanelProps> = ({
   selectedProject,
   onClose,
   setProjects,
@@ -324,4 +324,4 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
   );
 };
 
-export default ProjectSlidingPanel;
+export default ProjectFullPanel;

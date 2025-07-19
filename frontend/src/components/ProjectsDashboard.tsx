@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Search, Plus, Grid, List, Folder } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Grid,
+  List,
+  Folder,
+  Users,
+  ClipboardList,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,40 +28,25 @@ import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
 import Loading from "./atomic/Loading";
 import { Project, ProjectListResponse } from "@/types/apiTypes";
+import ProjectFullPanel from "./ProjectSlidingPanel";
+import { useNavigate } from "react-router-dom";
 
 export const ProjectsDashboard = () => {
+  const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
-  const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
+  const { fetching, isFetched, makeApiCall } = useAPICall();
   const { authToken, user } = useAuth();
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch =
-      project.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.project_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || project.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const [cards, setCards] = useState({
+    total_projects: 0,
+    completed_works: 0,
+    pending_works: 0,
   });
   const isAdmin = user.role == "admin";
-  // Disable global scroll when ProjectSlidingPanel is open
-  useEffect(() => {
-    if (selectedProject) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [selectedProject]);
 
   // Fetch projects only when searchTerm, page, or statusFilter changes
   useEffect(() => {
@@ -70,14 +65,15 @@ export const ProjectsDashboard = () => {
       if (response.status === 200) {
         const data = response.data as ProjectListResponse;
         setProjects(data.projects);
+        setCards(data.cards);
         setTotalPages(data.total_pages);
       } else {
         toast.error("Failed to fetch projects");
       }
     };
     getProjects();
-  }, [searchTerm, page, statusFilter]);
-  
+  }, [page, searchTerm]);
+
   return (
     <div className="p-6 relative ">
       {/* Header */}
@@ -91,9 +87,44 @@ export const ProjectsDashboard = () => {
           </p>
         </div>
       </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+        <div className="flex items-center gap-3 bg-blue-50 rounded-lg p-3 max-sm:p-2">
+          <div className="bg-blue-200 p-2 rounded-full">
+            <Users className="text-blue-700" size={24} />
+          </div>
+          <div>
+            <div className="text-lg font-bold text-blue-900">
+              {cards.total_projects}
+            </div>
+            <div className="text-xs text-blue-700">Total Projects</div>
+          </div>
+        </div>
 
+        <div className="flex items-center gap-3 bg-emerald-50 rounded-lg p-3 max-sm:p-2">
+          <div className="bg-emerald-200 p-2 rounded-full">
+            <CheckCircle2 className="text-emerald-700" size={24} />
+          </div>
+          <div>
+            <div className="text-lg font-bold text-emerald-900">
+              {cards.completed_works}
+            </div>
+            <div className="text-xs text-emerald-700">Completed Projects</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 bg-yellow-50 rounded-lg p-3 max-sm:p-2">
+          <div className="bg-yellow-200 p-2 rounded-full">
+            <Clock className="text-yellow-700" size={24} />
+          </div>
+          <div>
+            <div className="text-lg font-bold text-yellow-900">
+              {cards.pending_works}
+            </div>
+            <div className="text-xs text-yellow-700">Pending projects</div>
+          </div>
+        </div>
+      </div>
       {/* Filters and Search */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200 mb-6">
+      <div className="bg-white  rounded-lg border border-slate-200 mb-6">
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex-1 min-w-64">
             <div className="relative flex items-center gap-2">
@@ -102,10 +133,10 @@ export const ProjectsDashboard = () => {
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
               />
               <Input
-                placeholder="Search projects by client, location, or ID..."
+                placeholder="Search projects by ID, Company, name"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-10"
+                className="pl-10 outline-none"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     setPage(1);
@@ -125,77 +156,40 @@ export const ProjectsDashboard = () => {
               >
                 <Search size={18} />
               </Button>
+              <div className="flex border rounded-lg">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                  className="rounded-r-none"
+                >
+                  <Grid size={16} />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                  className="rounded-l-none"
+                >
+                  <List size={16} />
+                </Button>
+              </div>
             </div>
-          </div>
-          <Select
-            value={statusFilter}
-            onValueChange={(val) => {
-              setPage(1);
-              setStatusFilter(val);
-            }}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="Working">Working</SelectItem>
-              <SelectItem value="Pending">Pending</SelectItem>
-              <SelectItem value="Completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex border rounded-lg">
-            <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-              className="rounded-r-none"
-            >
-              <Grid size={16} />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-              className="rounded-l-none"
-            >
-              <List size={16} />
-            </Button>
           </div>
         </div>
       </div>
 
-      {/* Results Summary */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-4">
-          <span className="text-slate-600">
-            Showing {filteredProjects.length} of {projects.length} projects
-          </span>
-          <div className="flex space-x-2">
-            <Badge variant="outline">
-              Working: {projects.filter((p) => p.status === "Working").length}
-            </Badge>
-            <Badge variant="outline">
-              Pending: {projects.filter((p) => p.status === "Pending").length}
-            </Badge>
-            <Badge variant="outline">
-              Completed:{" "}
-              {projects.filter((p) => p.status === "Completed").length}
-            </Badge>
-          </div>
-        </div>
-      </div>
       {fetching || !isFetched ? (
         <Loading full={false} />
       ) : (
         <div
           className={
             viewMode === "grid"
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              ? "grid gap-6 w-full grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
               : "space-y-4"
           }
         >
-          {filteredProjects.map((project) => {
+          {projects.map((project) => {
             // Map snake_case to camelCase for ProjectCard and provide defaults for missing fields
             // Type as 'any' to suppress linter error due to type mismatch between API and ProjectCard
             const mappedProject = {
@@ -209,7 +203,9 @@ export const ProjectsDashboard = () => {
               <div key={project.id} className="relative">
                 <ProjectCard
                   project={mappedProject}
-                  onSelect={() => setSelectedProject(project)}
+                  onSelect={() => {
+                    navigate("/");
+                  }}
                   viewMode={viewMode}
                   userRole={""}
                 />
@@ -219,7 +215,7 @@ export const ProjectsDashboard = () => {
         </div>
       )}
 
-      {!fetching && filteredProjects.length === 0 && (
+      {!fetching && projects.length === 0 && (
         <div className="text-center py-12">
           <div className="text-slate-400 mb-4">
             <Folder size={48} className="mx-auto mb-4" />
@@ -259,15 +255,6 @@ export const ProjectsDashboard = () => {
             Next
           </Button>
         </div>
-      )}
-
-      {/* Sliding Panel */}
-      {selectedProject && (
-        <ProjectSlidingPanel
-        setProjects={setProjects}
-          selectedProject={selectedProject}
-          onClose={() => setSelectedProject(null)}
-        />
       )}
     </div>
   );

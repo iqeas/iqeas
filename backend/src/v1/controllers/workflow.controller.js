@@ -1,4 +1,7 @@
-import { updateProjectPartial } from "../services/projects.service.js";
+import {
+  getWorkerProjectDetail,
+  updateProjectPartial,
+} from "../services/projects.service.js";
 import * as WorkflowService from "../services/workflow.service.js";
 import getNextStage, {
   getNewProgressOfProject,
@@ -206,10 +209,11 @@ export async function getAssignedTasksController(req, res) {
       page,
       size
     );
+    const projectData = await getWorkerProjectDetail(userId, projectId);
     res.json({
       status_code: 200,
       detail: "Success",
-      data: { ...result },
+      data: { ...result, project: projectData },
     });
   } catch (error) {
     console.error("Worker task error:", error);
@@ -368,7 +372,7 @@ export async function createDrawingFinalFile(req, res) {
   }
 }
 
-export async function getStageFinalFiles(req,res){
+export async function getStageFinalFiles(req, res) {
   const projectId = parseInt(req.params.id, 10);
 
   if (isNaN(projectId)) {

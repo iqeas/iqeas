@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,7 +43,7 @@ const Submission = ({ projectId }) => {
   const { user, authToken } = useAuth();
   const isAdmin = user.role == "admin";
   const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
-  const [selectedStage, setSelectedStage] = useState<string>(STAGES[0]);
+  const [selectedStage, setSelectedStage] = useState<string|null>(null);
   const [stageData, setStageData] = useState<Record<string, StageBlock | null>>(
     {}
   );
@@ -58,10 +58,7 @@ const Submission = ({ projectId }) => {
     drawing_weightage: 0,
     allocated_hours: 0,
   });
-  const [stageConfig, setStageConfig] = useState({
-    weight: 0,
-    allocated_hours: 0,
-  });
+
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [selectedDrawing, setSelectedDrawing] = useState<any>(null);
   const [actionType, setActionType] = useState("");
@@ -102,6 +99,9 @@ const Submission = ({ projectId }) => {
   const [userSelectedStage, setUserSelectedStage] = useState(false);
   const [sentToSelectedFiles, setSentToSelectedFiles] = useState([]);
   const [currentSentToFiles, setCurrentSentToFiles] = useState([]);
+  const isFetchedStageData  = useRef(false)
+  const [isGetDrawing,setIsSetDrawing] =useState(false)
+
   // Add a function to fetch all stages (getAllStage)
   const getAllStages = async () => {
     const r = await makeApiCall(
@@ -134,33 +134,30 @@ const Submission = ({ projectId }) => {
     setUserSelectedStage(false);
   }, [projectId]);
   useEffect(() => {
-    const drawing = stageData[selectedStage]?.drawing;
     const stageId = stageData[selectedStage]?.stage?.id;
-    if (drawing === null && stageId) {
+    if (selectedStage && stageId) {
       fetchStageDrawings(stageId);
     }
-    // Only depend on selectedStage and the drawing for that stage
-    // eslint-disable-next-line
-  }, [selectedStage, stageData[selectedStage]?.drawing]);
 
-  // Set default selectedStage to first pending, or last if all completed
-  // useEffect(() => {
-  //   if (userSelectedStage) return; // Don't auto-select if user has chosen
-  //   if (!stageData || Object.keys(stageData).length === 0) return;
-  //   let foundPending = false;
-  //   for (let i = 0; i < STAGES.length; i++) {
-  //     const stageName = STAGES[i];
-  //     const block = stageData[stageName];
-  //     if (block && block.stage && block.stage.status === "pending") {
-  //       setSelectedStage(stageName);
-  //       foundPending = true;
-  //       break;
-  //     }
-  //   }
-  //   if (!foundPending) {
-  //     setSelectedStage(STAGES[STAGES.length - 1]);
-  //   }
-  // }, [stageData, userSelectedStage]);
+  }, [selectedStage]);
+
+  useEffect(() => {
+    if (userSelectedStage) return; // Don't auto-select if user has chosen
+    if (!stageData || Object.keys(stageData).length === 0) return;
+    let foundPending = false;
+    for (let i = 0; i < STAGES.length; i++) {
+      const stageName = STAGES[i];
+      const block = stageData[stageName];
+      if (block && block.stage && block.stage.status === "pending") {
+        setSelectedStage(stageName);
+        foundPending = true;
+        break;
+      }
+    }
+    if (!foundPending) {
+      setSelectedStage(STAGES[STAGES.length - 1]);
+    }
+  }, [stageData, userSelectedStage]);
 
   // Helper to get status and color for a stage
   const getStageStatus = (stage: any) => {
@@ -186,7 +183,6 @@ const Submission = ({ projectId }) => {
   };
 
   const fetchStageDrawings = async (id: any) => {
-    setLoadingStage(selectedStage);
     const r = await makeApiCall(
       "get",
       API_ENDPOINT.GET_PROJECT_STAGE(projectId, id),
@@ -214,8 +210,9 @@ const Submission = ({ projectId }) => {
           drawingLogs: null,
         },
       }));
+      
     }
-    setLoadingStage(null);
+    setIsSetDrawing(true)
   };
 
   // Get current workflow step for a drawing
@@ -233,17 +230,6 @@ const Submission = ({ projectId }) => {
       return WORKFLOW_STEPS[currentIndex + 1] || "Transmission";
     }
     return (lastLog as any).step_name;
-  };
-
-  // Get current revision for a drawing
-  const getCurrentRevision = (drawingLogs: unknown[]) => {
-    const transmissionRejections = drawingLogs.filter(
-      (log) =>
-        (log as any).step_name === "documentation" &&
-        (log as any).action_taken === "rejected"
-    );
-    const revisionNumber = transmissionRejections.length;
-    return revisionNumber === 0 ? "A" : `A${revisionNumber}`;
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -538,7 +524,11 @@ const Submission = ({ projectId }) => {
       toast.error("Failed to sent to drafting");
     }
   };
-  if ((fetching && fetchType == "getAllStages") || !isFetched) {
+  if (
+    (fetching && fetchType == "getAllStages") ||
+    !isFetched ||
+    (Object.keys(stageData).length !=0 && !isGetDrawing)
+  ) {
     return <Loading full={false} />;
   }
   // [1] Add new state for modals and forms
@@ -797,6 +787,7 @@ const Submission = ({ projectId }) => {
   };
   return (
     <div className="w-full mx-auto p-4 z-50">
+
       {/* If no stages exist, show set weightage button/form */}
       {Object.keys(stageData).length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
@@ -812,7 +803,7 @@ const Submission = ({ projectId }) => {
         </div>
       ) : (
         <>
-          {/* Stage selection tabs/buttons with status color */}
+          
           <div className="flex gap-4 mb-8">
             {STAGES.map((stage) => {
               const block = stageData[stage];

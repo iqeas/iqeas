@@ -338,11 +338,200 @@ export async function getProjectsEstimationProjects({ page = 1, size = 10 }) {
   };
 }
 
-export async function getPMProjects({ page = 1, size = 10, query = "" }) {
+export async function getPMProjects({
+  page = 1,
+  size = 10,
+  query = "",
+  user_id,
+}) {
+  const offset = (page - 1) * size;
+  const search = `%${query.toLowerCase()}%`;
+  const values = [
+    search,
+    search,
+    search,
+    search,
+    search,
+    user_id,
+    size,
+    offset,
+  ];
+
+  const queryText = `
+    WITH filtered_projects AS (
+      SELECT *
+      FROM projects
+      WHERE (
+        LOWER(client_company) ILIKE $1 OR
+        LOWER(contact_person) ILIKE $2 OR
+        LOWER(project_id) ILIKE $3 OR
+        LOWER(name) ILIKE $4 OR
+        LOWER(client_name) ILIKE $5
+      )
+      AND EXISTS (
+        SELECT 1 FROM estimations e
+        WHERE e.project_id = projects.id AND e.sent_to_pm = true AND e.forwarded_user_id = $6
+      )
+      ORDER BY created_at DESC
+      LIMIT $7 OFFSET $8
+    )
+
+    SELECT 
+      fp.*,
+
+      json_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email,
+        'phonenumber', u.phonenumber
+      ) AS user,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'file', uf.file,
+          'label', uf.label
+        ))
+        FROM projects_uploaded_files puf
+        JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
+        WHERE puf.project_id = fp.id
+      ), '[]'::json) AS uploaded_files,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', pm.id,
+          'notes', pm.notes,
+          'enquiry', pm.enquiry,
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf2.id,
+              'file', uf2.file,
+              'label', uf2.label
+            ))
+            FROM project_more_info_uploaded_files pmuf
+            JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
+            WHERE pmuf.project_more_info_id = pm.id
+          ), '[]'::json)
+        ))
+        FROM project_more_info pm
+        WHERE pm.project_id = fp.id
+      ), '[]'::json) AS add_more_infos,
+
+      (
+        SELECT json_build_object(
+          'id', e.id,
+          'status', e.status,
+          'cost', e.cost,
+          'deadline', e.deadline,
+          'approval_date', e.approval_date,
+          'approved', e.approved,
+          'sent_to_pm', e.sent_to_pm,
+          'notes', e.notes,
+          'updates', e.updates,
+          'log', e.log,
+          'user', json_build_object(
+            'id', eu.id,
+            'name', eu.name,
+            'email', eu.email
+          ),
+          'forwarded_to', json_build_object(
+            'id', fuser.id,
+            'label', fuser.name,
+            'email', fuser.email
+          ),
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf.id,
+              'label', uf.label,
+              'file', uf.file
+            ))
+            FROM estimation_uploaded_files euf
+            JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+            WHERE euf.estimation_id = e.id
+          ), '[]'::json)
+        )
+        FROM estimations e
+        JOIN users eu ON e.user_id = eu.id
+        JOIN users fuser ON fuser.id = e.forwarded_user_id
+        WHERE e.project_id = fp.id AND e.forwarded_user_id = $6
+        LIMIT 1
+      ) AS estimation,
+
+      (
+        SELECT json_build_object(
+          'id', pr.id,
+          'note', pr.note,
+          'created_at', pr.created_at,
+          'user', json_build_object(
+            'id', pru.id,
+            'name', pru.name
+          ),
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf3.id,
+              'file', uf3.file,
+              'label', uf3.label
+            ))
+            FROM project_rejection_uploaded_files prf
+            JOIN uploaded_files uf3 ON prf.uploaded_file_id = uf3.id
+            WHERE prf.project_rejection_id = pr.id
+          ), '[]'::json)
+        )
+        FROM project_rejections pr
+        JOIN users pru ON pr.user_id = pru.id
+        WHERE pr.project_id = fp.id
+        ORDER BY pr.created_at DESC
+        LIMIT 1
+      ) AS project_rejection,
+
+      (
+        SELECT COALESCE(json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        )), '[]'::json)
+        FROM project_delivery_files pdf
+        JOIN uploaded_files uf ON pdf.uploaded_file_id = uf.id
+        WHERE pdf.project_id = fp.id
+      ) AS delivery_files
+
+    FROM filtered_projects fp
+    LEFT JOIN users u ON fp.user_id = u.id;
+  `;
+
+  const totalQuery = `
+    SELECT COUNT(*) FROM projects
+    WHERE (
+      LOWER(client_company) ILIKE $1 OR
+      LOWER(contact_person) ILIKE $2 OR
+      LOWER(project_id) ILIKE $3 OR
+      LOWER(name) ILIKE $4 OR
+      LOWER(client_name) ILIKE $5
+    )
+    AND EXISTS (
+      SELECT 1 FROM estimations e
+      WHERE e.project_id = projects.id AND e.sent_to_pm = true AND e.forwarded_user_id = $6
+    )
+  `;
+
+  const [result, totalResult] = await Promise.all([
+    pool.query(queryText, values),
+    pool.query(totalQuery, values.slice(0, 6)),
+  ]);
+
+  const totalPages = Math.ceil(Number(totalResult.rows[0].count) / size);
+
+  return {
+    total_pages: totalPages,
+    projects: result.rows,
+  };
+}
+
+export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
   const offset = (page - 1) * size;
   const search = `%${query.toLowerCase()}%`;
   const values = [search, search, search, search, search, size, offset];
-
+  console.log(query,page,size);
   const queryText = `
     WITH filtered_projects AS (
       SELECT *
@@ -507,7 +696,7 @@ export async function getPMProjects({ page = 1, size = 10, query = "" }) {
     pool.query(queryText, values),
     pool.query(totalQuery, values.slice(0, 5)),
   ]);
-
+  console.log(result.rows.length);
   const totalPages = Math.ceil(Number(totalResult.rows[0].count) / size);
 
   return {
@@ -516,173 +705,66 @@ export async function getPMProjects({ page = 1, size = 10, query = "" }) {
   };
 }
 
-export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
-  const offset = (page - 1) * size;
-  const search = `%${query.toLowerCase()}%`;
-  const values = [search, search, search, search, search, size, offset];
+export async function getPMProjectsCards({
+  userId,
+}) {
 
-  const queryText = `
-    WITH filtered_projects AS (
-      SELECT *
-      FROM projects
-      WHERE
-        LOWER(client_company) ILIKE $1 OR
-        LOWER(contact_person) ILIKE $2 OR
-        LOWER(project_id) ILIKE $3 OR
-        LOWER(name) ILIKE $4 OR
-        LOWER(client_name) ILIKE $5
-      ORDER BY created_at DESC
-      LIMIT $6 OFFSET $7
-    )
-
-    SELECT 
-      fp.*,
-
-      json_build_object(
-        'id', u.id,
-        'name', u.name,
-        'email', u.email,
-        'phonenumber', u.phonenumber
-      ) AS user,
-
-      COALESCE((
-        SELECT json_agg(json_build_object(
-          'id', uf.id,
-          'file', uf.file,
-          'label', uf.label
-        ))
-        FROM projects_uploaded_files puf
-        JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
-        WHERE puf.project_id = fp.id
-      ), '[]'::json) AS uploaded_files,
-
-      COALESCE((
-        SELECT json_agg(json_build_object(
-          'id', pm.id,
-          'notes', pm.notes,
-          'enquiry', pm.enquiry,
-          'uploaded_files', COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf2.id,
-              'file', uf2.file,
-              'label', uf2.label
-            ))
-            FROM project_more_info_uploaded_files pmuf
-            JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
-            WHERE pmuf.project_more_info_id = pm.id
-          ), '[]'::json)
-        ))
-        FROM project_more_info pm
-        WHERE pm.project_id = fp.id
-      ), '[]'::json) AS add_more_infos,
-
-      (
-        SELECT json_build_object(
-          'id', e.id,
-          'status', e.status,
-          'cost', e.cost,
-          'deadline', e.deadline,
-          'approval_date', e.approval_date,
-          'approved', e.approved,
-          'sent_to_pm', e.sent_to_pm,
-          'notes', e.notes,
-          'updates', e.updates,
-          'log', e.log,
-          'user', json_build_object(
-            'id', eu.id,
-            'name', eu.name,
-            'email', eu.email
-          ),
-          'forwarded_to', (
-            SELECT json_build_object(
-              'id', fuser.id,
-              'label', fuser.name,
-              'email', fuser.email
-            )
-            FROM users fuser
-            WHERE fuser.id = e.forwarded_user_id
-          ),
-          'uploaded_files', COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf.id,
-              'label', uf.label,
-              'file', uf.file
-            ))
-            FROM estimation_uploaded_files euf
-            JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
-            WHERE euf.estimation_id = e.id
-          ), '[]'::json)
-        )
-        FROM estimations e
-        JOIN users eu ON e.user_id = eu.id
-        WHERE e.project_id = fp.id
-        LIMIT 1
-      ) AS estimation,
-
-      (
-        SELECT json_build_object(
-          'id', pr.id,
-          'note', pr.note,
-          'created_at', pr.created_at,
-          'user', json_build_object(
-            'id', pru.id,
-            'name', pru.name
-          ),
-          'uploaded_files', COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf3.id,
-              'file', uf3.file,
-              'label', uf3.label
-            ))
-            FROM project_rejection_uploaded_files prf
-            JOIN uploaded_files uf3 ON prf.uploaded_file_id = uf3.id
-            WHERE prf.project_rejection_id = pr.id
-          ), '[]'::json)
-        )
-        FROM project_rejections pr
-        JOIN users pru ON pr.user_id = pru.id
-        WHERE pr.project_id = fp.id
-        ORDER BY pr.created_at DESC
-        LIMIT 1
-      ) AS project_rejection,
-
-      (
-        SELECT COALESCE(json_agg(json_build_object(
-          'id', uf.id,
-          'label', uf.label,
-          'file', uf.file
-        )), '[]'::json)
-        FROM project_delivery_files pdf
-        JOIN uploaded_files uf ON pdf.uploaded_file_id = uf.id
-        WHERE pdf.project_id = fp.id
-      ) AS delivery_files
-
-    FROM filtered_projects fp
-    LEFT JOIN users u ON fp.user_id = u.id;
+  const cardQuery = `
+    SELECT
+      COUNT(*)::int AS total_projects,
+      COUNT(*) FILTER (
+        WHERE status = 'working' AND progress = 100.00
+      )::int AS completed_works,
+      COUNT(*) FILTER (
+        WHERE status = 'working' AND progress != 100.00
+      )::int AS pending_works
+    FROM projects
+    WHERE EXISTS (
+      SELECT 1 FROM estimations e
+      WHERE e.project_id = projects.id
+      AND e.sent_to_pm = true
+      AND e.forwarded_user_id = $1
+    );
   `;
 
-  const totalQuery = `
-    SELECT COUNT(*) FROM projects
-    WHERE
-      LOWER(client_company) ILIKE $1 OR
-      LOWER(contact_person) ILIKE $2 OR
-      LOWER(project_id) ILIKE $3 OR
-      LOWER(name) ILIKE $4 OR
-      LOWER(client_name) ILIKE $5
+  const  cardData = await pool.query(cardQuery, [userId])
+
+  return  {
+      total_projects: cardData.rows[0].total_projects,
+      completed_works: cardData.rows[0].completed_works,
+      pending_works: cardData.rows[0].pending_works,
+    }
+}
+
+export async function getAdminProjectsCards() {
+
+  
+
+  const cardQuery = `
+    SELECT
+      COUNT(*)::int AS total_projects,
+      COUNT(*) FILTER (
+        WHERE status = 'completed' OR status = 'delivered'
+      )::int AS completed_works,
+      COUNT(*) FILTER (
+        WHERE status != 'completed' AND status != 'delivered'
+      )::int AS pending_works
+    FROM projects
+    WHERE EXISTS (
+      SELECT 1 FROM estimations e
+      WHERE e.project_id = projects.id AND e.sent_to_pm = true
+    );
   `;
 
-  const [result, totalResult] = await Promise.all([
-    pool.query(queryText, values),
-    pool.query(totalQuery, values.slice(0, 5)),
-  ]);
-
-  const totalPages = Math.ceil(Number(totalResult.rows[0].count) / size);
+  const cardData = await pool.query(cardQuery)
 
   return {
-    total_pages: totalPages,
-    projects: result.rows,
-  };
+      total_projects: cardData.rows[0].total_projects,
+      completed_works: cardData.rows[0].completed_works,
+      pending_works: cardData.rows[0].pending_works,
+    }
 }
+
 
 export async function getProjectsSentToPM() {
   const query = `SELECT * FROM projects WHERE send_to_pm = true ORDER BY created_at DESC;`;
@@ -865,8 +947,6 @@ export async function getAllProjects({ page = 1, size = 10 }) {
   };
 }
 
-
-
 export async function fetchUploadedFilesByRoles({
   role,
   user_id,
@@ -1010,7 +1090,11 @@ export async function getWorkerProjectsPaginated(
         p.project_id AS project_code,
         p.name AS project_name,
         p.client_company AS company_name,
-        p.created_at
+        p.created_at,
+        p.client_name,
+        p.contact_person,
+        contact_person_phone,
+        contact_person_email
 
       FROM drawing_stage_logs dsl
       JOIN drawings d ON dsl.drawing_id = d.id
@@ -1103,4 +1187,47 @@ export async function getWorkerProjectsPaginated(
       pending_works: 0,
     },
   };
+}
+
+export async function getWorkerProjectDetail(userId, projectId) {
+  const values = [userId, userId, projectId];
+
+  const projectQuery = `
+    SELECT 
+      p.id AS project_id,
+      p.project_id AS project_code,
+      p.name AS project_name,
+      p.client_company AS company_name,
+      p.created_at,
+      p.client_name,
+      p.contact_person,
+      contact_person_phone,
+      contact_person_email,
+
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+      ) AS total_works,
+
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status = 'completed'
+      ) AS completed_works,
+
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status != 'completed'
+      ) AS pending_works
+
+    FROM projects p
+    WHERE p.id = $3
+  `;
+  const projectResult = await pool.query(projectQuery, values);
+
+  const project = projectResult.rows[0] || null;
+
+  return project;
 }

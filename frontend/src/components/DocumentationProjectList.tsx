@@ -22,6 +22,7 @@ import {
   Clock,
   Search,
   FileText,
+  PhoneCall,
 } from "lucide-react";
 import Loading from "./atomic/Loading";
 
@@ -30,7 +31,7 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString() + " " + d.toLocaleTimeString();
 }
 
-const WorkerProjectList = () => {
+const DocumentationProjectList = () => {
   const [projects, setProjects] = useState([]);
   const navigate = useNavigate();
   const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
@@ -75,7 +76,9 @@ const WorkerProjectList = () => {
   }
   return (
     <div className="p-4 md:p-8 w-full  mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-blue-900">Tasks Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6 text-blue-900">
+        Document Dashboard
+      </h1>
 
       {/* Top Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -222,13 +225,13 @@ const WorkerProjectList = () => {
                   <Button
                     className="mt-4 w-full rounded-full bg-gradient-to-r from-gray-700 to-gray-900 text-white font-bold flex items-center justify-center gap-2"
                     onClick={() =>
-                      navigate(`/working/project/${project.project_id}`, {
+                      navigate(`/documentation/project/${project.project_id}`, {
                         state: { project },
                       })
                     }
                   >
                     <FileText className="w-4 h-4" />
-                    Go to Workers
+                    Go to Documenting
                   </Button>
                 </CardContent>
               </Card>
@@ -285,4 +288,4 @@ const WorkerProjectList = () => {
   );
 };
 
-export default WorkerProjectList;
+export default DocumentationProjectList;

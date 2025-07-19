@@ -268,12 +268,7 @@ export interface Project {
 export interface ProjectListResponse {
   total_pages: number;
   projects: Project[];
-  cards: {
-    active_estimation: number;
-    pending_estimations: number;
-    completed_estimations: number;
-    total_value: number;
-  };
+  cards: any;
 }
 
 // Worker Dashboard Types

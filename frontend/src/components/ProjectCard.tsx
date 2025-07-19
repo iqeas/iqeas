@@ -52,39 +52,51 @@ export const ProjectCard = ({
         return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 capitalize";
       case "completed":
         return "bg-green-100 text-green-800 border-green-200 hover:bg-green-100 capitalize";
+      case "delivered":
+        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-100 capitalize";
       default:
         return "bg-slate-200 text-slate-600 border-slate-200 hover:bg-slate-200 capitalize";
     }
   };
+  const isCompleted = ["completed", "delivered"].includes(
+    project.status.toLowerCase()
+  );
   if (viewMode === "list") {
     return (
-      <Card className="hover:shadow-md transition-shadow">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4 flex-1">
+      <Card
+        className={`hover:shadow-md transition-shadow ${
+          isCompleted ? " bg-green-50" : "bg-gray-100"
+        }`}
+      >
+        <CardContent className="p-4 sm:p-4 px-2 py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 flex-1">
               <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="font-semibold text-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 mb-2">
+                  <h3 className="font-semibold text-slate-800 text-base sm:text-lg">
                     {project.project_id}
                   </h3>
                   <Badge
                     className={`${getStatusColor(
                       project.status
-                    )} hover:bg-transparent`}
+                    )} hover:bg-transparent mt-1 sm:mt-0 w-fit`}
                   >
                     {project.status}
                   </Badge>
                   {isOverdue && (
-                    <AlertCircle size={16} className="text-red-500" />
+                    <AlertCircle
+                      size={16}
+                      className="text-red-500 mt-1 sm:mt-0"
+                    />
                   )}
                 </div>
-                <p className="text-lg font-medium text-slate-700">
+                <p className="text-base sm:text-lg font-medium text-slate-700">
                   {project.name}
                 </p>
                 <p className="text-sm text-slate-600">
                   {project.client_name} - {project.client_company}
                 </p>
-                <div className="flex items-center text-sm text-slate-500 space-x-4 mt-1">
+                <div className="hidden sm:flex items-center text-sm text-slate-500 space-x-4 mt-1">
                   <span className="flex items-center">
                     <MapPin size={14} className="mr-1" />
                     {project.location}
@@ -94,9 +106,13 @@ export const ProjectCard = ({
                     {new Date(project.created_at).toLocaleDateString()}
                   </span>
                 </div>
+                <div className="flex sm:hidden items-center text-xs text-slate-500 mt-1">
+                  <Calendar size={12} className="mr-1" />
+                  {new Date(project.created_at).toLocaleDateString()}
+                </div>
               </div>
             </div>
-            <div className="flex items-center space-x-6">
+            <div className="hidden sm:flex items-center space-x-6">
               {project.estimation && (
                 <div className="text-center">
                   <p className="text-sm text-slate-500 mb-1">Cost</p>
@@ -138,8 +154,11 @@ export const ProjectCard = ({
             </div>
             <Progress value={project.progress} className="h-2 bg-slate-100" />
           </div>
-          <div className="mt-6 flex justify-end">
-            <Button className="bg-black text-white w-full" onClick={onSelect}>
+          <div className="mt-4 sm:mt-6 flex justify-end">
+            <Button
+              className="bg-black text-white w-full sm:w-auto"
+              onClick={onSelect}
+            >
               Manage Project
             </Button>
           </div>
@@ -149,7 +168,11 @@ export const ProjectCard = ({
   }
 
   return (
-    <Card className="hover:shadow-lg transition-shadow group">
+    <Card
+      className={`hover:shadow-lg transition-shadow group ${
+        isCompleted ? " bg-green-50" : " bg-gray-100"
+      }`}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
