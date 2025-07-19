@@ -17,22 +17,25 @@ import {
   getAdminProjectsCards,
   getPMProjectsCards,
 } from "../services/projects.service.js";
+import pool from "../config/db.js";
 
 import { formatResponse } from "../utils/response.js";
 
 export const createNewProject = async (req, res) => {
+  const client = await pool.connect();
   try {
-    const userId = req.user.id; // Assuming user ID is in req.user
+    await client.query("BEGIN");
+    const userId = req.user.id;
     const { uploaded_files } = req.body;
 
-    const project = await createProject({
-      ...req.body,
-      user_id: userId,
-      status: req.body.send_to_estimation ? "estimating" : "draft",
-    });
-    if (uploaded_files && uploaded_files.length > 0) {
-      await createProjectUploadedFile(project.id, uploaded_files);
+    const project = await createProject(req.body, userId, client);
+
+    if (uploaded_files?.length) {
+      await createProjectUploadedFile(project.id, uploaded_files, client);
     }
+
+    await client.query("COMMIT");
+
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
@@ -41,12 +44,15 @@ export const createNewProject = async (req, res) => {
       })
     );
   } catch (error) {
-    console.error("Error creating project:", error.message);
+    await client.query("ROLLBACK");
+    console.error(error);
     return res
       .status(500)
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  } finally {
+    client.release();
   }
 };
 
@@ -90,17 +96,25 @@ export const patchProject = async (req, res) => {
   }
 };
 
+
 export async function getProjectsPaginatedController(req, res) {
+  const client = await pool.connect();
   try {
-    const page = parseInt(req.query.page) || 1;
-    const size = parseInt(req.query.size) || 10;
-    const query = req.query.query || "";
-    const data = await getProjectByPagination(page, size, query);
-    const cardData = await getRFQCardData();
-    res.status(200).json(
+    await client.query("BEGIN");
+
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const size = Math.max(parseInt(req.query.size) || 10, 1);
+    const searchQuery = req.query.query || "";
+
+    const data = await getProjectByPagination(page, size, searchQuery, client);
+    const cardData = await getRFQCardData(client);
+
+    await client.query("COMMIT");
+
+    return res.status(200).json(
       formatResponse({
         statusCode: 200,
-        detail: "Project fetched sucessfully",
+        detail: "Projects fetched successfully",
         data: {
           total_pages: data.total_pages,
           projects: data.projects,
@@ -109,18 +123,21 @@ export async function getProjectsPaginatedController(req, res) {
       })
     );
   } catch (error) {
-    res
+    await client.query("ROLLBACK");
+    console.error("Error fetching projects:", error);
+    return res
       .status(500)
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
-    console.error("Error fetching projects:", error.message);
+  } finally {
+    client.release();
   }
 }
 
+
 export const getEstimationProjects = async (req, res) => {
   try {
-    // edit-needed i will pase page and size from query params and alse search as query
     const page = parseInt(req.query.page) || 1;
     const size = parseInt(req.query.size) || 10;
     const query = req.query.search || "";
@@ -213,9 +230,11 @@ export const getAdminProjectsController = async (req, res) => {
 };
 
 export const projectRejectCreateHandler = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { projectId, reason, uploaded_files_ids } = req.body;
-    const userId = req.user.id; // Assuming user ID is in req.user
+    const userId = req.user.id;
+
     if (!projectId || !reason) {
       return res.status(400).json(
         formatResponse({
@@ -224,14 +243,20 @@ export const projectRejectCreateHandler = async (req, res) => {
         })
       );
     }
-    const projectRejectionId = await createProjectRejection({
-      projectId,
-      reason,
-      uploaded_files_ids,
-      userId,
-    });
-    const projectData = await projectRejectionById(projectRejectionId);
-    return res.status(200).json(
+
+    await client.query("BEGIN");
+
+    // Pass the client to your service method so the DB calls share the same transaction
+    const projectRejectionId = await createProjectRejection(
+      { projectId, reason, uploaded_files_ids, userId },
+      client
+    );
+
+    const projectData = await projectRejectionById(projectRejectionId, client);
+
+    await client.query("COMMIT");
+
+    return res.status(201).json(
       formatResponse({
         statusCode: 201,
         detail: "Project rejected successfully",
@@ -239,30 +264,40 @@ export const projectRejectCreateHandler = async (req, res) => {
       })
     );
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("Error rejecting project:", error);
     return res
       .status(500)
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  } finally {
+    client.release();
   }
 };
 
+
 export async function addDeliveryFilesController(req, res) {
-  const projectId = parseInt(req.params.id, 10);
-  const { file_ids } = req.body;
-
-  if (!Array.isArray(file_ids) || file_ids.length === 0) {
-    return res.status(400).json(
-      formatResponse({
-        statusCode: 400,
-        detail: "file_ids must be a non-empty array",
-      })
-    );
-  }
-
+  const client = await pool.connect();
   try {
-    const files = await addProjectDeliveryFiles(projectId, file_ids);
+    const projectId = parseInt(req.params.id, 10);
+    const { file_ids } = req.body;
+
+    if (!Array.isArray(file_ids) || file_ids.length === 0) {
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail: "file_ids must be a non-empty array",
+        })
+      );
+    }
+
+    await client.query("BEGIN");
+
+    const files = await addProjectDeliveryFiles(projectId, file_ids, client);
+
+    await client.query("COMMIT");
+
     res.status(201).json(
       formatResponse({
         statusCode: 201,
@@ -271,6 +306,7 @@ export async function addDeliveryFilesController(req, res) {
       })
     );
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("Error adding delivery files:", err);
     res.status(500).json(
       formatResponse({
@@ -279,8 +315,11 @@ export async function addDeliveryFilesController(req, res) {
         data: err.message,
       })
     );
+  } finally {
+    client.release();
   }
 }
+
 export async function fetchAllProjects(req, res) {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -298,6 +337,8 @@ export async function fetchAllProjects(req, res) {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 }
+
+
 export async function getUploadedFilesForRoles(req, res) {
   const { role, user_id, page = 1, limit = 10 } = req.query;
 
@@ -314,6 +355,7 @@ export async function getUploadedFilesForRoles(req, res) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
+
 
 export async function listWorkerProjectsController(req, res) {
   try {
