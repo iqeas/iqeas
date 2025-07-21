@@ -331,6 +331,7 @@ export async function EditDrawingLogsController(req, res) {
       const newRevision = getNextRevision(currentRevision);
       console.log("New revision calculated:", newRevision);
 
+
       await WorkflowService.partialUpdateStage(logData.stage_id, {
         revision: newRevision,
       });
