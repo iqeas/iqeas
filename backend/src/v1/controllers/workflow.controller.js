@@ -225,11 +225,25 @@ export async function getAssignedTasksController(req, res) {
   }
 }
 
+
+
+
+
+
 export async function EditDrawingLogsController(req, res) {
   try {
     const { id } = req.params;
     const { status, uploaded_files_ids, action_taken, reason, is_sent } =
       req.body;
+
+    console.log("Request Params ID:", id);
+    console.log("Request Body:", {
+      status,
+      uploaded_files_ids,
+      action_taken,
+      reason,
+      is_sent,
+    });
 
     await WorkflowService.updateDrawingLog(
       id,
@@ -239,65 +253,90 @@ export async function EditDrawingLogsController(req, res) {
       is_sent,
       uploaded_files_ids
     );
+    console.log("Drawing log updated in DB");
+
     const logData = await WorkflowService.getUserAssignedTaskByLogId(id);
+    console.log("Fetched log data:", logData);
 
     if (
-      status == "completed" &&
-      action_taken == "approved" &&
-      logData.step_name == "documentation"
+      status === "completed" &&
+      action_taken === "approved" &&
+      logData.step_name === "documentation"
     ) {
+      console.log("Completed + Approved + Documentation flow triggered");
+
       await WorkflowService.partialUpdateStage(logData.stage_id, {
         status: "completed",
       });
+      console.log("Stage marked as completed:", logData.stage_id);
+
       const nextStage = getNextStage(logData.stage_name);
+      console.log("Next stage:", nextStage);
+
       if (nextStage) {
         const nextStageId = await WorkflowService.getStageIdByProjectAndName(
           logData.project_id,
           nextStage
         );
+        console.log("Next stage ID:", nextStageId);
+
         if (nextStageId) {
           await WorkflowService.partialUpdateStage(nextStageId, {
             status: "pending",
           });
+          console.log("Next stage marked as pending");
         }
       }
+
       const newProgress = await getNewProgressOfProject(
         logData.stage_name,
         logData.project_id,
         logData.project_progress
       );
+      console.log("New project progress:", newProgress);
+
       const projectUpdateData = { progress: newProgress };
-      if (logData.stage_name == "AFC") {
+      if (logData.stage_name === "AFC") {
         projectUpdateData["status"] = "completed";
       }
-      await updateProjectPartial(logData.project_id, {
-        progress: newProgress,
-      });
+      console.log("New projectUpdateData", projectUpdateData);
+      await updateProjectPartial(logData.project_id, projectUpdateData);
+      console.log("Project progress/status updated:", projectUpdateData);
+
       const incomingFIlesIds = Array.isArray(logData.incoming_files)
         ? logData.incoming_files.map((item) => item.id)
         : [];
+      console.log("Incoming file IDs:", incomingFIlesIds);
+
       if (incomingFIlesIds.length) {
         await WorkflowService.addFinalFiles(
           logData.drawing_id,
           incomingFIlesIds
         );
+        console.log("Final files added to drawing");
       }
     }
+
     if (
-      status == "completed" &&
-      action_taken == "rejected" &&
-      logData.step_name == "documentation"
+      status === "completed" &&
+      action_taken === "rejected" &&
+      logData.step_name === "documentation"
     ) {
+      console.log("Completed + Rejected + Documentation flow triggered");
+
       const stage = await WorkflowService.getStageById(logData.stage_id);
       const currentRevision = stage.revision;
+      console.log("Current revision:", currentRevision);
 
       const newRevision = getNextRevision(currentRevision);
-      console.log(newRevision);
-      // Update stage with new revision
+      console.log("New revision calculated:", newRevision);
+
       await WorkflowService.partialUpdateStage(logData.stage_id, {
         revision: newRevision,
       });
+      console.log("Stage revision updated:", newRevision);
     }
+
     res.status(200).json(
       formatResponse({
         statusCode: 200,

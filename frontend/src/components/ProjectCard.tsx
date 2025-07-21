@@ -42,25 +42,23 @@ export const ProjectCard = ({
     new Date(project.estimation.deadline) < new Date() &&
     project.status !== "Completed";
   const getStatusColor = (status: string) => {
-    console.log(status);
     switch (status.toLowerCase()) {
       case "draft":
-        return "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-100 capitalize";
+        return "bg-gray-200 text-gray-800 border-gray-300 hover:bg-gray-300 capitalize";
       case "estimating":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100 capitalize";
+        return "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 capitalize";
       case "working":
-        return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 capitalize";
+        return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 capitalize";
       case "completed":
-        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-100 capitalize";
+        return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 capitalize";
       case "delivered":
-        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-100 capitalize";
+        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 capitalize";
       default:
-        return "bg-slate-200 text-slate-600 border-slate-200 hover:bg-slate-200 capitalize";
+        return "bg-slate-200 text-slate-700 border-slate-300 hover:bg-slate-300 capitalize";
     }
   };
-  const isCompleted = ["completed", "delivered"].includes(
-    project.status.toLowerCase()
-  );
+
+  const isCompleted = ["delivered"].includes(project.status.toLowerCase());
   if (viewMode === "list") {
     return (
       <Card
@@ -169,11 +167,11 @@ export const ProjectCard = ({
 
   return (
     <Card
-      className={`hover:shadow-lg transition-shadow group ${
+      className={`hover:shadow-lg transition-shadow group  h-full flex flex-col  ${
         isCompleted ? " bg-green-50" : " bg-gray-100"
       }`}
     >
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex-1 flex flex-col">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-2">
@@ -194,8 +192,8 @@ export const ProjectCard = ({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="space-y-4">
+      <CardContent className="pt-0  ">
+        <div className="space-y-4 ">
           <div className="flex items-center text-sm text-slate-600">
             <MapPin size={14} className="mr-2" />
             {project.location}

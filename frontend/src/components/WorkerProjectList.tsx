@@ -208,7 +208,7 @@ const WorkerProjectList = () => {
                     </div>
                     {parseInt(project.pending_works) > 0 && (
                       <span className="mt-1 px-2 py-0.5 rounded bg-gray-100 text-gray-900 text-xs font-semibold border border-gray-300">
-                        Verification Required
+                        Action Required
                       </span>
                     )}
                   </div>

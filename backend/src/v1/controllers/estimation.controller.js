@@ -4,7 +4,8 @@ import {
   updateEstimation,
   getProjectsSentToPM,
   getProjectsApproved,
-  getProjectsDraft
+  getProjectsDraft,
+  createEstimationCorrection,
 } from "../services/estimation.service.js";
 import { updateProjectPartial } from "../services/projects.service.js";
 import { formatResponse } from "../utils/response.js";
@@ -28,17 +29,62 @@ export const createEstimationHandler = async (req, res) => {
       ...estimationData,
       user_id,
     });
+    const projectUpdateData = await updateProjectPartial(
+      estimationData.project_id,
+      { estimation_status: "created" }
+    );
     const estimationResponse = await getEstimationById(newEstimation.id);
 
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
         detail: "Estimation created",
-        data: estimationResponse,
+        data: { project: projectUpdateData, estimation: estimationResponse },
       })
     );
   } catch (error) {
     console.error("Error creating estimation:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+
+export const createEstimationCorrectionHandler = async (req, res) => {
+  try {
+    const estimationData = req.body;
+
+    if (!estimationData.estimation_id || !estimationData.project_id) {
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail: "Estimation ID is required",
+        })
+      );
+    }
+    const newEstimationCorrection = await createEstimationCorrection(
+      estimationData
+    );
+    const updatedProject = await updateProjectPartial(
+      estimationData.project_id,
+      {
+        estimation_status: "back_to_you",
+      }
+    );
+    return res.status(201).json(
+      formatResponse({
+        statusCode: 201,
+        detail: "Estimation Correction created",
+        data: {
+          project: updatedProject,
+          estimationCorrection: newEstimationCorrection,
+        },
+      })
+    );
+  } catch (error) {
+    console.error("Error creating estimation correction:", error);
     return res
       .status(500)
       .json(
@@ -81,30 +127,37 @@ export const updateEstimationHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-    console.log(id)
-    if (!id) {
+    console.log(id);
+    if (!id || !updateData.project_id) {
       return res
         .status(400)
-        .json(formatResponse({ statusCode: 400, detail: "ID is required" }));
+        .json(
+          formatResponse({
+            statusCode: 400,
+            detail: "ID and Project ID is required",
+          })
+        );
     }
 
-      const updatedEstimation = await updateEstimation(id, updateData);
-      if (updatedEstimation.sent_to_pm==true){
-        await updateProjectPartial(updatedEstimation.project_id,{status:'working',progress:0});
-      }
-      if (!updatedEstimation) {
-        return res
-          .status(404)
-          .json(
-            formatResponse({ statusCode: 404, detail: "Estimation not found" })
-          );
-      }
-
+    const updatedEstimation = await updateEstimation(id, updateData);
+    if (updatedEstimation.sent_to_pm == true && updateData.approved == true) {
+      await updateProjectPartial(updatedEstimation.project_id, {
+        status: "working",
+        progress: 0,
+        estimation_status: "approved",
+      });
+    }
+    if (updatedEstimation.sent_to_pm == false) {
+      await updateProjectPartial(updateData.project_id, {
+        estimation_status: "edited",
+      });
+    }
+    const estimationData = await getEstimationById(id);
     return res.status(200).json(
       formatResponse({
         statusCode: 200,
-        detail: "Estimation updated",
-        data: updatedEstimation,
+        detail: "Estimation updated successfully",
+        data: estimationData,
       })
     );
   } catch (error) {
@@ -116,8 +169,6 @@ export const updateEstimationHandler = async (req, res) => {
       );
   }
 };
-
-
 
 export const getPMProjects = async (req, res) => {
   try {
@@ -138,7 +189,6 @@ export const getPMProjects = async (req, res) => {
       );
   }
 };
-
 
 export const getApproved = async (req, res) => {
   try {

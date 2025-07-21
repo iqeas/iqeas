@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useCallback } from "react"; // <--- Import useCallback
+import React, { useState, useCallback, useEffect } from "react"; // <--- Import useCallback
 import axios from "axios";
 import toast from "react-hot-toast";
+import { API_ENDPOINT } from "@/config/backend";
 
 interface ApiRequest {
   type: string;
@@ -106,7 +107,6 @@ export const useAPICall = () => {
     },
     [] // <--- EMPTY DEPENDENCY ARRAY IS CRUCIAL HERE
   );
-
   return {
     makeApiCall,
     fetching,

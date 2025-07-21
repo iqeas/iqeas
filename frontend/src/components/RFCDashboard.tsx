@@ -280,33 +280,6 @@ export const RFCDashboard = () => {
   // Filtered projects is now just projects (API handles filtering)
   const filteredProjects = projects;
 
-  // Add handlers for more info modal
-  const handleMoreInfoFileChange = (idx, e) => {
-    const file = e.target.files[0] || null;
-    setMoreInfoForm((form) => ({
-      ...form,
-      files: form.files.map((uf, i) => (i === idx ? { ...uf, file } : uf)),
-    }));
-  };
-  const handleMoreInfoLabelChange = (idx, e) => {
-    const label = e.target.value;
-    setMoreInfoForm((form) => ({
-      ...form,
-      files: form.files.map((uf, i) => (i === idx ? { ...uf, label } : uf)),
-    }));
-  };
-  const addMoreInfoFileInput = () => {
-    setMoreInfoForm((form) => ({
-      ...form,
-      files: [...form.files, { label: "", file: null }],
-    }));
-  };
-  const removeMoreInfoFileInput = (idx) => {
-    setMoreInfoForm((form) => ({
-      ...form,
-      files: form.files.filter((_, i) => i !== idx),
-    }));
-  };
 
   // Refactor submitMoreInfo to upload files and send the correct payload
   const submitMoreInfo = async () => {

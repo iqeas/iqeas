@@ -204,7 +204,11 @@ export const ProjectsDashboard = () => {
                 <ProjectCard
                   project={mappedProject}
                   onSelect={() => {
-                    navigate("/");
+                    navigate(
+                      isAdmin
+                        ? `/admin/project/${project.id}`
+                        : `/pm/project/${project.id}`
+                    );
                   }}
                   viewMode={viewMode}
                   userRole={""}
