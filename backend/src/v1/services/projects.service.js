@@ -59,11 +59,10 @@ export async function createProject(projectData, userId, client) {
     publicToken,
   ];
 
-  const result = await client.query(query, values); // Use client.query()
+  const result = await client.query(query, values); 
   return result.rows[0];
 }
 
-// Functions that receive 'client' from a transactional controller MUST use client.query()
 export async function createProjectUploadedFile(
   projectId,
   uploadedFileIds,
@@ -82,15 +81,13 @@ export async function createProjectUploadedFile(
 
   const promises = uploadedFileIds.map(async (uploadedFileId) => {
     const values = [projectId, uploadedFileId];
-    const result = await client.query(query, values); // Use client.query()
+    const result = await client.query(query, values); 
     return result.rows[0];
   });
 
   return Promise.all(promises);
 }
 
-// This function can be called independently or as part of a transaction.
-// By default, it uses the pool. If a client is passed, it uses that client.
 export async function updateProjectPartial(id, fieldsToUpdate, client = pool) {
   const keys = Object.keys(fieldsToUpdate);
   if (keys.length === 0) {
@@ -150,7 +147,7 @@ export async function getProjectByPagination(
       OR LOWER(p.client_name) ILIKE $1
       OR LOWER(p.contact_person) ILIKE $1
   `;
-  const countResult = await client.query(countQuery, [search]); // Use client.query()
+  const countResult = await client.query(countQuery, [search]); 
   const totalCount = parseInt(countResult.rows[0].count, 10);
   const totalPages = Math.ceil(totalCount / limit);
 
@@ -207,7 +204,7 @@ export async function getProjectByPagination(
     LIMIT $2 OFFSET $3;
   `;
 
-  const dataResult = await client.query(dataQuery, [search, limit, offset]); // Use client.query()
+  const dataResult = await client.query(dataQuery, [search, limit, offset]); 
 
   return {
     total_pages: totalPages,
@@ -872,7 +869,7 @@ export async function createProjectRejectionUploadedFiles(
 
   const promises = uploadedFileIds.map(async (uploadedFileId) => {
     const values = [rejectionId, uploadedFileId];
-    const result = await client.query(query, values); // Use client.query()
+    const result = await client.query(query, values); 
     return result.rows[0];
   });
 
@@ -894,7 +891,7 @@ export async function createProjectRejection({
   `;
 
   const values = [projectId, reason, userId];
-  const result = await client.query(query, values); // Use client.query()
+  const result = await client.query(query, values); 
   const rejectionId = result.rows[0].id;
 
   if (uploaded_files_ids && uploaded_files_ids.length > 0) {
@@ -950,7 +947,7 @@ export async function projectRejectionById(rejectionId, client) {
     WHERE pr.id = $1
     LIMIT 1;
   `;
-  const result = await client.query(query, [rejectionId]); // Use client.query()
+  const result = await client.query(query, [rejectionId]); 
   console.log([rejectionId], result.rows[0]);
   return result.rows[0] || null;
 }
@@ -971,7 +968,7 @@ export async function addProjectDeliveryFiles(projectId, fileIds, client) {
 
 
   const { rows } = await client.query(
-    // Use client.query()
+    
     `SELECT id, label, file FROM uploaded_files WHERE id = ANY($1::int[])`,
     [fileIds]
   );

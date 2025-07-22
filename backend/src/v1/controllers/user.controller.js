@@ -11,7 +11,6 @@ import {
 import { getAllTeams } from "../services/teams.service.js";
 import { sentForgotMail } from "../services/auth.service.js";
 
-import pool from "../db/db.config.js";
 
 export const createNewUser = async (req, res) => {
   const { email, phoneNumber, name, role, active } = req.body;
