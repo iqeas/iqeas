@@ -1,4 +1,4 @@
-import { uploadFileToDO } from "../utils/do-upload.js";
+import { deleteFile, uploadFileToDO } from "../utils/do-upload.js";
 import { saveUploadedFile } from "../services/uploadfiles.service.js";
 import {formatResponse} from '../utils/response.js'
 const is_production = process.env.PRODUCTION === "true";
@@ -47,6 +47,39 @@ export const uploadFileHandler = async (req, res) => {
     );
   }
 };
+
+
+export const deleteFileHandler = async (req, res) => {
+  try {
+    const fileId = req.params.fileId;
+
+    if (!fileId) {
+      return res
+        .status(400)
+        .json(formatResponse({ statusCode: 400, detail: "File id required" }));
+    }
+
+
+    await deleteFile(fileId);
+    
+    return res.status(201).json(
+      formatResponse({
+        statusCode: 201,
+        detail: "File Deleted",
+      })
+    );
+  } catch (err) {
+    console.error("Upload Error:", err);
+    return res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: "Delete failed",
+        data: err.message,
+      })
+    );
+  }
+};
+
 
 export async function getFiles(req, res) {
   try {

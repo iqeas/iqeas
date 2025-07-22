@@ -55,7 +55,7 @@ import type { IUser, ITeam, IEstimationProject } from "@/types/apiTypes";
 import { formatRevenue, toReadableText } from "@/utils/utils";
 import ShowFile from "./ShowFile";
 import { validateRequiredFields } from "@/utils/validation";
-
+import { Item } from "@radix-ui/react-select";
 
 export const EstimationDashboard = () => {
   // State for the Ready for Execution toggle in the Approved form
@@ -69,13 +69,12 @@ export const EstimationDashboard = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [rfcDetailsProject, setRfcDetailsProject] = useState(null);
   const [showReadyPrompt, setShowReadyPrompt] = useState(false);
-  const [estimationFiles, setEstimationFiles] = useState([
-    { label: "", file: null },
-  ]);
+  const [estimationFiles, setEstimationFiles] = useState([]);
+  const [editDeletedFileIds, setDeleteSelectedIds] = useState([]);
   const [rejectModal, setRejectModal] = useState({
     open: false,
     project: null,
-    files: [{ label: "", file: null }],
+    files: [],
     notes: "",
   });
   const [viewEstimationProject, setViewEstimationProject] = useState(null);
@@ -86,8 +85,8 @@ export const EstimationDashboard = () => {
     uploadedFiles: [], // [{ file, label }]
     clientClarificationLog: "", // single string
     cost: "",
-    costBreakdownFile: { file: null, label: "" },
-    estimationFile: { file: null, label: "" },
+    costBreakdownFile: null,
+    estimationFile: null,
     deadline: "",
     approvalDate: "",
     ready_for_estimation: false,
@@ -102,8 +101,8 @@ export const EstimationDashboard = () => {
       uploadedFiles: [], // [{ file, label }]
       clientClarificationLog: "", // single string
       cost: "",
-      costBreakdownFile: { file: null, label: "" },
-      estimationFile: { file: null, label: "" },
+      costBreakdownFile: null,
+      estimationFile: null,
       deadline: "",
       approvalDate: "",
       ready_for_estimation: false,
@@ -120,12 +119,15 @@ export const EstimationDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  // Add state for estimation modal mode and editing
+  const [editEstimationData, setEditEstimationData] = useState(null);
+
   useEffect(() => {
     const getProjects = async () => {
       // Add page and pageSize to API call if supported
       const response = await makeApiCall(
         "get",
-        API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS(searchTerm, page, 2),
+        API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS(searchTerm, page, 20),
         {},
         "application/json",
         authToken,
@@ -142,30 +144,29 @@ export const EstimationDashboard = () => {
     getProjects();
   }, [searchTerm, page]);
   // Helper to advance workflow step for a project
-  const getUsersAndTeams = async () => {
+  const getUsers = async () => {
     const response = await makeApiCall(
       "get",
-      API_ENDPOINT.GET_USERS_BY_ROLE('pm'),
+      API_ENDPOINT.GET_USERS_BY_ROLE("pm"),
       {},
       "application/json",
       authToken,
       "getUsersAndTeams"
     );
     if (response.status === 200) {
-      setUsers(response.data.users);
+      setUsers(response.data || []);
     }
   };
-
   const handleStatusTransition = async (project, nextStatus) => {
     if (nextStatus === "Rejected") {
-      if (users.length == 0 ) {
-        getUsersAndTeams();
+      if (users.length == 0) {
+        getUsers();
       }
       openRejectModal(project);
     } else if (nextStatus === "Approved") {
       resetApprovedForm();
       if (users.length == 0) {
-        getUsersAndTeams();
+        getUsers();
       }
       setSelectedProject(project);
     } else {
@@ -178,42 +179,22 @@ export const EstimationDashboard = () => {
     setApprovedForm((f) => ({ ...f, [field]: value }));
   };
 
-  // For client clarification log
-  const handleEstimationFileChange = (idx, e) => {
-    setEstimationFiles((prev) =>
-      prev.map((item, index) => {
-        if (index === idx) {
-          return {
-            ...item,
-            file: e.target.files[0],
-          };
-        }
-        return item;
-      })
-    );
-  };
-
   const handleFileChange = (field, e) => {
     setApprovedForm((f) => ({ ...f, [field]: e.target.files[0] }));
   };
 
-
   const SubmitEstimation = async () => {
     // Validation
-    const requiredFields = [
-      "cost",
-      "deadline",
-      "approvalDate",
-      // "clientClarificationLog",
-      "forward_id",
-      "forward_type",
-    ];
+    const requiredFields = ["cost", "deadline", "approvalDate", "forward_id"];
     const missing = validateRequiredFields(approvedForm, requiredFields);
     if (missing.length > 0) {
       toast.error(`Please fill: ${missing[0]}`);
       return;
     }
-
+    if (!approvedForm.costBreakdownFile || approvedForm.estimationFile) {
+      toast.error(`Please Select Cost Break Down and Estimation`);
+      return;
+    }
     const uploadedFiles = [
       ...approvedForm.uploadedFiles,
       {
@@ -240,15 +221,14 @@ export const EstimationDashboard = () => {
     }
     const data = {
       project_id: selectedProject.id,
-      status: "approved",
+      status: "created",
       log: approvedForm.clientClarificationLog,
       cost: approvedForm.cost,
       deadline: approvedForm.deadline,
       approval_date: approvedForm.approvalDate,
-      approved: true,
-      sent_to_pm: approvedForm.ready_for_estimation,
+      approved: false,
+      sent_to_pm: false,
       forwarded_user_id: approvedForm.forward_id,
-      forward_type: approvedForm.forward_type,
       notes: approvedForm.notes,
       uploaded_file_ids: uploadedFileIds,
     };
@@ -267,9 +247,8 @@ export const EstimationDashboard = () => {
           if (item.id == selectedProject.id) {
             return {
               ...selectedProject,
-              estimation: response.data,
-              status: "working",
-              estimation_status: "approved",
+              ...response.data.project,
+              estimation: response.data.estimation,
             };
           }
           return item;
@@ -277,11 +256,13 @@ export const EstimationDashboard = () => {
       );
       setCards({
         ...cards,
-        total_value: cards.total_value + response.data.cost,
+        total_value: cards.total_value + response.data.estimation.cost,
         completed_estimations:
-          cards.completed_estimations + (response.data.sent_to_pm ? 1 : 0),
+          cards.completed_estimations +
+          (response.data.estimation.sent_to_pm ? 1 : 0),
         pending_estimations:
-          cards.completed_estimations + (response.data.sent_to_pm ? -1 : 0),
+          cards.completed_estimations +
+          (response.data.estimation.sent_to_pm ? -1 : 0),
       });
       setSelectedProject(null);
     } else {
@@ -289,6 +270,133 @@ export const EstimationDashboard = () => {
     }
   };
 
+  const handleEditEstimation = async () => {
+    const requiredFields = ["cost", "deadline", "approvalDate", "forward_id"];
+    const missing = validateRequiredFields(approvedForm, requiredFields);
+    if (missing.length > 0) {
+      toast.error(`Please fill: ${missing[0]}`);
+      return;
+    }
+    const existUploadedFiles = selectedProject.estimation.uploaded_files;
+    const deletedFiles = existUploadedFiles.filter(
+      (item) => estimationFiles.find((file) => file.id == item.id) == undefined
+    );
+    if (
+      deletedFiles.find((item) => item.label == "Cost Breakdown") &&
+      approvedForm.costBreakdownFile == null
+    ) {
+      toast.error("Please select cost break down file");
+      return;
+    }
+    if (
+      deletedFiles.find((item) => item.label == "Estimation") &&
+      approvedForm.estimationFile == null
+    ) {
+      toast.error("Please select Estimation file");
+      return;
+    }
+
+    const uploadedFiles = [
+      ...approvedForm.uploadedFiles.filter((item) => !item.id),
+      ...(approvedForm.estimationFile
+        ? [{ label: "Estimation", file: approvedForm.estimationFile }]
+        : []),
+      ...(approvedForm.costBreakdownFile
+        ? [{ label: "Cost Breakdown", file: approvedForm.costBreakdownFile }]
+        : []),
+    ];
+
+    // check if already a cost break down chosen  then delete old one
+    if (approvedForm.estimationFile) {
+      deletedFiles.push(
+        existUploadedFiles.find((item) => item.label == "Estimation")
+      );
+    }
+    if (approvedForm.costBreakdownFile) {
+      deletedFiles.push(
+        existUploadedFiles.find((item) => item.label == "Cost Breakdown")
+      );
+    }
+    for (const file of deletedFiles) {
+      const data = await deleteFile(file.id);
+    }
+    const uploadedFileIds = [];
+    for (const uf of uploadedFiles) {
+      if (uf.file) {
+        const uploaded = await uploadFile(uf.file, uf.label);
+        if (uploaded && uploaded.id) {
+          uploadedFileIds.push(uploaded.id);
+        } else {
+          toast.error("Failed to upload files");
+          return;
+        }
+      }
+    }
+    const data = {
+      project_id: selectedProject.id,
+      status: "edited",
+      log: approvedForm.clientClarificationLog,
+      cost: approvedForm.cost,
+      deadline: approvedForm.deadline,
+      approval_date: approvedForm.approvalDate,
+      approved: false,
+      sent_to_pm: false,
+      forwarded_user_id: approvedForm.forward_id,
+      notes: approvedForm.notes,
+      uploaded_file_ids: uploadedFileIds,
+    };
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_ESTIMATION(editEstimationData.id),
+      data,
+      "application/json",
+      authToken,
+      "editEstimation"
+    );
+    if (response.status == 200) {
+      setProjects((prev) =>
+        prev.map((item) => {
+          if (item.id == selectedProject.id) {
+            return {
+              ...selectedProject,
+              estimation: response.data,
+              estimation_status: "edited",
+              progress: 75,
+            };
+          }
+          return item;
+        })
+      );
+      resetEditEstimation();
+      toast.success(response.detail);
+    } else {
+      toast.error("Failed to update estimation");
+    }
+  };
+  const resetEditEstimation = () => {
+    setSelectedProject(null);
+    setEstimationFiles([]);
+    setEditEstimationData(null);
+    setDeleteSelectedIds([]);
+    resetApprovedForm();
+  };
+  const deleteFile = async (file_id) => {
+    const data = new FormData();
+
+    const response = await makeApiCall(
+      "delete",
+      API_ENDPOINT.DELETE_FILE(file_id),
+      data,
+      "application/json",
+      authToken,
+      "deleteFile"
+    );
+    if (response.status == 200) {
+      return true;
+    } else {
+      return null;
+    }
+  };
   const uploadFile = async (file: File, label: string) => {
     const data = new FormData();
     data.append("label", label);
@@ -308,6 +416,7 @@ export const EstimationDashboard = () => {
       return null;
     }
   };
+
   const openRejectModal = (project) => {
     setRejectModal({
       open: true,
@@ -368,27 +477,23 @@ export const EstimationDashboard = () => {
           if (item.id == project.id) {
             return {
               ...item,
-              estimation_status: nextStatus,
+              estimation_status: response.data.estimation_status,
+              progress: response.data.progress,
             };
           }
           return item;
         })
       );
-      // setCards({
-      //   ...cards,
-      //   active_projects: cards.active_projects + 1,
-      //   read_for_estimation: cards.read_for_estimation - 1,
-      // });
     } else {
       toast.error(`Failed to mark as ${toReadableText(nextStatus)}`);
     }
   };
-
-  // For ready_for_estimation toggle, if you have one
-  // useEffect(() => {
-  //   setApprovedForm((f) => ({ ...f, ready_for_estimation: readyForEstimation }));
-  // }, [readyForEstimation]);
-  // Keep approvedForm.uploadedFiles in sync with estimationFiles
+  const GetUserAndRunFun = async (func) => {
+    if (users.length == 0) {
+      await getUsers();
+    }
+    func();
+  };
   useEffect(() => {
     setApprovedForm((f) => ({
       ...f,
@@ -399,53 +504,7 @@ export const EstimationDashboard = () => {
   if (!isFetched) {
     return <Loading full />;
   }
-  // Helper to compute progress from estimation_status
-  const getProgressFromStatus = (status?: string) => {
-    switch (status) {
-      case "not_started":
-        return 0;
-      case "under_review":
-        return 33;
-      case "sent_to_client":
-        return 66;
-      case "approved":
-      case "rejected":
-        return 100;
-      default:
-        return 0;
-    }
-  };
-  const handleReadyForExecution = async (project) => {
-    const response = await makeApiCall(
-      "patch",
-      API_ENDPOINT.EDIT_ESTIMATION(project.estimation.id),
-      { sent_to_pm: true },
-      "application/json",
-      authToken,
-      "EditEstimation"
-    );
-    if (response.status == 200) {
-      setProjects((prev) =>
-        prev.map((item) => {
-          if (item.id == project.id) {
-            return {
-              ...item,
-              estimation: { ...item.estimation, sent_to_pm: true },
-            };
-          }
-          return item;
-        })
-      );
-      // setCards({
-      //   ...cards,
-      //   completed_estimations: cards.completed_estimations + 1,
-      //   pending_estimations: cards.pending_estimations - 1,
-      // });
-      toast.success("Successfully sent to Project managers");
-    } else {
-      toast.error("Failed to sent to project managers");
-    }
-  };
+
   const handleProjectReject = async () => {
     const requiredFields = ["notes"];
     const missing = validateRequiredFields(rejectModal, requiredFields);
@@ -497,6 +556,9 @@ export const EstimationDashboard = () => {
     } else {
       toast.error("Failed to reject project");
     }
+  };
+  const handleSentToAdmin = async (project) => {
+    await changeProjectStatus(project, "sent_to_admin");
   };
   return (
     <div className="p-6">
@@ -662,7 +724,7 @@ export const EstimationDashboard = () => {
                       </div>
                       <div>
                         <span className="text-slate-500">Status:</span>
-                        <p className="font-medium">
+                        <p className="font-medium capitalize">
                           {toReadableText(project.estimation_status)}
                         </p>
                       </div>
@@ -704,13 +766,10 @@ export const EstimationDashboard = () => {
                   <div className="flex justify-between mb-2">
                     <span className="text-sm text-slate-500">Progress</span>
                     <span className="text-sm font-medium">
-                      {getProgressFromStatus(project.estimation_status)}%
+                      {project.progress}%
                     </span>
                   </div>
-                  <Progress
-                    value={getProgressFromStatus(project.estimation_status)}
-                    className="h-2"
-                  />
+                  <Progress value={project.progress} className="h-2" />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button
@@ -721,7 +780,7 @@ export const EstimationDashboard = () => {
                   >
                     View Details
                   </Button>
-                  {project.estimation_status === "approved" && (
+                  {project.estimation && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -732,71 +791,134 @@ export const EstimationDashboard = () => {
                     </Button>
                   )}
                   {/* Status workflow buttons */}
-                  {project.estimation_status === "not_started"&& (
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                        onClick={() =>
-                          handleStatusTransition(project, "under_review")
-                        }
-                        disabled={fetching}
-                        loading={
-                          fetching &&
-                          fetchType == `editProjectStatus${project.id}`
-                        }
-                      >
-                        Mark as Under Review
-                      </Button>
-                    )}
-                  {project.estimation_status === "under_review" && (
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() =>
-                        handleStatusTransition(project, "sent_to_client")
+                  {(() => {
+                    // Workflow after sent_to_client
+                    if (project.estimation_status === "sent_to_client") {
+                      if (!project.estimation) {
+                        // No estimation yet, show Create Estimation
+                        return (
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => {
+                              GetUserAndRunFun(() => {
+                                setSelectedProject(project);
+                              });
+                            }}
+                            loading={
+                              fetching && fetchType == "getUsersAndTeams"
+                            }
+                          >
+                            Create Estimation
+                          </Button>
+                        );
                       }
-                      disabled={fetching}
-                      loading={
-                        fetching &&
-                        fetchType == `editProjectStatus${project.id}`
-                      }
-                    >
-                      Mark as Sent to Client
-                    </Button>
-                  )}
-                  {project.estimation_status === "sent_to_client" && (
-                    <>
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                        onClick={() => openRejectModal(project)}
-                      >
-                        Rejected
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() =>
-                          handleStatusTransition(project, "Approved")
-                        }
-                      >
-                        Approved
-                      </Button>
-                    </>
-                  )}
-                  {/* Fallback: if not in workflow, show Continue Work as before */}
-                  {project.estimation &&
-                    project.estimation.sent_to_pm === false && (
-                      <div className="flex  border-t ">
+                    }
+                    // If estimation exists and status is created/edited, show Send to Admin
+                    if (
+                      project.estimation &&
+                      ["created", "edited"].includes(project?.estimation_status)
+                    ) {
+                      return (
                         <Button
-                          className="bg-blue-600 hover:bg-blue-700 text-white w-full"
-                          onClick={() => handleReadyForExecution(project)}
-                          loading={fetching && fetchType == "EditEstimation"}
+                          size="sm"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => handleSentToAdmin(project)}
+                          loading={
+                            fetching &&
+                            fetchType == `editProjectStatus${project.id}`
+                          }
                         >
-                          Ready for Execution
+                          Send to Admin
                         </Button>
-                      </div>
-                    )}
+                      );
+                    }
+                    // If status is back_to_you, show Edit Estimation
+                    if (
+                      project.estimation &&
+                      project.estimation_status === "back_to_you"
+                    ) {
+                      return (
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
+                          loading={fetching && fetchType == "getUsersAndTeams"}
+                          onClick={() => {
+                            GetUserAndRunFun(() => {
+                              setSelectedProject(project);
+                              setEstimationFiles(
+                                project.estimation.uploaded_files
+                              );
+                              setEditEstimationData(project.estimation);
+                              setDeleteSelectedIds([]);
+                              setApprovedForm({
+                                ...approvedForm,
+                                cost: `${project.estimation.cost}` || "",
+                                deadline: project.estimation.deadline || "",
+                                approvalDate:
+                                  project.estimation.approval_date || "",
+                                forward_id:
+                                  project.estimation.forwarded_to?.id?.toString() ||
+                                  "",
+                                forward_type: "user",
+                                notes: project.estimation.notes || "",
+                                clientClarificationLog:
+                                  project.estimation.log || "",
+                                uploadedFiles: [],
+                              });
+                            });
+                          }}
+                        >
+                          Edit Estimation
+                        </Button>
+                      );
+                    }
+                    // If status is sent_to_admin, only show view buttons
+                    if (
+                      project.estimation &&
+                      project.estimation_status === "sent_to_admin"
+                    ) {
+                      return null;
+                    }
+                    // Default: show previous workflow buttons
+                    if (project.estimation_status === "not_started") {
+                      return (
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() =>
+                            handleStatusTransition(project, "under_review")
+                          }
+                          disabled={fetching}
+                          loading={
+                            fetching &&
+                            fetchType == `editProjectStatus${project.id}`
+                          }
+                        >
+                          Mark as Under Review
+                        </Button>
+                      );
+                    }
+                    if (project.estimation_status === "under_review") {
+                      return (
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() =>
+                            handleStatusTransition(project, "sent_to_client")
+                          }
+                          disabled={fetching}
+                          loading={
+                            fetching &&
+                            fetchType == `editProjectStatus${project.id}`
+                          }
+                        >
+                          Mark as Sent to Client
+                        </Button>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 {/* New row for Ready for Execution button if estimation.sent_to_pm is false and status is approved */}
               </CardContent>
@@ -842,7 +964,9 @@ export const EstimationDashboard = () => {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative ">
             <button
               className="absolute top-2 right-2"
-              onClick={() => setSelectedProject(null)}
+              onClick={() => {
+                resetEditEstimation();
+              }}
             >
               <X />
             </button>
@@ -938,51 +1062,44 @@ export const EstimationDashboard = () => {
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-2">
-                <Switch
-                  id="sentToPMForm"
-                  checked={approvedForm.ready_for_estimation}
-                  onCheckedChange={(val) => {
-                    setApprovedForm({
-                      ...approvedForm,
-                      ready_for_estimation: val,
-                    });
-                  }}
-                />
-                <label htmlFor="sentToPMForm" className="text-sm">
-                  Ready for Execution
-                </label>
-              </div>
               <div>
-                <label className="block font-medium">Forward To</label>
+                <label className="block font-medium">
+                  Forward To {users.map((item) => item.name)}
+                </label>
                 <div className="flex gap-2 mb-2">
-                  {/* <Select
-                    value={approvedForm.forward_type}
-                    onValueChange={(value) => {
-                      setApprovedForm({ ...approvedForm, forward_type: value });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">Individual</SelectItem>
-                      <SelectItem value="team">PM Team</SelectItem>
-                    </SelectContent>
-                  </Select> */}
                   <Select
-                    value={approvedForm.forward_id}
+                    value={
+                      approvedForm.forward_id
+                        ? approvedForm.forward_id.toString()
+                        : ""
+                    }
                     onValueChange={(value) => {
                       setApprovedForm({ ...approvedForm, forward_id: value });
                     }}
                   >
                     <SelectContent>
                       {users.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.name}
-                          </SelectItem>
-                        ))}
-                      
+                        <SelectItem key={u.id} value={u.id.toString()}>
+                          <span className="capitalize">{u.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={approvedForm.forward_id}
+                    onValueChange={(value) => {
+                      setApprovedForm({ ...approvedForm, forward_id: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Leader" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id.toString()}>
+                          <span className="capitalize">{u.name}</span>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1036,6 +1153,7 @@ export const EstimationDashboard = () => {
                       type="text"
                       placeholder="Label"
                       value={uf.label}
+                      disabled={typeof uf.file == "string"}
                       onChange={(e) =>
                         setEstimationFiles((prev) =>
                           prev.map((u, i) =>
@@ -1066,10 +1184,15 @@ export const EstimationDashboard = () => {
             <div className="flex justify-end mt-4 gap-2">
               <Button
                 className={`bg-green-600 hover:bg-green-700 `}
-                onClick={SubmitEstimation}
+                onClick={
+                  editEstimationData ? handleEditEstimation : SubmitEstimation
+                }
                 loading={
                   fetching &&
-                  (fetchType == "createEstimation" || fetchType == "uploadFile")
+                  (fetchType == "createEstimation" ||
+                    fetchType == "uploadFile" ||
+                    fetchType == "deleteFile" ||
+                    fetchType == "editEstimation")
                 }
               >
                 Submit
@@ -1205,10 +1328,7 @@ export const EstimationDashboard = () => {
                     .filter((f) => f.file)
                     .map((f, i) => (
                       <li key={i}>
-                        <span className="font-medium text-slate-700">
-                          {f.label ? `${f.label}: ` : ""}
-                        </span>
-                        {f.file?.name}
+                        <ShowFile label={f.label} url={f.file} />
                       </li>
                     ))}
                 </ul>
@@ -1516,6 +1636,29 @@ export const EstimationDashboard = () => {
                       <span className="text-slate-400">-</span>
                     )}
                 </div>
+                <div className="col-span-2">
+                  <span className="font-semibold text-slate-700">
+                    Client View:
+                  </span>
+                  <br />
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="truncate text-blue-700 font-mono text-xs bg-blue-50 px-2 py-1 rounded">
+                      {`${window.location.origin}/client/${viewEstimationProject.public_share_token}`}
+                    </span>
+                    <button
+                      className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `${window.location.origin}/client/${viewEstimationProject.public_share_token}`
+                        );
+                        if (typeof toast === "function")
+                          toast.success("Copied!");
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="my-6 border-t pt-6">
                 <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
@@ -1586,6 +1729,47 @@ export const EstimationDashboard = () => {
                   )}
                 </div>
               ) : null}
+              <div className=" py-4 border-b">
+                <div className="font-semibold text-blue-700 mb-1 flex items-center gap-2">
+                  <AlertCircle size={18} className="text-blue-500" />
+                  Corrections:{" "}
+                  {!viewEstimationProject.estimation.corrections && (
+                    <span className="text-xs text-gray-400">
+                      No Correction made
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {viewEstimationProject.estimation.corrections &&
+                  viewEstimationProject.estimation.corrections.length > 0 ? (
+                    viewEstimationProject.estimation.corrections.map(
+                      (corr, i) => (
+                        <div
+                          key={corr.id}
+                          className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col md:flex-col md:items-start gap-2 shadow-sm"
+                        >
+                          <div
+                            className="flex-1 text-slate-800 text-sm md:text-base max-w-full break-words"
+                            style={{
+                              maxWidth: "600px",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {corr.correction}
+                          </div>
+                          <div className="text-xs text-gray-500 ml-auto whitespace-nowrap">
+                            {new Date(corr.created_at).toLocaleString()}
+                          </div>
+                        </div>
+                      )
+                    )
+                  ) : (
+                    <div className="text-gray-400 ml-2 text-xs">
+                      No corrections made.
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex justify-end mt-8">
                 <Button
                   variant="outline"

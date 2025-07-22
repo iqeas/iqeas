@@ -1,6 +1,8 @@
 import pool from "../config/db.js";
 import { defineProjectProgress } from "../utils/defineProjectProgress.js";
 import { generateProjectId } from "../utils/projectIdCreator.js";
+import { nanoid } from "nanoid";
+
 
 // Functions that receive 'client' from a transactional controller MUST use client.query()
 export async function createProject(projectData, userId, client) {
@@ -20,6 +22,7 @@ export async function createProject(projectData, userId, client) {
     status = "draft",
     send_to_estimation = false,
   } = projectData;
+  const publicToken = nanoid(20);
   const project_id = await generateProjectId();
   const query = `
     INSERT INTO projects (
@@ -27,13 +30,13 @@ export async function createProject(projectData, userId, client) {
       client_name, client_company, location,
       project_type, priority, contact_person,
       contact_person_phone, contact_person_email,
-      notes, status, send_to_estimation
+      notes, status, send_to_estimation,public_share_token
     ) VALUES (
       $1, $2, $3, $4,
       $5, $6, $7,
       $8, $9, $10,
       $11, $12,
-      $13, $14, $15
+      $13, $14, $15,$16
     ) RETURNING *
   `;
 
@@ -53,6 +56,7 @@ export async function createProject(projectData, userId, client) {
     notes,
     status,
     send_to_estimation,
+    publicToken,
   ];
 
   const result = await client.query(query, values); // Use client.query()
@@ -106,20 +110,21 @@ export async function updateProjectPartial(id, fieldsToUpdate, client = pool) {
     RETURNING *;
   `;
 
-  const result = await client.query(query, values); // Use client.query() (which could be pool.query())
+  const result = await pool.query(query, values);
+  const updatedData = result.rows[0];
+
   console.log(fieldsToUpdate.progress, defineProjectProgress(result.rows[0]));
   if (
     !fieldsToUpdate.progress &&
     defineProjectProgress(result.rows[0]) != result.rows[0].progress
   ) {
-    console.log("enter to change progress");
     const progress = defineProjectProgress(result.rows[0]);
     console.log("new progress", progress);
     await client.query(
-      // Use client.query()
       `UPDATE projects SET progress = $1, updated_at = NOW() WHERE id = $2`,
       [progress, id]
     );
+    updatedData.progress = progress;
   }
   return result.rows[0];
 }
@@ -210,17 +215,30 @@ export async function getProjectByPagination(
   };
 }
 
-// This function is NOT called with a client from a transactional controller, so it uses pool directly.
-export async function getProjectsEstimationProjects({ page = 1, size = 10 }) {
+export async function getProjectsEstimationProjects({
+  page = 1,
+  size = 10,
+  query = "",
+}) {
+
   const offset = (page - 1) * size;
-
   const values = [size, offset];
+  let whereClause = `WHERE p.send_to_estimation = true`;
 
-  const query = `
+  if (query) {
+    whereClause += ` AND (
+      LOWER(p.project_id::text) LIKE LOWER('%${query}%') OR
+      LOWER(p.client_name) LIKE LOWER('%${query}%') OR
+      LOWER(p.client_company) LIKE LOWER('%${query}%') OR
+      LOWER(p.name) LIKE LOWER('%${query}%')
+    )`;
+  }
+
+  const queryText = `
     WITH filtered_projects AS (
       SELECT *
-      FROM projects
-      WHERE send_to_estimation = true
+      FROM projects p
+      ${whereClause}
       ORDER BY created_at DESC
       LIMIT $1 OFFSET $2
     )
@@ -301,7 +319,18 @@ export async function getProjectsEstimationProjects({ page = 1, size = 10 }) {
             FROM estimation_uploaded_files euf
             JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
             WHERE euf.estimation_id = e.id
+          ), '[]'::json),
+
+          'corrections', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', ec.id,
+              'correction', ec.correction,
+              'created_at', ec.created_at
+            ) ORDER BY ec.created_at DESC)
+            FROM estimation_corrections ec
+            WHERE ec.estimation_id = e.id
           ), '[]'::json)
+
         )
         FROM estimations e
         JOIN users eu ON e.user_id = eu.id
@@ -341,11 +370,12 @@ export async function getProjectsEstimationProjects({ page = 1, size = 10 }) {
   `;
 
   const totalQuery = `
-    SELECT COUNT(*) FROM projects WHERE send_to_estimation = true
+    SELECT COUNT(*) FROM projects p
+    ${whereClause}
   `;
 
   const [result, totalResult] = await Promise.all([
-    pool.query(query, values), // Use pool.query()
+    pool.query(queryText, values), // Use pool.query()
     pool.query(totalQuery), // Use pool.query()
   ]);
 
@@ -552,7 +582,6 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
   const offset = (page - 1) * size;
   const search = `%${query.toLowerCase()}%`;
   const values = [search, search, search, search, search, size, offset];
-  console.log(query, page, size);
   const queryText = `
     WITH filtered_projects AS (
       SELECT *
@@ -563,10 +592,6 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
         LOWER(project_id) ILIKE $3 OR
         LOWER(name) ILIKE $4 OR
         LOWER(client_name) ILIKE $5
-      )
-      AND EXISTS (
-        SELECT 1 FROM estimations e
-        WHERE e.project_id = projects.id AND e.sent_to_pm = true
       )
       ORDER BY created_at DESC
       LIMIT $6 OFFSET $7
@@ -707,17 +732,13 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
       LOWER(name) ILIKE $4 OR
       LOWER(client_name) ILIKE $5
     )
-    AND EXISTS (
-      SELECT 1 FROM estimations e
-      WHERE e.project_id = projects.id AND e.sent_to_pm = true
-    )
   `;
 
   const [result, totalResult] = await Promise.all([
     pool.query(queryText, values), // Use pool.query()
     pool.query(totalQuery, values.slice(0, 5)), // Use pool.query()
   ]);
-  console.log(result.rows.length);
+
   const totalPages = Math.ceil(Number(totalResult.rows[0].count) / size);
 
   return {
@@ -726,13 +747,13 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
   };
 }
 
-// This function is NOT called with a client from a transactional controller, so it uses pool directly.
+
 export async function getPMProjectsCards({ userId }) {
   const cardQuery = `
     SELECT
       COUNT(*)::int AS total_projects,
       COUNT(*) FILTER (
-        WHERE status = 'working' AND progress = 100.00
+        WHERE status = 'delivered'
       )::int AS completed_works,
       COUNT(*) FILTER (
         WHERE status = 'working' AND progress != 100.00
@@ -746,7 +767,8 @@ export async function getPMProjectsCards({ userId }) {
     );
   `;
 
-  const cardData = await pool.query(cardQuery, [userId]); // Use pool.query()
+  const cardData = await pool.query(cardQuery, [userId]);
+
 
   return {
     total_projects: cardData.rows[0].total_projects,
@@ -773,7 +795,8 @@ export async function getAdminProjectsCards() {
     );
   `;
 
-  const cardData = await pool.query(cardQuery); // Use pool.query()
+  const cardData = await pool.query(cardQuery);
+
 
   return {
     total_projects: cardData.rows[0].total_projects,
@@ -782,7 +805,7 @@ export async function getAdminProjectsCards() {
   };
 }
 
-// This function is NOT called with a client from a transactional controller, so it uses pool directly.
+
 export async function getProjectsSentToPM() {
   const query = `SELECT * FROM projects WHERE send_to_pm = true ORDER BY created_at DESC;`;
   const result = await pool.query(query); // Use pool.query()
@@ -812,12 +835,11 @@ export async function getEstimationCardData() {
     `SELECT COUNT(*) AS count FROM projects WHERE send_to_estimation = true`
   );
   const pending_estimations = await pool.query(
-    // Use pool.query()
-    `SELECT COUNT(*) AS count FROM projects WHERE estimation_status != 'approved'`
+    `SELECT COUNT(*) AS count FROM projects WHERE estimation_status != 'approved' AND estimation_status != 'rejected'`
   );
   const completed_estimations = await pool.query(
-    // Use pool.query()
-    `SELECT COUNT(*) AS count FROM projects WHERE estimation_status = 'approved'`
+    `SELECT COUNT(*) AS count FROM projects WHERE estimation_status = 'approved' OR estimation_status = 'rejected'`
+
   );
   const total_value = await pool.query(
     // Use pool.query()
@@ -946,6 +968,7 @@ export async function addProjectDeliveryFiles(projectId, fileIds, client) {
     VALUES ${insertValues}
     ON CONFLICT (project_id, uploaded_file_id) DO NOTHING;
   `);
+
 
   const { rows } = await client.query(
     // Use client.query()
@@ -1234,4 +1257,161 @@ export async function getWorkerProjectDetail(userId, projectId) {
     `;
   const result = await pool.query(query, [projectId, userId]); // Use pool.query()
   return result.rows[0];
+}
+
+export async function getProjectDetailsById(projectId) {
+  const query = `
+    SELECT 
+      p.*,
+
+      -- Project uploader
+      json_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email
+      ) AS user,
+
+      -- Project uploaded files
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM projects_uploaded_files puf
+        JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
+        WHERE puf.project_id = p.id
+      ), '[]'::json) AS uploaded_files,
+
+      -- Project delivery files
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM project_delivery_files pdf
+        JOIN uploaded_files uf ON pdf.uploaded_file_id = uf.id
+        WHERE pdf.project_id = p.id
+      ), '[]'::json) AS delivery_files,
+
+      -- Estimation (if any)
+      (
+        SELECT json_build_object(
+          'id', e.id,
+          'status', e.status,
+          'log', e.log,
+          'cost', e.cost,
+          'deadline', e.deadline,
+          'approval_date', e.approval_date,
+          'approved', e.approved,
+          'sent_to_pm', e.sent_to_pm,
+          'notes', e.notes,
+          'updates', e.updates,
+
+          'user', json_build_object(
+            'id', eu.id,
+            'name', eu.name,
+            'email', eu.email
+          ),
+
+          'forwarded_to', (
+            SELECT json_build_object(
+              'id', fuser.id,
+              'name', fuser.name,
+              'email', fuser.email
+            )
+            FROM users fuser
+            WHERE fuser.id = e.forwarded_user_id
+          ),
+
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf.id,
+              'label', uf.label,
+              'file', uf.file
+            ))
+            FROM estimation_uploaded_files euf
+            JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+            WHERE euf.estimation_id = e.id
+          ), '[]'::json),
+
+          'corrections', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', c.id,
+              'correction', c.correction,
+              'created_at', c.created_at
+            ) ORDER BY c.created_at DESC)
+            FROM estimation_corrections c
+            WHERE c.estimation_id = e.id
+          ), '[]'::json)
+
+        )
+        FROM estimations e
+        JOIN users eu ON eu.id = e.user_id
+        WHERE e.project_id = p.id
+        LIMIT 1
+      ) AS estimation
+
+    FROM projects p
+    LEFT JOIN users u ON p.user_id = u.id
+    WHERE p.id = $1
+    LIMIT 1;
+  `;
+
+  const result = await pool.query(query, [projectId]);
+  return result.rows[0] || null;
+}
+
+export async function getPublicProjectDetails(token) {
+  const query = `
+    SELECT 
+      p.id,
+      p.project_id,
+      p.name,
+      p.client_name,
+      p.client_company,
+      p.location,
+      p.project_type,
+      p.received_date,
+      p.notes,
+      p.progress,
+
+      -- Delivery files
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM project_delivery_files pdf
+        JOIN uploaded_files uf ON pdf.uploaded_file_id = uf.id
+        WHERE pdf.project_id = p.id
+      ), '[]'::json) AS delivery_files,
+
+      -- Stages
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', s.id,
+          'name', s.name,
+          'status', s.status,
+          'weight', s.weight,
+          'allocated_hours', s.allocated_hours,
+          'revision', s.revision,
+          'updated_at', s.updated_at
+        ) ORDER BY s.created_at)
+        FROM stages s
+        WHERE s.project_id = p.id
+      ), '[]'::json) AS stages
+
+    FROM projects p
+    WHERE p.public_share_token = $1
+    LIMIT 1;
+  `;
+
+  const result = await pool.query(query, [token]);
+  const project = result.rows[0];
+
+  if (!project) return null;
+  return project;
 }

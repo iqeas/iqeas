@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import {
+  deleteFileHandler,
   getFiles,
   uploadFileHandler,
 } from "../controllers/uploadfiles.controller.js";
@@ -15,6 +16,11 @@ router.post(
   upload.single("file"),
   uploadFileHandler
 );
+router.delete(
+  '/delete-file/:fileId',
+  authenticateToken,
+  deleteFileHandler
+)
 
 
 router.get("/get-files/all-files", authenticateToken, getFiles);

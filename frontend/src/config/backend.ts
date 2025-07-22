@@ -54,4 +54,8 @@ export const API_ENDPOINT = {
   ADD_DELIVERY_FILES: (project_id: any) =>
     `${API_URL}/project-delivery/${project_id}`,
   GET_ALL_UPLOAD_DATA_BY_ROLES: `${API_URL}/projects/uploaded-files-data-by-roles`,
+  GET_PROJECT_BY_ID: (project_id) => `${API_URL}/projects/${project_id}`,
+  DELETE_FILE: (file_id) => `${API_URL}/delete-file/${file_id}`,
+  GET_PUBLIC_PROJECT_INFO: (token) => `${API_URL}/projects/public/${token}`,
+  CREATE_ESTIMATION_CORRECTION: `${API_URL}/estimation/correction`,
 };

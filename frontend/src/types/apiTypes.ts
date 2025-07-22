@@ -58,6 +58,7 @@ export interface IRFCProject {
 }
 
 export interface IRFCProject {
+  public_share_token: string;
   id: number;
   created_at: string;
   updated_at: string;
@@ -83,6 +84,7 @@ export interface IRFCProject {
     uploaded_files: { label: string; id: number; file: string }[];
   }[];
   estimation_status: string;
+  progress: number;
 }
 
 export interface IEstimation {
@@ -103,12 +105,14 @@ export interface IEstimation {
   notes?: string;
   updates?: string;
   uploaded_files: { label: string; id: number; file: string }[];
-  forward_to: {
+  forwarded_to: {
     type: string;
     id: number;
     labe: string;
     users: any[];
   };
+  status: string;
+  corrections: { id: string; correction: string }[];
 }
 
 export interface IEstimationProject extends IRFCProject {
@@ -220,6 +224,11 @@ export interface EstimationUser {
   email: string;
 }
 
+export interface EstimationCorrection {
+  id: number;
+  correction: string;
+  created_at: string;
+}
 export interface Estimation {
   id: number;
   status: string;
@@ -234,6 +243,7 @@ export interface Estimation {
   user: EstimationUser;
   forwarded_to: any;
   uploaded_files: UploadedFile[];
+  corrections: EstimationCorrection[];
 }
 
 export interface Project {

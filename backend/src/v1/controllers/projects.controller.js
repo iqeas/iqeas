@@ -16,6 +16,8 @@ import {
   getWorkerProjectsPaginated,
   getAdminProjectsCards,
   getPMProjectsCards,
+  getProjectDetailsById,
+  getPublicProjectDetails,
 } from "../services/projects.service.js";
 import pool from "../config/db.js";
 
@@ -141,7 +143,8 @@ export const getEstimationProjects = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const size = parseInt(req.query.size) || 10;
     const query = req.query.search || "";
-    const projects = await getProjectsEstimationProjects(page, size, query);
+    console.log(page, size, query);
+    const projects = await getProjectsEstimationProjects({ page, size, query });
     const cards = await getEstimationCardData();
     return res.status(200).json(
       formatResponse({
@@ -396,5 +399,49 @@ export async function getWorkerProjectDetailController(req, res) {
   } catch (err) {
     console.error("Error fetching project details:", err);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export const getProjectByIdController = async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    console.log(projectId);
+    const project = await getProjectDetailsById(projectId);
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Projects fetched successfully",
+        data: project,
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching estimation projects:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+
+export async function getPublicProjectInfo(req, res) {
+  const { token } = req.params;
+
+  try {
+    const data = await getPublicProjectDetails(token);
+    if (!data) {
+      return res
+        .status(404)
+        .json({ message: "Project not found or unavailable." });
+    }
+
+    return res.json({
+      status_code: 200,
+      detail: "Projects fetched successfully",
+      data: data,
+    });
+  } catch (err) {
+    console.error("Error fetching public project info:", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 }

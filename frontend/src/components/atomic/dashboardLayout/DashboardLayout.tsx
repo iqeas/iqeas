@@ -13,7 +13,7 @@ import {
 
 const menuConfig = {
   pm: [
-    { label: "Projects", to: "/pm", icon: Home, match: ["/project/"] },
+    { label: "Projects", to: "/pm", icon: Home, match: ["/pm/project/"] },
     { label: "Document Center", to: "/pm/documents", icon: BookOpen },
     { label: "Calendar", to: "/pm/calendar", icon: Calendar },
   ],
@@ -46,14 +46,22 @@ const menuConfig = {
       label: "My Task",
       to: "/working",
       icon: Home,
-      match: ["/working", "/working/project/"],
+      match: ["/working/project/"],
     },
     { label: "Document Center", to: "/working/documents", icon: BookOpen },
     { label: "Calendar", to: "/working/calendar", icon: Calendar },
   ],
   admin: [
-    { label: "Projects", to: "/admin", icon: Folder, match: ["/project/"] },
+    {
+      label: "Projects",
+      to: "/admin",
+      icon: Folder,
+      match: ["/admin/project/"],
+    },
     { label: "Members", to: "/admin/members", icon: Calendar },
+    { label: "Attendance", to: "/admin/attendance", icon: Calendar },
+    { label: "Salary", to: "/admin/salary", icon: Calendar },
+    { label: "Leave ", to: "/admin/leave", icon: Calendar },
     { label: "Document Center", to: "/admin/documents", icon: Calendar },
     { label: "Calendar", to: "/admin/calendar", icon: Calendar },
   ],

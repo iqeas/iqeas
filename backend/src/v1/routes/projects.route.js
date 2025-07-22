@@ -11,6 +11,8 @@ import {
   getUploadedFilesForRoles,
   listWorkerProjectsController,
   getAdminProjectsController,
+  getProjectByIdController,
+  getPublicProjectInfo,
 } from "../controllers/projects.controller.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -26,4 +28,6 @@ router.post("/projects/reject", authenticateToken, projectRejectCreateHandler);
 router.post("/project-delivery/:id", addDeliveryFilesController);
 router.get("/projects/uploaded-files-data-by-roles", getUploadedFilesForRoles)
 router.get("/projects/working", authenticateToken, listWorkerProjectsController);
+router.get("/projects/:id", authenticateToken, getProjectByIdController);
+router.get("/projects/public/:token", getPublicProjectInfo);
 export default router;

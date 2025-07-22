@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 
 import Login from "./pages/Login";
-import CreatePassword from "./pages/CreatePassword";
 import DashboardLayout from "./components/atomic/dashboardLayout/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -25,6 +24,12 @@ import DocumentFiles from "./components/DocumentFiles";
 import WorkerProjectList from "./components/WorkerProjectList";
 import { WorkerTasks } from "./components/WorkerTasks";
 import DocumentationProjectList from "./components/DocumentationProjectList";
+import ProjectTrack from "./components/ProjectDetail";
+import CreatePassword from "./pages/CreatePassword";
+import ProjectPublicInfo from "./components/ProjectPublicInfo";
+import SalaryManagement from "./components/SalaryManagement";
+import AttendanceManagement from "./components/AttendanceManagement";
+import LeaveManagement from "./components/LeaveManagement";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -42,6 +47,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/client/:token" element={<ProjectPublicInfo />} />
               <Route path="/create-password" element={<CreatePassword />} />
 
               {/* PM Team */}
@@ -58,7 +64,7 @@ const App = () => (
                   path="project/:projectId"
                   element={
                     <DashboardLayout>
-                      <ProjectsDashboard />
+                      <ProjectTrack />
                     </DashboardLayout>
                   }
                 />
@@ -313,7 +319,31 @@ const App = () => (
                   path="project/:projectId"
                   element={
                     <DashboardLayout>
-                      <ProjectsDashboard />
+                      <ProjectTrack />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="salary"
+                  element={
+                    <DashboardLayout>
+                      <SalaryManagement />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="attendance"
+                  element={
+                    <DashboardLayout>
+                      <AttendanceManagement />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="leave"
+                  element={
+                    <DashboardLayout>
+                      <LeaveManagement />
                     </DashboardLayout>
                   }
                 />

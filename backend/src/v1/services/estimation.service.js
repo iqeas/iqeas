@@ -54,82 +54,38 @@ export async function createEstimation(data) {
     );
     await Promise.all(promises);
   }
-  await updateProjectPartial(project_id, {
-    estimation_status: "approved",
-    status: "Working",
-  });
 
   return estimation;
 }
-export async function getEstimationById(estimationId) {
+
+
+
+export async function createEstimationCorrection(data) {
+  const {
+    estimation_id,
+    correction
+  } = data;
+
   const query = `
-    SELECT 
-      e.id,
-      e.created_at,
-      e.updated_at,
-      e.project_id,
-      e.user_id,
-      e.log,
-      e.cost,
-      e.deadline,
-      e.approval_date,
-      e.approved,
-      e.sent_to_pm,
-      e.forwarded_user_id,
-      e.notes,
-      e.updates,
+  INSERT INTO estimation_corrections (
+    estimation_id,correction
+  ) VALUES (
+    $1, $2
+  ) RETURNING *;
+`;
 
-      -- Estimation owner (user)
-      json_build_object(
-        'id', eu.id,
-        'name', eu.name,
-        'email', eu.email
-      ) AS user,
+  const values = [estimation_id, correction];
 
-      -- Uploaded files
-      COALESCE(
-        (
-          SELECT json_agg(
-            json_build_object(
-              'id', uf.id,
-              'label', uf.label,
-              'file', uf.file
-            )
-          )
-          FROM estimation_uploaded_files euf
-          JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
-          WHERE euf.estimation_id = e.id
-        ), '[]'::json
-      ) AS uploaded_files,
-
-      -- Forwarded user info
-      (
-        SELECT json_build_object(
-          'id', u.id,
-          'label', u.name,
-          'email', u.email
-        )
-        FROM users u
-        WHERE u.id = e.forwarded_user_id
-      ) AS forwarded_to
-
-    FROM estimations e
-    JOIN users eu ON e.user_id = eu.id
-    WHERE e.id = $1
-    LIMIT 1;
-  `;
-
-  const values = [estimationId];
   const result = await pool.query(query, values);
-  return result.rows[0] || null;
+  return result.rows[0];
 }
-
 
 export async function updateEstimation(id, data) {
   const fields = [];
   const values = [];
   let index = 1;
-
+  const uploaded_file_ids = data.uploaded_file_ids;	
+  delete data.uploaded_file_ids
   for (const key in data) {
     fields.push(`${key} = $${index}`);
     values.push(data[key]);
@@ -147,9 +103,20 @@ export async function updateEstimation(id, data) {
     RETURNING *;
   `;
 
+  
   values.push(id);
 
   const result = await pool.query(query, values);
+
+  if (uploaded_file_ids && uploaded_file_ids.length > 0) {
+    const promises = uploaded_file_ids.map((fileId) =>
+      pool.query(
+        `INSERT INTO estimation_uploaded_files (estimation_id, uploaded_file_id) VALUES ($1, $2)`,
+        [id, fileId]
+      )
+    );
+    await Promise.all(promises);
+  }
   return result.rows[0];
 }
 
@@ -170,3 +137,126 @@ export async function getProjectsDraft() {
   const result = await pool.query(query);
   return result.rows;
 }
+
+export async function getEstimationById(estimationId) {
+  const query = `
+    SELECT 
+      e.*,
+
+      json_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email
+      ) AS user,
+
+      (
+        SELECT json_build_object(
+          'id', fuser.id,
+          'label', fuser.name,
+          'email', fuser.email
+        )
+        FROM users fuser
+        WHERE fuser.id = e.forwarded_user_id
+      ) AS forwarded_to,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'label', uf.label,
+          'file', uf.file
+        ))
+        FROM estimation_uploaded_files euf
+        JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+        WHERE euf.estimation_id = e.id
+      ), '[]'::json) AS uploaded_files,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', ec.id,
+          'correction', ec.correction,
+          'created_at', ec.created_at
+        ) ORDER BY ec.created_at DESC)
+        FROM estimation_corrections ec
+        WHERE ec.estimation_id = e.id
+      ), '[]'::json) AS corrections,
+
+      (
+        SELECT json_build_object(
+          'id', p.id,
+          'project_id', p.project_id,
+          'name', p.name,
+          'client_name', p.client_name,
+          'client_company', p.client_company,
+          'send_to_estimation', p.send_to_estimation,
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf1.id,
+              'file', uf1.file,
+              'label', uf1.label
+            ))
+            FROM projects_uploaded_files puf
+            JOIN uploaded_files uf1 ON puf.uploaded_file_id = uf1.id
+            WHERE puf.project_id = p.id
+          ), '[]'::json),
+
+          'add_more_infos', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', pm.id,
+              'notes', pm.notes,
+              'enquiry', pm.enquiry,
+              'uploaded_files', COALESCE((
+                SELECT json_agg(json_build_object(
+                  'id', uf2.id,
+                  'file', uf2.file,
+                  'label', uf2.label
+                ))
+                FROM project_more_info_uploaded_files pmuf
+                JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
+                WHERE pmuf.project_more_info_id = pm.id
+              ), '[]'::json)
+            ))
+            FROM project_more_info pm
+            WHERE pm.project_id = p.id
+          ), '[]'::json),
+
+          'project_rejection', (
+            SELECT json_build_object(
+              'id', pr.id,
+              'note', pr.note,
+              'created_at', pr.created_at,
+              'user', json_build_object(
+                'id', pru.id,
+                'name', pru.name
+              ),
+              'uploaded_files', COALESCE((
+                SELECT json_agg(json_build_object(
+                  'id', uf3.id,
+                  'file', uf3.file,
+                  'label', uf3.label
+                ))
+                FROM project_rejection_uploaded_files prf
+                JOIN uploaded_files uf3 ON prf.uploaded_file_id = uf3.id
+                WHERE prf.project_rejection_id = pr.id
+              ), '[]'::json)
+            )
+            FROM project_rejections pr
+            JOIN users pru ON pr.user_id = pru.id
+            WHERE pr.project_id = p.id
+            ORDER BY pr.created_at DESC
+            LIMIT 1
+          )
+        )
+        FROM projects p
+        WHERE p.id = e.project_id
+      ) AS project
+
+    FROM estimations e
+    LEFT JOIN users u ON e.user_id = u.id
+    WHERE e.id = $1
+    LIMIT 1
+  `;
+
+  const result = await pool.query(query, [estimationId]);
+  return result.rows[0];
+}
+

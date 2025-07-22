@@ -43,11 +43,11 @@ const Submission = ({ projectId }) => {
   const { user, authToken } = useAuth();
   const isAdmin = user.role == "admin";
   const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
-  const [selectedStage, setSelectedStage] = useState<string|null>(null);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [stageData, setStageData] = useState<Record<string, StageBlock | null>>(
     {}
   );
-  const [loadingStage, setLoadingStage] = useState<string | null>(null);
+  const [loadingStage, setLoadingStage] = useState<boolean>(false);
   const [showStageConfigDialog, setShowStageConfigDialog] = useState(false);
   const [showDrawingDialog, setShowDrawingDialog] = useState(false);
   const [drawingForm, setDrawingForm] = useState({
@@ -99,8 +99,7 @@ const Submission = ({ projectId }) => {
   const [userSelectedStage, setUserSelectedStage] = useState(false);
   const [sentToSelectedFiles, setSentToSelectedFiles] = useState([]);
   const [currentSentToFiles, setCurrentSentToFiles] = useState([]);
-  const isFetchedStageData  = useRef(false)
-  const [isGetDrawing,setIsSetDrawing] =useState(false)
+  const [isGetDrawing, setIsSetDrawing] = useState(false);
 
   // Add a function to fetch all stages (getAllStage)
   const getAllStages = async () => {
@@ -134,11 +133,11 @@ const Submission = ({ projectId }) => {
     setUserSelectedStage(false);
   }, [projectId]);
   useEffect(() => {
+    setLoadingStage(true)
     const stageId = stageData[selectedStage]?.stage?.id;
     if (selectedStage && stageId) {
       fetchStageDrawings(stageId);
     }
-
   }, [selectedStage]);
 
   useEffect(() => {
@@ -210,9 +209,10 @@ const Submission = ({ projectId }) => {
           drawingLogs: null,
         },
       }));
-      
     }
-    setIsSetDrawing(true)
+    setLoadingStage(false)
+    setIsSetDrawing(true);
+
   };
 
   // Get current workflow step for a drawing
@@ -527,7 +527,7 @@ const Submission = ({ projectId }) => {
   if (
     (fetching && fetchType == "getAllStages") ||
     !isFetched ||
-    (Object.keys(stageData).length !=0 && !isGetDrawing)
+    (Object.keys(stageData).length != 0 && !isGetDrawing)
   ) {
     return <Loading full={false} />;
   }
@@ -785,9 +785,9 @@ const Submission = ({ projectId }) => {
       toast.error("Failed to fetch drafting users");
     }
   };
+  
   return (
     <div className="w-full mx-auto p-4 z-50">
-
       {/* If no stages exist, show set weightage button/form */}
       {Object.keys(stageData).length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
@@ -803,8 +803,7 @@ const Submission = ({ projectId }) => {
         </div>
       ) : (
         <>
-          
-          <div className="flex gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-8 w-full">
             {STAGES.map((stage) => {
               const block = stageData[stage];
               const statusInfo = getStageStatus(block?.stage);
@@ -812,7 +811,7 @@ const Submission = ({ projectId }) => {
               return (
                 <button
                   key={stage}
-                  className={`px-4 py-2 rounded font-bold border-2 transition-all ${
+                  className={`w-full sm:w-auto px-2 py-2 sm:px-4 sm:py-2 rounded font-bold border-2 transition-all text-xs sm:text-base ${
                     selectedStage === stage
                       ? statusInfo.color + " border-8 border-blue-700"
                       : statusInfo.color
@@ -823,9 +822,9 @@ const Submission = ({ projectId }) => {
                   }}
                   disabled={!block || isNotStarted}
                 >
-                  {stage}
+                  <span className="capitalize">{stage}</span>
                   <span className="ml-2 text-xs capitalize">
-                    {statusInfo.status}
+                    <span className="capitalize">{statusInfo.status}</span>
                   </span>
                 </button>
               );
@@ -873,14 +872,27 @@ const Submission = ({ projectId }) => {
                 </h4>
                 <div className="text-sm text-gray-600">
                   Type:{" "}
-                  {(stageData[selectedStage]?.drawing as any)?.drawing_type} |
-                  Revision: {stageData[selectedStage].stage.revision} | Weight:{" "}
-                  {
-                    (stageData[selectedStage]?.drawing as any)
-                      ?.drawing_weightage
-                  }
+                  <span className="capitalize">
+                    {(stageData[selectedStage]?.drawing as any)?.drawing_type}
+                  </span>{" "}
+                  | Revision:{" "}
+                  <span className="capitalize">
+                    {stageData[selectedStage].stage.revision}
+                  </span>{" "}
+                  | Weight:{" "}
+                  <span className="capitalize">
+                    {
+                      (stageData[selectedStage]?.drawing as any)
+                        ?.drawing_weightage
+                    }
+                  </span>{" "}
                   % | Hours:{" "}
-                  {(stageData[selectedStage]?.drawing as any)?.allocated_hours}
+                  <span className="capitalize">
+                    {
+                      (stageData[selectedStage]?.drawing as any)
+                        ?.allocated_hours
+                    }
+                  </span>
                 </div>
               </div>
               {/* Workflow Summary */}
@@ -890,7 +902,8 @@ const Submission = ({ projectId }) => {
                     Workflow Progress
                   </h6>
                 </div>
-                <div className="flex items-center gap-2 mb-2">
+                {/* Make the workflow steps row responsive */}
+                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mb-2 w-full overflow-x-auto">
                   {WORKFLOW_STEPS.map((step, sidx) => {
                     const stepLogs = (
                       stageData[selectedStage]?.drawingLogs as any[]
@@ -904,9 +917,12 @@ const Submission = ({ projectId }) => {
                         stageData[selectedStage]?.drawingLogs as any[]
                       );
                     return (
-                      <div key={step} className="flex items-center">
+                      <div
+                        key={step}
+                        className="flex flex-col sm:flex-row items-center w-full sm:w-auto"
+                      >
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-medium ${
                             isCompleted
                               ? "bg-green-500 text-white"
                               : isRejected
@@ -924,9 +940,11 @@ const Submission = ({ projectId }) => {
                             sidx + 1
                           )}
                         </div>
-                        <span className="ml-2 text-sm font-medium">{step}</span>
+                        <span className="ml-0 sm:ml-2 text-xs sm:text-sm font-medium">
+                          <span className="capitalize">{step}</span>
+                        </span>
                         {sidx < WORKFLOW_STEPS.length - 1 && (
-                          <div className="w-8 h-1 bg-gray-200 mx-2"></div>
+                          <div className="w-6 h-0.5 sm:w-8 sm:h-1 bg-gray-200 mx-1 sm:mx-2"></div>
                         )}
                       </div>
                     );
@@ -936,12 +954,17 @@ const Submission = ({ projectId }) => {
                   Total Actions:{" "}
                   {(stageData[selectedStage]?.drawingLogs as any[]).length} |
                   Current Step:{" "}
-                  {getCurrentStep(
-                    stageData[selectedStage]?.drawingLogs as any[]
-                  )}{" "}
+                  <span className="capitalize">
+                    {getCurrentStep(
+                      stageData[selectedStage]?.drawingLogs as any[]
+                    )}
+                  </span>{" "}
                   | Status:{" "}
-                  {((stageData[selectedStage]?.drawingLogs as any[])[0] as any)
-                    ?.status || "Not Started"}
+                  <span className="capitalize">
+                    {(
+                      (stageData[selectedStage]?.drawingLogs as any[])[0] as any
+                    )?.status || "Not Started"}
+                  </span>
                 </div>
                 {/* Show Final Files if stage is completed */}
                 {stageData[selectedStage]?.stage?.status === "completed" &&
@@ -972,7 +995,7 @@ const Submission = ({ projectId }) => {
                             return (
                               <ShowFile
                                 key={i}
-                                label={label}
+                                label={f.label}
                                 url={url}
                                 size="medium"
                               />
@@ -1057,7 +1080,9 @@ const Submission = ({ projectId }) => {
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div className="font-medium text-base">
-                              {log.step_name}
+                              <span className="capitalize">
+                                {log.step_name}
+                              </span>
                               {log.status === "rejected" && log.reason && (
                                 <div className="text-xs text-red-700 mb-2">
                                   Reason: {log.reason}
@@ -1072,7 +1097,9 @@ const Submission = ({ projectId }) => {
                                 <span
                                   className={`px-2 py-1 rounded text-xs font-medium capitalize ${statusBadge}`}
                                 >
-                                  {statusLabel}
+                                  <span className="capitalize">
+                                    {statusLabel}
+                                  </span>
                                 </span>
                                 <span className="text-xs text-gray-500">
                                   {new Date(
@@ -1519,7 +1546,9 @@ const Submission = ({ projectId }) => {
                         }
                       }}
                     />
-                    <span>{file.label}</span>
+                    <span>
+                      {<span className="capitalize">{file.label}</span>}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -1543,7 +1572,8 @@ const Submission = ({ projectId }) => {
               <SelectContent>
                 {workingUsers.map((user) => (
                   <SelectItem key={user.id} value={user.id.toString()}>
-                    {user.name} ({user.role})
+                    <span className="capitalize">{user.name}</span> ({user.role}
+                    )
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1830,7 +1860,8 @@ const Submission = ({ projectId }) => {
                     <SelectContent>
                       {workingUsers.map((user) => (
                         <SelectItem key={user.id} value={user.id.toString()}>
-                          {user.name} ({user.role})
+                          <span className="capitalize">{user.name}</span> (
+                          {user.role})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1971,7 +2002,9 @@ const Submission = ({ projectId }) => {
                         }
                       }}
                     />
-                    <span>{file.label}</span>
+                    <span>
+                      {<span className="capitalize">{file.label}</span>}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -1985,7 +2018,8 @@ const Submission = ({ projectId }) => {
                 <SelectContent>
                   {documentingUsers.map((user) => (
                     <SelectItem key={user.id} value={user.id.toString()}>
-                      {user.name} ({user.role})
+                      <span className="capitalize">{user.name}</span> (
+                      {user.role})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -2047,7 +2081,9 @@ const Submission = ({ projectId }) => {
                         }
                       }}
                     />
-                    <span>{file.label}</span>
+                    <span>
+                      {<span className="capitalize">{file.label}</span>}
+                    </span>
                   </label>
                 ))}
               </div>
