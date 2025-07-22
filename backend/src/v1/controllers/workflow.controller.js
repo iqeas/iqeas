@@ -85,26 +85,29 @@ export async function createDrawing(req, res) {
 }
 
 export async function addDrawingStageLog(req, res) {
-  let result;
+  const client = await pool.connect();
   try {
-    result = await WorkflowService.addDrawingStageLog({
-      drawingId: req.params.id,
-      userId: req.user.id,
-      ...req.body,
-    });
-    let logData;
-    const current_log_id = req.body.log_id;
-    if (current_log_id) {
-      await WorkflowService.updateLogStatus(current_log_id, true);
-      logData = await WorkflowService.getUserAssignedTaskByLogId(
-        current_log_id
-      );
-    } else {
-      const current_log_id = result.id;
-      logData = await WorkflowService.getUserAssignedTaskByLogId(
-        current_log_id
-      );
-    }
+    await client.query("BEGIN");
+
+    const result = await WorkflowService.addDrawingStageLog(
+      {
+        drawingId: req.params.id,
+        userId: req.user.id,
+        ...req.body,
+      },
+      client
+    );
+
+    const current_log_id = req.body.log_id || result.id;
+
+    await WorkflowService.updateLogStatus(current_log_id, true, client);
+    const logData = await WorkflowService.getUserAssignedTaskByLogId(
+      current_log_id,
+      client
+    );
+
+    await client.query("COMMIT");
+
     res.status(201).json(
       formatResponse({
         statusCode: 201,
@@ -113,10 +116,8 @@ export async function addDrawingStageLog(req, res) {
       })
     );
   } catch (err) {
-    console.log(err);
-    if (result) {
-      await WorkflowService.deleteDrawingLog(result.id);
-    }
+    await client.query("ROLLBACK");
+    console.error(err);
     res.status(500).json(
       formatResponse({
         statusCode: 500,
@@ -124,6 +125,8 @@ export async function addDrawingStageLog(req, res) {
         data: err.message,
       })
     );
+  } finally {
+    client.release();
   }
 }
 
@@ -224,9 +227,11 @@ export async function getAssignedTasksController(req, res) {
     });
   }
 }
-
 export async function EditDrawingLogsController(req, res) {
+  const client = await pool.connect();
   try {
+    await client.query("BEGIN");
+
     const { id } = req.params;
     const { status, uploaded_files_ids, action_taken, reason, is_sent } =
       req.body;
@@ -237,66 +242,88 @@ export async function EditDrawingLogsController(req, res) {
       action_taken,
       reason,
       is_sent,
-      uploaded_files_ids
+      uploaded_files_ids,
+      client
     );
-    const logData = await WorkflowService.getUserAssignedTaskByLogId(id);
+
+    const logData = await WorkflowService.getUserAssignedTaskByLogId(
+      id,
+      client
+    );
 
     if (
-      status == "completed" &&
-      action_taken == "approved" &&
-      logData.step_name == "documentation"
+      status === "completed" &&
+      action_taken === "approved" &&
+      logData.step_name === "documentation"
     ) {
-      await WorkflowService.partialUpdateStage(logData.stage_id, {
-        status: "completed",
-      });
+      await WorkflowService.partialUpdateStage(
+        logData.stage_id,
+        {
+          status: "completed",
+        },
+        client
+      );
+
       const nextStage = getNextStage(logData.stage_name);
       if (nextStage) {
         const nextStageId = await WorkflowService.getStageIdByProjectAndName(
           logData.project_id,
-          nextStage
+          nextStage,
+          client
         );
         if (nextStageId) {
-          await WorkflowService.partialUpdateStage(nextStageId, {
-            status: "pending",
-          });
+          await WorkflowService.partialUpdateStage(
+            nextStageId,
+            { status: "pending" },
+            client
+          );
         }
       }
+
       const newProgress = await getNewProgressOfProject(
         logData.stage_name,
         logData.project_id,
         logData.project_progress
       );
-      const projectUpdateData = { progress: newProgress };
-      if (logData.stage_name == "AFC") {
-        projectUpdateData["status"] = "completed";
+
+      const updatePayload = { progress: newProgress };
+      if (logData.stage_name === "AFC") {
+        updatePayload.status = "completed";
       }
-      await updateProjectPartial(logData.project_id, {
-        progress: newProgress,
-      });
-      const incomingFIlesIds = Array.isArray(logData.incoming_files)
+
+      await updateProjectPartial(logData.project_id, updatePayload, client);
+
+      const incomingFileIds = Array.isArray(logData.incoming_files)
         ? logData.incoming_files.map((item) => item.id)
         : [];
-      if (incomingFIlesIds.length) {
+      if (incomingFileIds.length) {
         await WorkflowService.addFinalFiles(
           logData.drawing_id,
-          incomingFIlesIds
+          incomingFileIds,
+          client
         );
       }
     }
-    if (
-      status == "completed" &&
-      action_taken == "rejected" &&
-      logData.step_name == "documentation"
-    ) {
-      const stage = await WorkflowService.getStageById(logData.stage_id);
-      const currentRevision = stage.revision;
 
-      const newRevision = getNextRevision(currentRevision);
-      console.log(newRevision);
-      await WorkflowService.partialUpdateStage(logData.stage_id, {
-        revision: newRevision,
-      });
+    if (
+      status === "completed" &&
+      action_taken === "rejected" &&
+      logData.step_name === "documentation"
+    ) {
+      const stage = await WorkflowService.getStageById(
+        logData.stage_id,
+        client
+      );
+      const newRevision = getNextRevision(stage.revision);
+      await WorkflowService.partialUpdateStage(
+        logData.stage_id,
+        { revision: newRevision },
+        client
+      );
     }
+
+    await client.query("COMMIT");
+
     res.status(200).json(
       formatResponse({
         statusCode: 200,
@@ -305,6 +332,7 @@ export async function EditDrawingLogsController(req, res) {
       })
     );
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("Error updating drawing log:", err);
     res.status(500).json(
       formatResponse({
@@ -313,8 +341,11 @@ export async function EditDrawingLogsController(req, res) {
         data: err.message,
       })
     );
+  } finally {
+    client.release();
   }
 }
+
 
 export async function getDrawingLogByIdController(req, res) {
   try {
@@ -339,19 +370,32 @@ export async function getDrawingLogByIdController(req, res) {
   }
 }
 
+
 export async function createDrawingFinalFile(req, res) {
+  const client = await pool.connect();
+
   try {
+    await client.query("BEGIN");
+
     const { id } = req.params;
     const { status, uploaded_files_ids, action_taken, reason } = req.body;
 
     await WorkflowService.updateDrawingLog(
+      client,
       id,
       status,
       action_taken,
       reason,
       uploaded_files_ids
     );
-    const logData = await WorkflowService.getUserAssignedTaskByLogId(id);
+
+    const logData = await WorkflowService.getUserAssignedTaskByLogId(
+      client,
+      id
+    );
+
+    await client.query("COMMIT");
+
     res.status(200).json(
       formatResponse({
         statusCode: 200,
@@ -360,6 +404,7 @@ export async function createDrawingFinalFile(req, res) {
       })
     );
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("Error updating drawing log:", err);
     res.status(500).json(
       formatResponse({
@@ -368,8 +413,53 @@ export async function createDrawingFinalFile(req, res) {
         data: err.message,
       })
     );
+  } finally {
+    client.release();
+  }
+}export async function createDrawingFinalFile(req, res) {
+  const client = await pool.connect();
+
+  try {
+    const { id } = req.params;
+    const { status, uploaded_files_ids, action_taken, reason } = req.body;
+
+    await client.query("BEGIN");
+
+    await updateDrawingLogWithClient(
+      client,
+      id,
+      status,
+      action_taken,
+      reason,
+      uploaded_files_ids
+    );
+
+    const logData = await getUserAssignedTaskByLogIdWithClient(client, id);
+
+    await client.query("COMMIT");
+
+    res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Drawing log updated successfully",
+        data: logData,
+      })
+    );
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Error updating drawing log:", err);
+    res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: "Failed to update drawing log",
+        data: err.message,
+      })
+    );
+  } finally {
+    client.release();
   }
 }
+
 
 export async function getStageFinalFiles(req, res) {
   const projectId = parseInt(req.params.id, 10);

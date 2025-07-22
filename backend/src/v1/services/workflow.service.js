@@ -68,7 +68,7 @@ export async function partialUpdateStage(stageId, updateData) {
     throw new Error("No fields provided for update.");
   }
 
-  values.push(stageId); // for WHERE clause
+  values.push(stageId); 
 
   const query = `
     UPDATE stages
@@ -145,29 +145,25 @@ export async function addDrawingStageLog({
   forwarded_user_id = null,
   uploaded_files_ids = [],
   action_taken = "not_yet",
+  client,
 }) {
-  const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-    // Get current step order
     const stepOrderRes = await client.query(
       `SELECT COUNT(*) AS count FROM drawing_stage_logs WHERE drawing_id = $1`,
       [drawingId]
     );
     const step_order = parseInt(stepOrderRes.rows[0].count, 10) + 1;
 
-    // === Determine forwarded_user_id ===
     if (!forwarded_user_id) {
       if (step_name.toLowerCase() === "approval") {
-        // Get uploaded_by from the drawing
         const drawingRes = await client.query(
           `SELECT uploaded_by FROM drawings WHERE id = $1`,
           [drawingId]
         );
         forwarded_user_id = drawingRes.rows[0]?.uploaded_by || null;
       } else {
-        // Get from last similar step
         const lastForwardedRes = await client.query(
           `SELECT forwarded_user_id FROM drawing_stage_logs
            WHERE drawing_id = $1 AND step_name = $2 AND forwarded_user_id IS NOT NULL
@@ -181,7 +177,6 @@ export async function addDrawingStageLog({
       }
     }
 
-    // === Insert the log ===
     const logRes = await client.query(
       `INSERT INTO drawing_stage_logs 
       (drawing_id, step_name, status, notes, created_by, forwarded_user_id, action_taken, step_order)
@@ -201,7 +196,6 @@ export async function addDrawingStageLog({
 
     const logId = logRes.rows[0].id;
 
-    // === Insert uploaded files ===
     if (uploaded_files_ids?.length) {
       const fileInsertions = uploaded_files_ids.map((fileId) =>
         client.query(

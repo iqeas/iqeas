@@ -11,9 +11,10 @@ import {
 import { getAllTeams } from "../services/teams.service.js";
 import { sentForgotMail } from "../services/auth.service.js";
 
+import pool from "../db/db.config.js";
+
 export const createNewUser = async (req, res) => {
   const { email, phoneNumber, name, role, active } = req.body;
-  console.log(email, phoneNumber, name, role, active);
   if (!email || !phoneNumber || !name || !role || active === null) {
     return res.status(400).json(
       formatResponse({
@@ -23,17 +24,24 @@ export const createNewUser = async (req, res) => {
     );
   }
 
+  const client = await pool.connect();
   try {
+    await client.query("BEGIN");
+
     const { user, password } = await createUser(
       email,
       phoneNumber,
       name,
       role,
-      active
+      active,
+      client
     );
+
     const sentEmail = await sentForgotMail(email);
     console.log(sentEmail);
-    console.log(password);
+
+    await client.query("COMMIT");
+
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
@@ -42,6 +50,7 @@ export const createNewUser = async (req, res) => {
       })
     );
   } catch (e) {
+    await client.query("ROLLBACK");
     console.error("Error creating user:", e.message);
 
     return res
@@ -49,6 +58,8 @@ export const createNewUser = async (req, res) => {
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  } finally {
+    client.release();
   }
 };
 
@@ -83,6 +94,8 @@ export const toggleUserStatus = async (req, res) => {
       .json(formatResponse({ statusCode: 500, detail: error.message }));
   }
 };
+
+
 
 export const getUsersController = async (req, res) => {
   try {
