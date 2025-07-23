@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +18,10 @@ import {
 } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
+import { useAPICall } from "@/hooks/useApiCall";
+import { API_ENDPOINT } from "@/config/backend";
+import { useAuth } from "@/contexts/AuthContext";
+import Loading from "./atomic/Loading";
 
 const mockUsers = [
   { id: 1, name: "Alice" },
@@ -58,22 +63,48 @@ function addDay(date, diff) {
 }
 
 const AttendanceManagement = () => {
-  const [records, setRecords] = useState(mockAttendance);
   const [modalOpen, setModalOpen] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
   const [selectedDay, setSelectedDay] = useState(getDayString(new Date()));
   const [search, setSearch] = useState("");
-
+  const [query, setQuery] = useState("");
+  const { makeApiCall, fetching, isFetched, fetchType } = useAPICall();
+  const { authToken } = useAuth();
+  const [records, setRecords] = useState([]);
   const [form, setForm] = useState({
     user_id: "",
     date: selectedDay,
     status: "present",
     note: "",
   });
+  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(1);
+  const pageSize = 40;
+  useEffect(() => {
+    const getUsers = async () => {
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_ATTENDANCE_RECORDS(
+          selectedDay,
+          page,
+          pageSize,
+          search
+        ),
+        {},
+        "application/json",
+        authToken,
+        "fetchRecords"
+      );
+      if (response.status === 200) {
+        setTotalPages(response.data.total_pages);
+        setRecords(response.data.users || []);
+      } else {
+        toast.error("Failed to fetch attendances");
+      }
+    };
 
-  // Find attendance record for a user for the selected day
-  const getAttendanceForUser = (userId) =>
-    records.find((r) => r.user_id === userId && r.date === selectedDay);
+    getUsers();
+  }, [query, page, selectedDay]);
 
   const openModal = (user = null, record = null) => {
     setEditRecord(record);
@@ -97,44 +128,69 @@ const AttendanceManagement = () => {
   const closeModal = () => {
     setModalOpen(false);
     setEditRecord(null);
+    setForm({
+      date: selectedDay,
+      note: "",
+      status: "present",
+      user_id: null,
+    });
   };
   const handleFormChange = (field, value) =>
     setForm((f) => ({ ...f, [field]: value }));
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.user_id || !form.date || !form.status) {
       toast.error("Please fill all required fields");
       return;
     }
-    const user_id_num =
-      typeof form.user_id === "number"
-        ? form.user_id
-        : parseInt(form.user_id, 10);
     if (editRecord) {
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === editRecord.id
-            ? {
-                ...r,
-                ...form,
-                user_id: user_id_num,
-                user_name: mockUsers.find((u) => u.id === user_id_num)?.name,
-              }
-            : r
-        )
+      const response = await makeApiCall(
+        "patch",
+        API_ENDPOINT.ACTION_ATTENDANCE_RECORDS(editRecord.id),
+        { ...form },
+        "application/json",
+        authToken,
+        `editAttendance`
       );
-      toast.success("Attendance updated");
+      if (response.status == 200) {
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === editRecord.id
+              ? {
+                  ...r,
+                  attendance: response.data,
+                }
+              : r
+          )
+        );
+        toast.success("Attendance updated");
+      } else {
+        toast.error("Failed to mark attendance");
+      }
     } else {
-      setRecords((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          ...form,
-          user_id: user_id_num,
-          user_name: mockUsers.find((u) => u.id === user_id_num)?.name,
-        },
-      ]);
-      toast.success("Attendance marked");
+      const response = await makeApiCall(
+        "post",
+        API_ENDPOINT.ATTENDANCE_RECORDS,
+        { ...form },
+        "application/json",
+        authToken,
+        `createAttendance`
+      );
+      if (response.status == 200) {
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === form.user_id
+              ? {
+                  ...r,
+                  attendance: response.data,
+                }
+              : r
+          )
+        );
+        toast.success("Attendance marked");
+      } else {
+        toast.error("Failed to mark attendance");
+      }
     }
     closeModal();
   };
@@ -142,22 +198,27 @@ const AttendanceManagement = () => {
   // Day navigation
   const handleDayChange = (diff) => {
     const newDate = addDay(new Date(selectedDay), diff);
+    setPage(1);
     setSelectedDay(getDayString(newDate));
   };
 
-  // Filtered users by search
-  const filteredUsers = mockUsers.filter((u) =>
-    u.name.toLowerCase().includes(search.toLowerCase())
-  );
-
+  if (!isFetched) {
+    return <Loading full />;
+  }
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 mx-auto">
+      <div className="flex items-center justify-start mb-6">
+        <h2 className="text-2xl font-bold max-sm:text-lg">
+          Attendance Management
+        </h2>
+      </div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => handleDayChange(-1)}
+            disabled={fetching}
           >
             <ChevronLeft />
           </Button>
@@ -172,6 +233,7 @@ const AttendanceManagement = () => {
             variant="ghost"
             size="icon"
             onClick={() => handleDayChange(1)}
+            disabled={fetching}
           >
             <ChevronRight />
           </Button>
@@ -180,52 +242,85 @@ const AttendanceManagement = () => {
           placeholder="Search employee..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            console.log(e.key);
+            if (e.key == "Enter") {
+              setPage(1);
+              setQuery(search);
+            }
+          }}
           className="w-48"
         />
       </div>
       <div className="overflow-x-auto rounded-lg shadow bg-white">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full text-sm max-sm:text-xs">
           <thead className="bg-slate-100">
             <tr>
-              <th className="p-3 text-left">Employee</th>
-              <th className="p-3 text-left">Status</th>
-              <th className="p-3 text-left">Note</th>
-              <th className="p-3 text-left">Actions</th>
+              <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                Employee
+              </th>
+              <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                Status
+              </th>
+              <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">Note</th>
+              <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.length === 0 ? (
+            {fetching && fetchType == "fetchRecords" && (
+              <tr>
+                <td colSpan={4} className="text-center p-4 text-gray-400">
+                  <Loading full={false} />
+                </td>
+              </tr>
+            )}
+            {records.length === 0 && !fetching && (
               <tr>
                 <td colSpan={4} className="text-center p-4 text-gray-400">
                   No employees found
                 </td>
               </tr>
-            ) : (
-              filteredUsers.map((user) => {
-                const attendance = getAttendanceForUser(user.id);
+            )}
+            {!fetching &&
+              records &&
+              records.map((record) => {
+                const attendance = record.attendance;
                 return (
-                  <tr key={user.id} className="border-b last:border-b-0">
-                    <td className="p-3">{user.name}</td>
-                    <td className="p-3 capitalize">
+                  <tr
+                    key={record.id}
+                    className="border-b last:border-b-0 max-sm:text-xs"
+                  >
+                    <td className="p-3 capitalize max-sm:p-2">{record.name}</td>
+                    <td className="p-3 capitalize max-sm:p-2">
                       {attendance ? (
-                        <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-semibold">
+                        <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-semibold max-sm:text-[10px]">
                           {attendance.status}
                         </span>
                       ) : (
-                        <span className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold">
+                        <span className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold max-sm:text-[10px]">
                           Unmarked
                         </span>
                       )}
                     </td>
-                    <td className="p-3">
+                    <td className="p-3 max-sm:p-2">
                       {attendance ? attendance.note : "-"}
                     </td>
-                    <td className="p-3 flex gap-2">
+                    <td className="p-3 flex gap-2 max-sm:p-2">
                       {attendance ? (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => openModal(user, attendance)}
+                          onClick={() => openModal(record, attendance)}
+                          loading={
+                            fetching &&
+                            fetchType == `editAttendance${record.id}`
+                          }
+                          disabled={
+                            fetching &&
+                            fetchType == `editAttendance${record.id}`
+                          }
                         >
                           Edit
                         </Button>
@@ -233,7 +328,15 @@ const AttendanceManagement = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => openModal(user, null)}
+                          onClick={() => openModal(record, null)}
+                          loading={
+                            fetching &&
+                            fetchType == `createAttendance${record.id}`
+                          }
+                          disabled={
+                            fetching &&
+                            fetchType == `createAttendance${record.id}`
+                          }
                         >
                           Mark
                         </Button>
@@ -241,23 +344,55 @@ const AttendanceManagement = () => {
                     </td>
                   </tr>
                 );
-              })
-            )}
+              })}
           </tbody>
         </table>
+        {/* Pagination Controls */}
       </div>
+      {!fetching && totalPages > 1 && (
+        <div className="flex justify-center mt-8 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Previous
+          </Button>
+          {[...Array(totalPages)].map((_, idx) => (
+            <Button
+              key={idx + 1}
+              size="sm"
+              variant={page === idx + 1 ? "default" : "outline"}
+              onClick={() => setPage(idx + 1)}
+            >
+              {idx + 1}
+            </Button>
+          ))}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      )}
       {/* Modal for create/edit */}
       <Dialog open={modalOpen} onOpenChange={closeModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle
+              aria-disabled={fetching && fetchType == `editAttendance`}
+            >
               {editRecord ? "Edit Attendance" : "Mark Attendance"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               type="text"
-              value={mockUsers.find((u) => u.id == form.user_id)?.name || ""}
+              value={records.find((u) => u.id === form.user_id)?.name || ""}
               disabled
               className="w-full"
             />
@@ -266,6 +401,7 @@ const AttendanceManagement = () => {
               value={form.date}
               onChange={(e) => handleFormChange("date", e.target.value)}
               required
+              disabled
             />
             <Select
               value={form.status}
@@ -289,10 +425,21 @@ const AttendanceManagement = () => {
               onChange={(e) => handleFormChange("note", e.target.value)}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeModal}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeModal}
+                disabled={fetching && fetchType == `editAttendance`}
+              >
                 Cancel
               </Button>
-              <Button type="submit">{editRecord ? "Update" : "Mark"}</Button>
+              <Button
+                loading={fetching && fetchType == `createAttendance`}
+                disabled={fetching && fetchType == `editAttendance`}
+                type="submit"
+              >
+                {editRecord ? "Update" : "Mark"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

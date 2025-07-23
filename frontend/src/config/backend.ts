@@ -8,6 +8,8 @@ export const API_ENDPOINT = {
   ADD_NEW_USER: `${API_URL}/admin/create/create-user`,
   EDIT_USER_STATUS: (id: any) => `${API_URL}/admin/user/${id}/status`,
   CREATE_PROJECT: `${API_URL}/projects`,
+  GET_ALL_USERS: (search, page, size) =>
+    `${API_URL}/admin/get-users?page=${page}&size=${size}&search=${search}`,
   GET_USERS_BY_ROLE: (role: any) => `${API_URL}/admin/get-users/${role}`,
   EDIT_USER: (id: any) => `${API_URL}/admin/users/${id}`,
   DELETE_USER: (id: any) => `${API_URL}/admin/users/${id}`,
@@ -58,4 +60,15 @@ export const API_ENDPOINT = {
   DELETE_FILE: (file_id) => `${API_URL}/delete-file/${file_id}`,
   GET_PUBLIC_PROJECT_INFO: (token) => `${API_URL}/projects/public/${token}`,
   CREATE_ESTIMATION_CORRECTION: `${API_URL}/estimation/correction`,
+  ATTENDANCE_RECORDS: `${API_URL}/attendance`,
+  ACTION_ATTENDANCE_RECORDS: (id: any) => `${API_URL}/attendance${id}`,
+  GET_SALARIES: (date, page, size, search) =>
+    `${API_URL}/salary?date=${date}&page=${page}&size=${size}&search=${search}`,
+  EDIT_CREATE_SALARY: `${API_URL}/salary`,
+  GET_ATTENDANCE_RECORDS: (date, page, size, search) =>
+    `${API_URL}/attendance/records?date=${date}&page=${page}&size=${size}&search=${search}`,
+  GET_LEAVES: (filter, page, size, search) =>
+    `${API_URL}/leave/records?filter=${filter}&page=${page}&size=${size}&search=${search}`,
+  CREATE_LEAVE: `${API_URL}/leave`,
+  ACTION_LEAVE: (id) => `${API_URL}/leave/${id}`,
 };

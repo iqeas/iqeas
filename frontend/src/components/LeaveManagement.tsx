@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,45 +16,56 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useAPICall } from "@/hooks/useApiCall";
+import { API_ENDPOINT } from "@/config/backend";
+import { useAuth } from "@/contexts/AuthContext";
+import Loading from "./atomic/Loading";
 
-const mockUsers = [
-  { id: 1, name: "Alice" },
-  { id: 2, name: "Bob" },
-  { id: 3, name: "Charlie" },
-];
-const mockLeaves = [
-  {
-    id: 1,
-    user_id: 1,
-    user_name: "Alice",
-    leave_type: "casual",
-    from_date: "2024-06-10",
-    to_date: "2024-06-12",
-    reason: "Family event",
-    status: "pending",
-  },
-  {
-    id: 2,
-    user_id: 2,
-    user_name: "Bob",
-    leave_type: "sick",
-    from_date: "2024-06-05",
-    to_date: "2024-06-06",
-    reason: "Fever",
-    status: "approved",
-  },
-];
 const leaveTypes = [
   { value: "casual", label: "Casual" },
   { value: "sick", label: "Sick" },
   { value: "earned", label: "Earned" },
   { value: "unpaid", label: "Unpaid" },
 ];
-const statusColors = {
-  approved: "bg-green-100 text-green-700",
-  pending: "bg-yellow-100 text-yellow-700",
-  rejected: "bg-red-100 text-red-700",
-};
+
+function getLeaveStatus(fromDateStr: string, toDateStr: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
+  const fromDate = new Date(fromDateStr);
+  const toDate = new Date(toDateStr);
+
+  if (toDate < today) {
+    return "Ended";
+  } else if (fromDate > today) {
+    return "Upcoming";
+  } else {
+    return "Ongoing";
+  }
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "Ongoing":
+      return "bg-green-100 text-green-700";
+    case "Upcoming":
+      return "bg-yellow-100 text-yellow-700";
+    case "Ended":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
 
 function isTodayInRange(from, to) {
   const today = new Date().toISOString().slice(0, 10);
@@ -62,230 +73,396 @@ function isTodayInRange(from, to) {
 }
 
 const LeaveManagement = () => {
-  const [records, setRecords] = useState(mockLeaves);
+  const [records, setRecords] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
-  const [userFilter, setUserFilter] = useState("all"); // all, on-leave, not-on-leave
+  // Change default filter to 'all-employees'
+  const [userFilter, setUserFilter] = useState("all-employees");
+  const [users, setUsers] = useState([]);
+  const [leaveToDelete, setLeaveToDelete] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [totalPages, setTotalPages] = useState(0);
+  const { makeApiCall, fetching, isFetched, fetchType } = useAPICall();
+  const [page, setPage] = useState(1);
+  const pageSize = 40;
+  const { authToken } = useAuth();
 
+  useEffect(() => {
+    setRecords([]);
+    setUsers([]);
+    if (userFilter == "all-employees") {
+      fetchAllEmployees();
+    } else {
+      fetchLeaves();
+    }
+  }, [query, page, userFilter]);
+  const fetchAllEmployees = async () => {
+    const response = await makeApiCall(
+      "get",
+      API_ENDPOINT.GET_ALL_USERS(search, page, pageSize),
+      {},
+      "application/json",
+      authToken,
+      "getLeaves"
+    );
+    if (response.status == 200) {
+      setUsers(response.data.users);
+    } else {
+      toast.error("Failed to fetch employees");
+    }
+  };
+  const fetchLeaves = async () => {
+    const response = await makeApiCall(
+      "get",
+      API_ENDPOINT.GET_LEAVES(userFilter, page, pageSize, search),
+      {},
+      "application/json",
+      authToken,
+      "getLeaves"
+    );
+    if (response.status == 200) {
+      setRecords(response.data.leaves);
+      setTotalPages(response.data.total_pages);
+    } else {
+      toast.error("Failed to fetch leaves");
+    }
+  };
+  function toDateInputValue(date) {
+    if (!date) return "";
+    const d = new Date(date);
+    const offset = d.getTimezoneOffset();
+    d.setMinutes(d.getMinutes() - offset);
+    return d.toISOString().slice(0, 10);
+  }
   const [form, setForm] = useState({
     user_id: "",
     leave_type: "casual",
     from_date: "",
     to_date: "",
     reason: "",
+    name: "",
   });
-
-  // Find current leave for a user (today in range)
-  const getCurrentLeaveForUser = (userId) =>
-    records.find(
-      (r) =>
-        r.user_id === userId &&
-        isTodayInRange(r.from_date, r.to_date) &&
-        r.status === "approved"
-    );
 
   const openModal = (record = null, user = null) => {
     setEditRecord(record);
     setForm(
       record
         ? {
-            user_id: record.user_id,
+            name: record.user.name,
+            user_id: record.user.id,
             leave_type: record.leave_type,
-            from_date: record.from_date,
-            to_date: record.to_date,
+            from_date: toDateInputValue(record.from_date),
+            to_date: toDateInputValue(record.to_date),
             reason: record.reason,
           }
         : {
-            user_id: user ? user.id : "",
+            user_id: user.id,
             leave_type: "casual",
             from_date: "",
             to_date: "",
             reason: "",
+            name: user.name,
           }
     );
     setModalOpen(true);
   };
+  console.log(form);
   const closeModal = () => {
     setModalOpen(false);
     setEditRecord(null);
   };
   const handleFormChange = (field, value) =>
     setForm((f) => ({ ...f, [field]: value }));
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.user_id || !form.leave_type || !form.from_date || !form.to_date) {
       toast.error("Please fill all required fields");
       return;
     }
-    const user_id_num =
-      typeof form.user_id === "number"
-        ? form.user_id
-        : parseInt(form.user_id, 10);
+    const data = {
+      user_id: form.user_id,
+      leave_type: form.leave_type,
+      from_date: form.from_date,
+      to_date: form.to_date,
+      reason: form.reason,
+    };
     if (editRecord) {
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === editRecord.id
-            ? {
-                ...r,
-                ...form,
-                user_id: user_id_num,
-                user_name: mockUsers.find((u) => u.id === user_id_num)?.name,
-              }
-            : r
-        )
+      const response = await makeApiCall(
+        "patch",
+        API_ENDPOINT.ACTION_LEAVE(editRecord.id),
+        data,
+        "application/json",
+        authToken,
+        "editLeave"
       );
-      toast.success("Leave updated");
+      if (response.status == 200) {
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === editRecord.id
+              ? {
+                  ...r,
+                  ...response.data,
+                }
+              : r
+          )
+        );
+        toast.success("Leave edited successfully");
+      } else {
+        toast.error("Failed to edit leave");
+      }
     } else {
-      setRecords((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          ...form,
-          user_id: user_id_num,
-          user_name: mockUsers.find((u) => u.id === user_id_num)?.name,
-          status: "pending",
-        },
-      ]);
-      toast.success("Leave applied");
+      const response = await makeApiCall(
+        "post",
+        API_ENDPOINT.CREATE_LEAVE,
+        data,
+        "application/json",
+        authToken,
+        "createLeave"
+      );
+      if (response.status == 200) {
+        toast.success("Leave applied");
+      } else {
+        toast.error("Failed to apply leave");
+      }
     }
     closeModal();
   };
-  const handleDelete = (id) => {
-    setRecords((prev) => prev.filter((r) => r.id !== id));
-    toast.success("Leave deleted");
-  };
-  const handleStatusChange = (id, status) => {
-    setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-    toast.success(`Leave ${status}`);
+  const handleDelete = async (id) => {
+    console.log(id);
+    const response = await makeApiCall(
+      "delete",
+      API_ENDPOINT.ACTION_LEAVE(id),
+      {},
+      "application/json",
+      authToken,
+      "deleteLeave"
+    );
+    if (response.status == 200) {
+      toast.success("Leave deleted");
+      setRecords((prev) => prev.filter((r) => r.id !== id));
+      setLeaveToDelete(null);
+    } else {
+      toast.error("Failed to delete leave");
+    }
   };
 
-  // Filtered users by search and leave status
-  let filteredUsers = mockUsers.filter((u) =>
-    u.name.toLowerCase().includes(search.toLowerCase())
-  );
-  if (userFilter === "on-leave") {
-    filteredUsers = filteredUsers.filter((u) => getCurrentLeaveForUser(u.id));
-  } else if (userFilter === "not-on-leave") {
-    filteredUsers = filteredUsers.filter((u) => !getCurrentLeaveForUser(u.id));
+  if (!isFetched) {
+    return <Loading />;
   }
-
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6  mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold max-sm:text-lg">Leave Management</h2>
+      </div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-between w-full">
           <Select value={userFilter} onValueChange={setUserFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Employees</SelectItem>
-              <SelectItem value="on-leave">On Leave</SelectItem>
-              <SelectItem value="not-on-leave">Not on Leave</SelectItem>
+              <SelectItem value="all-employees">All Employees</SelectItem>
+              <SelectItem value="all">All Leaves</SelectItem>
+              <SelectItem value="on_leave">On Leave</SelectItem>
+              <SelectItem value="not_on_leave">Not on Leave</SelectItem>
             </SelectContent>
           </Select>
-          <Input
-            placeholder="Search employee..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-48"
-          />
+          <div>
+            <Input
+              placeholder="Search employee..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-48"
+              onKeyDown={(e) => {
+                if (e.key == "Enter") {
+                  setPage(1);
+                  setQuery(search);
+                }
+              }}
+            />
+          </div>
         </div>
-        <Button onClick={() => openModal(null, null)}>Apply Leave</Button>
       </div>
-      <div className="overflow-x-auto rounded-lg shadow bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="p-3 text-left">Employee</th>
-              <th className="p-3 text-left">Current Leave</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">From</th>
-              <th className="p-3 text-left">To</th>
-              <th className="p-3 text-left">Status</th>
-              <th className="p-3 text-left">Reason</th>
-              <th className="p-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.length === 0 ? (
+
+      {/* Table rendering based on filter */}
+      {userFilter === "all-employees" ? (
+        <div className="overflow-x-auto rounded-lg shadow bg-white">
+          <table className="min-w-full text-sm max-sm:text-xs">
+            <thead className="bg-slate-100">
               <tr>
-                <td colSpan={8} className="text-center p-4 text-gray-400">
-                  No employees found
-                </td>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  Employee
+                </th>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  Role
+                </th>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  Action
+                </th>
               </tr>
-            ) : (
-              filteredUsers.map((user) => {
-                const leave = getCurrentLeaveForUser(user.id);
-                return (
-                  <tr key={user.id} className="border-b last:border-b-0">
-                    <td className="p-3">{user.name}</td>
-                    <td className="p-3">
-                      {leave ? (
-                        <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-semibold">
-                          On Leave
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs font-semibold">
-                          -
-                        </span>
-                      )}
+            </thead>
+            <tbody>
+              {fetching && fetchType == "getLeaves" && (
+                <tr>
+                  <td colSpan={3} className="text-center p-4 text-gray-400">
+                    <Loading full={false} />
+                  </td>
+                </tr>
+              )}
+              {!fetching && users.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="text-center p-4 text-gray-400">
+                    No employees found
+                  </td>
+                </tr>
+              )}
+              {!fetching &&
+                users.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="border-b last:border-b-0 max-sm:text-xs"
+                  >
+                    <td className="p-3 capitalize max-sm:p-2">{user.name}</td>
+                    <td className="p-3 capitalize max-sm:p-2">{user.role}</td>
+                    <td className="p-3 capitalize max-sm:p-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openModal(null, user)}
+                      >
+                        Apply
+                      </Button>
                     </td>
-                    <td className="p-3 capitalize">
-                      {leave ? leave.leave_type : "-"}
-                    </td>
-                    <td className="p-3">{leave ? leave.from_date : "-"}</td>
-                    <td className="p-3">{leave ? leave.to_date : "-"}</td>
-                    <td className="p-3">
-                      {leave ? (
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg shadow bg-white">
+          <table className="min-w-full text-sm max-sm:text-xs">
+            <thead className="bg-slate-100">
+              <tr>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  Employee
+                </th>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  Type
+                </th>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  From
+                </th>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">To</th>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  Status
+                </th>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  Reason
+                </th>
+                <th className="p-3 text-left max-sm:p-2 max-sm:text-xs">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {fetching && fetchType == "getLeaves" && (
+                <tr>
+                  <td colSpan={7} className="text-center p-4 text-gray-400">
+                    <Loading full={false} />
+                  </td>
+                </tr>
+              )}
+              {!fetching && records.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center p-4 text-gray-400">
+                    No leave records found
+                  </td>
+                </tr>
+              )}
+              {!fetching &&
+                records.map((leave) => {
+                  const status = getLeaveStatus(leave.from_date, leave.to_date);
+                  return (
+                    <tr
+                      key={leave.id}
+                      className="border-b last:border-b-0 max-sm:text-xs"
+                    >
+                      <td className="p-3 max-sm:p-2">
+                        {leave.user?.name || "-"}
+                      </td>
+                      <td className="p-3 capitalize max-sm:p-2">
+                        {leave.leave_type}
+                      </td>
+                      <td className="p-3 max-sm:p-2">
+                        {new Date(leave.from_date).toDateString()}
+                      </td>
+                      <td className="p-3 max-sm:p-2">
+                        {new Date(leave.to_date).toDateString()}
+                      </td>
+                      <td className="p-3 max-sm:p-2">
                         <span
-                          className={`px-2 py-1 rounded text-xs font-semibold ${
-                            statusColors[leave.status]
-                          }`}
+                          className={`px-2 py-1 rounded text-xs font-semibold max-sm:text-[10px] ${getStatusColor(
+                            status
+                          )}`}
                         >
-                          {leave.status}
+                          {status}
                         </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="p-3">{leave ? leave.reason : "-"}</td>
-                    <td className="p-3 flex gap-2">
-                      {leave ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openModal(leave, user)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(leave.id)}
-                          >
-                            Delete
-                          </Button>
-                        </>
-                      ) : (
+                      </td>
+                      <td className="p-3 max-sm:p-2">{leave.reason}</td>
+                      <td className="p-3 flex gap-2 max-sm:p-2">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => openModal(null, user)}
+                          onClick={() => openModal(leave, leave.user)}
                         >
-                          Apply
+                          Edit
                         </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-      {/* Modal for create/edit */}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setLeaveToDelete(leave.id)}
+                        >
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!fetching && totalPages > 1 && (
+        <div className="flex justify-center mt-8 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Previous
+          </Button>
+          {[...Array(totalPages)].map((_, idx) => (
+            <Button
+              key={idx + 1}
+              size="sm"
+              variant={page === idx + 1 ? "default" : "outline"}
+              onClick={() => setPage(idx + 1)}
+            >
+              {idx + 1}
+            </Button>
+          ))}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      )}
       <Dialog open={modalOpen} onOpenChange={closeModal}>
         <DialogContent>
           <DialogHeader>
@@ -294,66 +471,129 @@ const LeaveManagement = () => {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Select
-              value={form.user_id.toString()}
-              onValueChange={(v) => handleFormChange("user_id", v)}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Employee" />
-              </SelectTrigger>
-              <SelectContent>
-                {mockUsers.map((u) => (
-                  <SelectItem key={u.id} value={u.id.toString()}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={form.leave_type}
-              onValueChange={(v) => handleFormChange("leave_type", v)}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Leave Type" />
-              </SelectTrigger>
-              <SelectContent>
-                {leaveTypes.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="date"
-              value={form.from_date}
-              onChange={(e) => handleFormChange("from_date", e.target.value)}
-              required
-            />
-            <Input
-              type="date"
-              value={form.to_date}
-              onChange={(e) => handleFormChange("to_date", e.target.value)}
-              required
-            />
-            {/* Reason field: use textarea instead of Input with 'as' prop */}
-            <textarea
-              placeholder="Reason (optional)"
-              value={form.reason}
-              onChange={(e) => handleFormChange("reason", e.target.value)}
-              className="w-full border rounded px-3 py-2 min-h-[80px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="employee-name">Employee</Label>
+              <Input
+                id="employee-name"
+                value={form.name}
+                disabled
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="leave-type-select">Leave Type</Label>
+              <Select
+                value={form.leave_type}
+                onValueChange={(v) => handleFormChange("leave_type", v)}
+                required
+              >
+                <SelectTrigger id="leave-type-select" className="w-full">
+                  <SelectValue placeholder="Leave Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {leaveTypes.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="from-date">From Date</Label>
+              <Input
+                id="from-date"
+                type="date"
+                value={form.from_date}
+                onChange={(e) => handleFormChange("from_date", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="to-date">To Date</Label>
+              <Input
+                id="to-date"
+                type="date"
+                value={form.to_date}
+                onChange={(e) => handleFormChange("to_date", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason</Label>
+              <textarea
+                id="reason"
+                placeholder="Reason (optional)"
+                value={form.reason}
+                onChange={(e) => handleFormChange("reason", e.target.value)}
+                className="w-full border rounded px-3 py-2 min-h-[80px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeModal}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeModal}
+                disabled={
+                  fetching &&
+                  (fetchType == "createLeave" || fetchType == "editLeave")
+                }
+              >
                 Cancel
               </Button>
-              <Button type="submit">{editRecord ? "Update" : "Apply"}</Button>
+              <Button
+                type="submit"
+                loading={
+                  fetching &&
+                  (fetchType == "createLeave" || fetchType == "editLeave")
+                }
+                disabled={
+                  fetching &&
+                  (fetchType == "createLeave" || fetchType == "editLeave")
+                }
+              >
+                {editRecord ? "Update" : "Apply"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+      <AlertDialog
+        open={!!leaveToDelete}
+        onOpenChange={() => setLeaveToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this
+              leave application.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              disabled={fetching && fetchType == "deleteLeave"}
+              variant="outline"
+              onClick={() => {
+                setLeaveToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (leaveToDelete) {
+                  handleDelete(leaveToDelete);
+                }
+              }}
+              loading={fetching && fetchType == "deleteLeave"}
+              disabled={fetching && fetchType == "deleteLeave"}
+            >
+              Continue
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

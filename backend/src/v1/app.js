@@ -15,6 +15,9 @@ import searchRoute from "./routes/search.route.js";
 import workflowRoute from "./routes/workflow.route.js";
 import documentRoute from "./routes/documents.route.js";
 import documentFileRoute from "./routes/documentFiles.route.js";
+import attendanceRoute from "./routes/attendance.routes.js";
+import salaryRoute from "./routes/salary.routes.js";
+import leaveRoute from "./routes/leave.route.js";
 
 import cors from "cors"; // <-- Import cors
 
@@ -38,5 +41,8 @@ app.use("/api/v1", searchRoute);
 app.use("/api/v1", workflowRoute);
 app.use("/api/v1", documentRoute);
 app.use("/api/v1", documentFileRoute);
+app.use("/api/v1", attendanceRoute);
+app.use("/api/v1", salaryRoute);
+app.use("/api/v1", leaveRoute);
 
 export default app;

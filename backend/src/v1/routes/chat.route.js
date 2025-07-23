@@ -6,7 +6,7 @@ import {
 
 const router = express.Router();
 
-router.post("/chat", postTaskChat);
-router.get("/:task_id", getTaskChatMessages);
+// router.post("/chat", postTaskChat);
+// router.get("/:task_id", getTaskChatMessages);
 
 export default router;
