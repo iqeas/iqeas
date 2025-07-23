@@ -19,8 +19,6 @@ export const login = async (req, res) => {
         },
       })
     );
-
-    
   } catch (error) {
     if (error.message === "Invalid credentials") {
       return res.status(400).json(
@@ -110,7 +108,7 @@ export const resetPasswordController = async (req, res) => {
         })
       );
     }
-    const decoded = verifyJwtToken(token)
+    const decoded = verifyJwtToken(token);
     console.log(decoded);
     const email = decoded.email;
     await resetPassword(email, newPassword);
@@ -129,4 +127,4 @@ export const resetPasswordController = async (req, res) => {
       })
     );
   }
-}
+};

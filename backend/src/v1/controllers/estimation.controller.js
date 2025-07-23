@@ -9,6 +9,8 @@ import {
 } from "../services/estimation.service.js";
 import { updateProjectPartial } from "../services/projects.service.js";
 import { formatResponse } from "../utils/response.js";
+import pool from "../config/db.js";
+
 
 export const createEstimationHandler = async (req, res) => {
   const client = await pool.connect();

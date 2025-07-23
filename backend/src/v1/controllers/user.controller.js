@@ -1,3 +1,5 @@
+import pool from "../config/db.js";
+
 import { formatResponse } from "../utils/response.js";
 import {
   createUser,
@@ -10,7 +12,6 @@ import {
 
 import { getAllTeams } from "../services/teams.service.js";
 import { sentForgotMail } from "../services/auth.service.js";
-
 
 export const createNewUser = async (req, res) => {
   const { email, phoneNumber, name, role, active } = req.body;
@@ -36,7 +37,7 @@ export const createNewUser = async (req, res) => {
       client
     );
 
-    const sentEmail = await sentForgotMail(email);
+const sentEmail = await sentForgotMail(email, client);
     console.log(sentEmail);
 
     await client.query("COMMIT");
@@ -93,8 +94,6 @@ export const toggleUserStatus = async (req, res) => {
       .json(formatResponse({ statusCode: 500, detail: error.message }));
   }
 };
-
-
 
 export const getUsersController = async (req, res) => {
   try {

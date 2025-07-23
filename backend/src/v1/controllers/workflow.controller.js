@@ -7,7 +7,9 @@ import getNextStage, {
   getNewProgressOfProject,
   getNextRevision,
 } from "../utils/getNextStage.js";
-import { formatResponse } from "../utils/response.js";
+import { formatResponse } from "../utils/response.js"
+import pool from "../config/db.js";
+
 
 export async function createStage(req, res) {
   try {

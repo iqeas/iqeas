@@ -2,6 +2,8 @@ import pool from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { generatePassword } from "../utils/passwordGenerator.js";
 import { uuidGenerator } from "../utils/uuidGenerator.js";
+
+
 export async function createUser(
   email,
   phoneNumber,
@@ -101,6 +103,8 @@ export async function DeleteUser(id) {
   );
   return None;
 }
+
+
 export async function getAllUsers() {
   const result = await pool.query(
     `SELECT id, email, name, role, phonenumber, active, created_at FROM users where is_deleted = false ORDER BY created_at DESC`
