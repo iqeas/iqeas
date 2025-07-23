@@ -10,6 +10,7 @@ export async function createUser(
   name,
   role,
   active = true,
+  base_salary=0,
   client
 ) {
   const password = generatePassword(email, phoneNumber);
@@ -33,10 +34,11 @@ export async function createUser(
         active = $5,
         is_deleted = false,
         user_id = $6,
+        base_salary = $8,
         updated_at = NOW()
       WHERE id = $7
       RETURNING id, email, phoneNumber, name, role, active`,
-      [phoneNumber, name, role, hashedPassword, active, uniqueId, userId]
+      [phoneNumber, name, role, hashedPassword, active, uniqueId, userId,base_salary]
     );
 
     return {
@@ -47,9 +49,18 @@ export async function createUser(
 
   const userResult = await client.query(
     `INSERT INTO users (email, phoneNumber, name, role, password, active, user_id) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7) 
-     RETURNING id, email, phoneNumber, name, role, active`,
-    [email, phoneNumber, name, role, hashedPassword, active, uniqueId]
+    VALUES ($1, $2, $3, $4, $5, $6, $7,$8) 
+    RETURNING id, email, phoneNumber, name, role, active,base_salary`,
+    [
+      email,
+      phoneNumber,
+      name,
+      role,
+      hashedPassword,
+      active,
+      uniqueId,
+      base_salary,
+    ]
   );
 
   return {
@@ -73,7 +84,7 @@ export async function updateUserActiveStatus(id, isActive) {
 
 export async function updateUserData(
   id,
-  { name, email, phoneNumber, active, role, is_deleted = false }
+  { name, email, phoneNumber, active, role, is_deleted = false,base_salary=0 }
 ) {
   const result = await pool.query(
     `UPDATE users SET
@@ -83,10 +94,11 @@ export async function updateUserData(
       active = COALESCE($4, active),
       role = COALESCE($5, role),
       is_deleted = $6,
+      base_salary = $8,
       updated_at = NOW()
     WHERE id = $7
-    RETURNING id, email, phoneNumber, name, role, active, is_deleted`,
-    [name, email, phoneNumber, active, role, is_deleted, id]
+    RETURNING id, email, phoneNumber, name, role, active, is_deleted,base_salary`,
+    [name, email, phoneNumber, active, role, is_deleted, id, base_salary]
   );
   if (result.rows.length === 0) {
     throw new Error("User not found");
@@ -103,14 +115,44 @@ export async function DeleteUser(id) {
   );
   return None;
 }
+export async function getAllUsers({ page = 1, size = 10, search = "" }) {
+  const offset = (page - 1) * size;
+  const params = [];
 
+  let baseQuery = `
+    SELECT id, email, name, role, phonenumber, active, base_salary, created_at
+    FROM users
+    WHERE is_deleted = false
+  `;
 
-export async function getAllUsers() {
-  const result = await pool.query(
-    `SELECT id, email, name, role, phonenumber, active, created_at FROM users where is_deleted = false ORDER BY created_at DESC`
-  );
-  return result.rows;
+  let countQuery = `SELECT COUNT(*) FROM users WHERE is_deleted = false`;
+
+  if (search) {
+    baseQuery += ` AND LOWER(name) LIKE $${params.length + 1}`;
+    countQuery += ` AND LOWER(name) LIKE $${params.length + 1}`;
+    params.push(`%${search.toLowerCase()}%`);
+  }
+
+  baseQuery += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${
+    params.length + 2
+  }`;
+  params.push(size, offset);
+
+  const usersResult = await pool.query(baseQuery, params);
+  const countResult = await pool.query(
+    countQuery,
+    params.slice(0, search ? 1 : 0)
+  ); // only pass search param if it exists
+
+  const total = parseInt(countResult.rows[0].count);
+  const totalPages = Math.ceil(total / size);
+
+  return {
+    users: usersResult.rows,
+    total_pages: totalPages,
+  };
 }
+
 
 export async function getUsersByRole(role) {
   const result = await pool.query(

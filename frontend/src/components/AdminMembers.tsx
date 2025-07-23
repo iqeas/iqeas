@@ -46,6 +46,7 @@ export default function AdminMembers() {
     phoneNumber: "",
     active: true,
     role: "rfq",
+    base_salary: "",
   });
   const [editUserId, setEditUserId] = useState(null);
 
@@ -77,7 +78,7 @@ export default function AdminMembers() {
     const fetchData = async () => {
       const response = await makeApiCall(
         "get",
-        API_ENDPOINT.GET_ALL_USERS_AND_TEAMS,
+        API_ENDPOINT.GET_ALL_USERS,
         {},
         "application/json",
         authToken,
@@ -100,7 +101,8 @@ export default function AdminMembers() {
       !userFormData.name ||
       !userFormData.email ||
       !userFormData.phoneNumber ||
-      !userFormData.role
+      !userFormData.role ||
+      !userFormData.base_salary
     ) {
       toast.error("fill all the field");
       return;
@@ -110,6 +112,7 @@ export default function AdminMembers() {
       API_ENDPOINT.ADD_NEW_USER,
       {
         ...userFormData,
+        base_salary: parseFloat(userFormData.base_salary) || 0,
         phoneNumber: userFormData.phoneNumber,
       },
       "application/json",
@@ -189,7 +192,8 @@ export default function AdminMembers() {
       !userFormData.name ||
       !userFormData.email ||
       !userFormData.phoneNumber ||
-      !userFormData.role
+      !userFormData.role ||
+      !userFormData.base_salary
     ) {
       toast.error("fill all the field");
       return;
@@ -201,6 +205,7 @@ export default function AdminMembers() {
       phoneNumber: userFormData.phoneNumber,
       role: userFormData.role,
       active: userFormData.active,
+      base_salary: parseFloat(userFormData.base_salary) || 0,
     };
     const response = await makeApiCall(
       "patch",
@@ -285,32 +290,19 @@ export default function AdminMembers() {
             phoneNumber: user.phonenumber,
             active: user.active,
             role: user.role,
-          }
-        : { name: "", email: "", phoneNumber: "", active: true, role: "rfq" }
-    );
-  };
-  // Add/Edit team
-  const openTeamModal = (team = null) => {
-    setTeamModal({ open: true, edit: !!team, team });
-    setEditTeamId(team ? team.id : null);
-    setTeamFormData(
-      team
-        ? {
-            title: team.title,
-            members: team.users.map((u) => u.id.toString()),
-            leader_id: team.leader_id?.toString() || "",
-            active: team.active ?? true,
-            role: team.role || "working",
+            base_salary: user.base_salary || "",
           }
         : {
-            title: "",
-            members: [],
-            leader_id: "",
+            name: "",
+            email: "",
+            phoneNumber: "",
             active: true,
-            role: "working",
+            role: "rfq",
+            base_salary: "",
           }
     );
   };
+
   // Delete user
   const handleDeleteUser = async (user: any) => {
     const confirmed = await confirmDialog({
@@ -339,61 +331,14 @@ export default function AdminMembers() {
       setUserModal({ ...userModal, open: false });
     }
   };
-  // Delete team
-  const handleDeleteTeam = async (team) => {
-    const confirmed = await confirmDialog({
-      title: "Delete Team",
-      description: `Are you sure you want to delete team '${team.title}'?`,
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      loading: fetching && fetchType === "deleteTeam",
-    });
-    if (confirmed) {
-      const response = await makeApiCall(
-        "patch",
-        API_ENDPOINT.EDIT_TEAMS(team.id),
-        { is_deleted: true },
-        "application/json",
-        authToken,
-        "deleteUser"
-      );
-      if (response.status == 200) {
-        setTeams((prev) => prev.filter((item) => item.id !== team.id));
-        toast.success(response.detail);
-      } else {
-        toast.error("Failed to delete team");
-      }
-      setEditTeamId(null);
-      setTeamModal({ ...teamModal, open: false });
-    }
-  };
-  // Toggle team active
-  const handleToggleTeamActive = async (id: any) => {
-    const currentStatus = teams.find((item) => item.id == id);
-    const response = await makeApiCall(
-      "patch",
-      API_ENDPOINT.EDIT_TEAMS(id),
-      { active: !currentStatus.active },
-      "application/json",
-      authToken,
-      "userToggle"
-    );
-    if (response.status == 200) {
-      setTeams((prev) =>
-        prev.map((u) => (u.id === id ? { ...u, active: !u.active } : u))
-      );
-      toast.success(response.detail);
-    } else {
-      toast.error(response.detail);
-    }
-  };
+
   if (!isFetched || (fetching && fetchType == "getUser")) {
     return <Loading full />;
   }
   return (
     <div className="p-8 ">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">User Management</h2>
+        <h2 className="text-2xl font-bold">Employees Management</h2>
         <Button onClick={() => openUserModal()}>
           <Plus className="mr-2" />
           Add User
@@ -444,6 +389,20 @@ export default function AdminMembers() {
                     phoneNumber: e.target.value,
                   }))
                 }
+              />
+            </div>
+            <div className="md:col-span-1">
+              <Input
+                placeholder="Base Salary"
+                type="number"
+                value={userFormData.base_salary}
+                onChange={(e) =>
+                  setUserFormData((u) => ({
+                    ...u,
+                    base_salary: e.target.value,
+                  }))
+                }
+                required
               />
             </div>
             <div className="md:col-span-1 flex items-center gap-2">
@@ -502,6 +461,7 @@ export default function AdminMembers() {
                 <th className="p-2 text-left">Name</th>
                 <th className="p-2 text-left">Email</th>
                 <th className="p-2 text-left">Phone</th>
+                <th className="p-2 text-left">Base Salary</th>
                 <th className="p-2 text-center">Active</th>
                 <th className="p-2 text-center">Role</th>
                 <th className="p-2 text-center">Actions</th>
@@ -513,6 +473,7 @@ export default function AdminMembers() {
                   <td className="p-2">{u.name}</td>
                   <td className="p-2">{u.email}</td>
                   <td className="p-2">{u.phonenumber}</td>
+                  <td className="p-2">{u.base_salary}</td>
                   <td className="p-2 text-center">
                     <Switch
                       checked={u.active}

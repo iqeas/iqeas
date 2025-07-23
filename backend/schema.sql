@@ -10,8 +10,9 @@ CREATE TABLE users (
     phone VARCHAR(15),
     active BOOLEAN DEFAULT TRUE NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'rfq', 'estimation', 'pm', 'working', 'documentation')),
-    password VARCHAR(128) NOT NULL
-    is_deleted BOOLEAN DEFAULT FALSE
+    password VARCHAR(128) NOT NULL,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    base_salary DECIMAL DEFAULT 0   
 );
 
 -- =====================
@@ -245,17 +246,16 @@ CREATE TABLE leaves (
     from_date DATE NOT NULL,
     to_date DATE NOT NULL,
     reason TEXT,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
     applied_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE TABLE salary_records (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    month VARCHAR(7) NOT NULL,
+    salary_date VARCHAR(255) NOT NULL,
     base_salary NUMERIC(10,2) NOT NULL,
     bonus NUMERIC(10,2) DEFAULT 0,
     deduction NUMERIC(10,2) DEFAULT 0,
     net_salary NUMERIC(10,2) GENERATED ALWAYS AS (base_salary + bonus - deduction) STORED,
     paid_on TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (user_id, month)
+    UNIQUE (user_id, salary_date)
 );

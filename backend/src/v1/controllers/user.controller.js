@@ -14,7 +14,8 @@ import { getAllTeams } from "../services/teams.service.js";
 import { sentForgotMail } from "../services/auth.service.js";
 
 export const createNewUser = async (req, res) => {
-  const { email, phoneNumber, name, role, active } = req.body;
+  const { email, phoneNumber, name, role, active,base_salary } = req.body;
+
   if (!email || !phoneNumber || !name || !role || active === null) {
     return res.status(400).json(
       formatResponse({
@@ -34,6 +35,7 @@ export const createNewUser = async (req, res) => {
       name,
       role,
       active,
+      base_salary,
       client
     );
 
@@ -97,15 +99,19 @@ export const toggleUserStatus = async (req, res) => {
 
 export const getUsersController = async (req, res) => {
   try {
-    const [users, teams] = await Promise.all([getAllUsers(), getAllTeams()]);
+    const { page = 1, size = 10, search = "" } = req.query;
+    const data = await getAllUsers({
+      page:page,
+      search:search,
+      size:size
+    });
 
     return res.status(200).json(
       formatResponse({
         statusCode: 200,
         detail: "Users and teams fetched successfully",
         data: {
-          users,
-          teams,
+          ...data,
         },
       })
     );
@@ -143,7 +149,7 @@ export const getUsersByRoleController = async (req, res) => {
 
 export const EditUserDataController = async (req, res) => {
   const { id } = req.params;
-  const { name, email, phoneNumber, active, role, is_deleted } = req.body;
+  const { name, email, phoneNumber, active, role, is_deleted,base_salary } = req.body;
 
   if (!id) {
     return res
@@ -159,6 +165,7 @@ export const EditUserDataController = async (req, res) => {
       active,
       role,
       is_deleted,
+      base_salary
     });
     return res.status(200).json(
       formatResponse({
