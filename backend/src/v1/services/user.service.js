@@ -8,23 +8,22 @@ export async function createUser(
   name,
   role,
   active = true,
-  base_salary=0
+  base_salary=0,
+  client
 ) {
   const password = generatePassword(email, phoneNumber);
   const hashedPassword = await bcrypt.hash(password, 10);
   const uniqueId = uuidGenerator();
 
-  // Check for soft-deleted user
-  const existingUser = await pool.query(
+  const existingUser = await client.query(
     `SELECT id FROM users WHERE email = $1 AND is_deleted = true LIMIT 1`,
     [email]
   );
 
   if (existingUser.rows.length > 0) {
-    // Update soft-deleted user with new data
     const userId = existingUser.rows[0].id;
 
-    const result = await pool.query(
+    const result = await client.query(
       `UPDATE users SET
         phoneNumber = $1,
         name = $2,
@@ -46,8 +45,7 @@ export async function createUser(
     };
   }
 
-  // Insert as new user
-  const userResult = await pool.query(
+  const userResult = await client.query(
     `INSERT INTO users (email, phoneNumber, name, role, password, active, user_id) 
     VALUES ($1, $2, $3, $4, $5, $6, $7,$8) 
     RETURNING id, email, phoneNumber, name, role, active,base_salary`,

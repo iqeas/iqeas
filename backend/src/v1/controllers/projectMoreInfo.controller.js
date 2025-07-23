@@ -16,7 +16,7 @@ export const createProjectMoreInfoHandler = async (req, res) => {
           formatResponse({ statusCode: 400, detail: "Project ID is required" })
         );
     }
-
+ 
     const newInfo = await createProjectMoreInfo({
       project_id,
       notes,

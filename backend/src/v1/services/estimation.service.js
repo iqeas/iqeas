@@ -60,7 +60,7 @@ export async function createEstimation(data) {
 
 
 
-export async function createEstimationCorrection(data) {
+export async function createEstimationCorrection(data, client) {
   const {
     estimation_id,
     correction
@@ -76,11 +76,11 @@ export async function createEstimationCorrection(data) {
 
   const values = [estimation_id, correction];
 
-  const result = await pool.query(query, values);
+  const result = await client.query(query, values);
   return result.rows[0];
 }
 
-export async function updateEstimation(id, data) {
+export async function updateEstimation(id, data, client) {
   const fields = [];
   const values = [];
   let index = 1;
@@ -106,11 +106,11 @@ export async function updateEstimation(id, data) {
   
   values.push(id);
 
-  const result = await pool.query(query, values);
+  const result = await client.query(query, values);
 
   if (uploaded_file_ids && uploaded_file_ids.length > 0) {
     const promises = uploaded_file_ids.map((fileId) =>
-      pool.query(
+      client.query(
         `INSERT INTO estimation_uploaded_files (estimation_id, uploaded_file_id) VALUES ($1, $2)`,
         [id, fileId]
       )
@@ -138,7 +138,7 @@ export async function getProjectsDraft() {
   return result.rows;
 }
 
-export async function getEstimationById(estimationId) {
+export async function getEstimationById(estimationId, client) {
   const query = `
     SELECT 
       e.*,
@@ -256,7 +256,7 @@ export async function getEstimationById(estimationId) {
     LIMIT 1
   `;
 
-  const result = await pool.query(query, [estimationId]);
+  const result = await client.query(query, [estimationId]);
   return result.rows[0];
 }
 

@@ -11,6 +11,7 @@ import { updateProjectPartial } from "../services/projects.service.js";
 import { formatResponse } from "../utils/response.js";
 
 export const createEstimationHandler = async (req, res) => {
+  const client = await pool.connect();
   try {
     const estimationData = req.body;
 
@@ -24,16 +25,25 @@ export const createEstimationHandler = async (req, res) => {
     }
 
     const user_id = req.user.id;
+    await client.query("BEGIN");
 
-    const newEstimation = await createEstimation({
-      ...estimationData,
-      user_id,
-    });
+    const newEstimation = await createEstimation(
+      { ...estimationData, user_id },
+      client
+    );
+
     const projectUpdateData = await updateProjectPartial(
       estimationData.project_id,
-      { estimation_status: "created" }
+      { estimation_status: "created" },
+      client
     );
-    const estimationResponse = await getEstimationById(newEstimation.id);
+
+    const estimationResponse = await getEstimationById(
+      newEstimation.id,
+      client
+    );
+
+    await client.query("COMMIT");
 
     return res.status(201).json(
       formatResponse({
@@ -43,16 +53,20 @@ export const createEstimationHandler = async (req, res) => {
       })
     );
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("Error creating estimation:", error);
     return res
       .status(500)
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  } finally {
+    client.release();
   }
 };
 
 export const createEstimationCorrectionHandler = async (req, res) => {
+  const client = await pool.connect();
   try {
     const estimationData = req.body;
 
@@ -60,19 +74,28 @@ export const createEstimationCorrectionHandler = async (req, res) => {
       return res.status(400).json(
         formatResponse({
           statusCode: 400,
-          detail: "Estimation ID is required",
+          detail: "Estimation ID and Project ID are required",
         })
       );
     }
+
+    await client.query("BEGIN");
+
     const newEstimationCorrection = await createEstimationCorrection(
-      estimationData
+      estimationData,
+      client
     );
+
     const updatedProject = await updateProjectPartial(
       estimationData.project_id,
       {
         estimation_status: "back_to_you",
-      }
+      },
+      client
     );
+
+    await client.query("COMMIT");
+
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
@@ -84,12 +107,15 @@ export const createEstimationCorrectionHandler = async (req, res) => {
       })
     );
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("Error creating estimation correction:", error);
     return res
       .status(500)
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  } finally {
+    client.release();
   }
 };
 
@@ -124,35 +150,50 @@ export const getEstimationHandler = async (req, res) => {
 };
 
 export const updateEstimationHandler = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
     const updateData = req.body;
-    console.log(id);
+
     if (!id || !updateData.project_id) {
-      return res
-        .status(400)
-        .json(
-          formatResponse({
-            statusCode: 400,
-            detail: "ID and Project ID is required",
-          })
-        );
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail: "ID and Project ID is required",
+        })
+      );
     }
 
-    const updatedEstimation = await updateEstimation(id, updateData);
-    if (updatedEstimation.sent_to_pm == true && updateData.approved == true) {
-      await updateProjectPartial(updatedEstimation.project_id, {
-        status: "working",
-        progress: 0,
-        estimation_status: "approved",
-      });
+    await client.query("BEGIN");
+
+    const updatedEstimation = await updateEstimation(id, updateData, client);
+
+    if (updatedEstimation.sent_to_pm === true && updateData.approved === true) {
+      await updateProjectPartial(
+        updatedEstimation.project_id,
+        {
+          status: "working",
+          progress: 0,
+          estimation_status: "approved",
+        },
+        client
+      );
     }
-    if (updatedEstimation.sent_to_pm == false) {
-      await updateProjectPartial(updateData.project_id, {
-        estimation_status: "edited",
-      });
+
+    if (updatedEstimation.sent_to_pm === false) {
+      await updateProjectPartial(
+        updateData.project_id,
+        {
+          estimation_status: "edited",
+        },
+        client
+      );
     }
-    const estimationData = await getEstimationById(id);
+
+    const estimationData = await getEstimationById(id, client);
+
+    await client.query("COMMIT");
+
     return res.status(200).json(
       formatResponse({
         statusCode: 200,
@@ -161,12 +202,15 @@ export const updateEstimationHandler = async (req, res) => {
       })
     );
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("Error updating estimation:", error);
     return res
       .status(500)
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  } finally {
+    client.release();
   }
 };
 

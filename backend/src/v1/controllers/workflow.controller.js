@@ -225,11 +225,6 @@ export async function getAssignedTasksController(req, res) {
   }
 }
 
-
-
-
-
-
 export async function EditDrawingLogsController(req, res) {
   try {
     const { id } = req.params;
@@ -330,7 +325,6 @@ export async function EditDrawingLogsController(req, res) {
 
       const newRevision = getNextRevision(currentRevision);
       console.log("New revision calculated:", newRevision);
-
 
       await WorkflowService.partialUpdateStage(logData.stage_id, {
         revision: newRevision,
