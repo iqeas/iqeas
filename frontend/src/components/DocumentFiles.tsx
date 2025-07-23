@@ -12,6 +12,8 @@ interface IDocumentFile {
   status: string;
   created_at: string;
   updated_at: string;
+  uploaded_by_name?: string;
+  direction?: string;
 }
 
 export default function DocumentFiles() {
@@ -29,7 +31,6 @@ export default function DocumentFiles() {
   const userId = user?.id;
   const role = user?.role;
 
-  // Debug logging
   useEffect(() => {
     console.log("User ID:", userId);
     console.log("Role:", role);
@@ -65,8 +66,10 @@ export default function DocumentFiles() {
       }
 
       const json = await response.json();
+      console.log("Fetched files response:", json);
 
-      if (json.success && Array.isArray(json.data)) {
+      // ✅ Use the actual response shape
+      if (Array.isArray(json.data)) {
         setFiles(json.data);
       } else {
         setFiles([]);
@@ -126,6 +129,8 @@ export default function DocumentFiles() {
                 </a>
               </p>
               <p>Status: {file.status}</p>
+              <p>Uploaded By: {file.uploaded_by_name ?? "Unknown"}</p>
+              <p>Direction: {file.direction ?? "N/A"}</p>
               <p>Uploaded At: {new Date(file.created_at).toLocaleString()}</p>
             </li>
           ))}

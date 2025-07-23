@@ -1,31 +1,33 @@
 import { getFilesByType } from "../services/documentFiles.service.js";
+import { formatResponse } from "../utils/response.js";
 
 export async function handleGetFilesByType(req, res) {
   try {
-    const project_id = parseInt(req.query.project_id, 10);
-    const type = req.query.type; 
-    const user_id = parseInt(req.query.user_id, 10);
-    const role = req.query.role;
+    const source =
+      req.body && Object.keys(req.body).length > 0 ? req.body : req.query;
+    const { project_id, role, user_id } = source;
 
-    if (isNaN(project_id) || isNaN(user_id)) {
-      return res.status(400).json({ error: "Invalid project_id or user_id" });
+    if (!project_id || !role || !user_id) {
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail: "project_id, role, and user_id are required",
+        })
+      );
     }
 
-    if (!["incoming", "ongoing"].includes(type)) {
-      return res.status(400).json({ error: "Invalid type parameter" });
-    }
-
-    if (!["rfq", "estimation", "admin",'documentation','working'].includes(role)) {
-      return res.status(400).json({ error: "Invalid role parameter" });
-    }
-
-    const files = await getFilesByType(project_id, type, user_id, role);
-
-    return res.json({ success: true, data: files });
-  } catch (error) {
-    console.error("Error in handleGetFilesByType:", error);
+    const files = await getFilesByType(project_id, user_id, role);
     return res
+      .status(200)
+      .json(
+        formatResponse({ statusCode: 200, detail: "Fetched", data: files })
+      );
+  } catch (err) {
+    console.error("Error in handleGetFilesByType:", err);
+    res
       .status(500)
-      .json({ success: false, error: "Internal Server Error" });
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
   }
 }

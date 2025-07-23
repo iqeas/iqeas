@@ -13,15 +13,15 @@ export default function FileTypeSelection() {
       <div>
         <div className="flex items-center justify-center gap-20 h-screen">
           <div>
-            <a href={`/${role}/documents/${project_id}/ongoing`}>
+            <a href={`/${role}/documents/${project_id}/outgoing`}>
               <img
                 src="../../public/file-explorer.png"
                 alt=""
                 width={200}
                 height={200}
               />
-              <h3 className="text-center text-xl font-medium text-neutral-700">``
-                Ongoing Files
+              <h3 className="text-center text-xl font-medium text-neutral-700">
+               Ongoing Files
               </h3>
             </a>
           </div>

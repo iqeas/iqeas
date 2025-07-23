@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { generatePassword } from "../utils/passwordGenerator.js";
 import { uuidGenerator } from "../utils/uuidGenerator.js";
 
-
 export async function createUser(
   email,
   phoneNumber,
@@ -142,7 +141,7 @@ export async function getAllUsers({ page = 1, size = 10, search = "" }) {
   const countResult = await pool.query(
     countQuery,
     params.slice(0, search ? 1 : 0)
-  ); // only pass search param if it exists
+  ); 
 
   const total = parseInt(countResult.rows[0].count);
   const totalPages = Math.ceil(total / size);
