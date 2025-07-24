@@ -107,7 +107,7 @@ export async function getUploadedFilesByRolePaginated(
     default:
       throw new Error("Unauthorized role");
   }
-
+  console.log(baseWhere, queryParams, countParams);
   if (hasSearch && role !== "admin") {
     baseWhere += ` AND uf.label ILIKE $${queryParams.length + 1}`;
     const searchParam = `%${searchQuery}%`;

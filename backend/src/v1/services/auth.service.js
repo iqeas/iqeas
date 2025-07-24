@@ -61,7 +61,6 @@ export async function sentForgotMail(email, client) {
 
     const token = createForgotPasswordToken({ email });
     const resetUrl = `${process.env.FORGOT_PASSWORD_URL}?token=${token}`;
-    console.log(`${email} - ${resetUrl}`);
 
     const emailSent = await sendForgotPasswordEmail(email, resetUrl);
     if (!emailSent) {

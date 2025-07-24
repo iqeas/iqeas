@@ -1,5 +1,5 @@
 import { deleteFile, uploadFileToDO } from "../utils/do-upload.js";
-import { saveUploadedFile } from "../services/uploadfiles.service.js";
+import { getUploadedFilesByRolePaginated, saveUploadedFile } from "../services/uploadfiles.service.js";
 import {formatResponse} from '../utils/response.js'
 const is_production = process.env.PRODUCTION === "true";
 
