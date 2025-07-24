@@ -27,7 +27,8 @@ export const API_ENDPOINT = {
   CREATE_ESTIMATION: `${API_URL}/estimation`,
   EDIT_ESTIMATION: (id: any) => `${API_URL}/patch/estimation/${id}`,
   CREATE_PROJECT_REJECTION: `${API_URL}/projects/reject`,
-  GET_ALL_PROJECT_UPLOAD_FILES: `${API_URL}/get/get-all-uploaded-filess`,
+  GET_ALL_PROJECT_UPLOAD_FILES: (project_id, type, page, size, search) =>
+    `${API_URL}/get/get-all-uploaded-filess?project_id=${project_id}&type=${type}&page=${page}&size=${size}&search=${search}`,
   GET_ALL_FILES: (query, page, pageSize) =>
     `${API_URL}/get-files/all-files?page=${page}&query=${query}&size=${pageSize}`,
   CREATE_PASSWORD: `${API_URL}/auth/reset-password`,
@@ -71,4 +72,6 @@ export const API_ENDPOINT = {
     `${API_URL}/leave/records?filter=${filter}&page=${page}&size=${size}&search=${search}`,
   CREATE_LEAVE: `${API_URL}/leave`,
   ACTION_LEAVE: (id) => `${API_URL}/leave/${id}`,
+  GET_DOCUMENT_PROJECTS: (page, size, search) =>
+    `${API_URL}/document/projects?page=${page}&size=${size}&search=${search}`,
 };

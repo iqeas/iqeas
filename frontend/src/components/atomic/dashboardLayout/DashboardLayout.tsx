@@ -19,7 +19,12 @@ const menuConfig = {
   ],
   rfq: [
     { label: "Dashboard", to: "/rfq", icon: Home },
-    { label: "Document Center", to: "/rfq/documents", icon: BookOpen },
+    {
+      label: "Document Center",
+      to: "/rfq/documents",
+      icon: BookOpen,
+      match: ["/rfq/documents/"],
+    },
     { label: "Calendar", to: "/rfq/calendar", icon: Calendar },
   ],
   estimation: [
@@ -83,7 +88,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const roleLabel = roleLabels[role] || role;
   const { pathname } = useLocation();
   const [openMenu, setOpenMenu] = useState(false);
-
+  console.log(pathname);
   useEffect(() => {
     setOpenMenu(false);
   }, [pathname]);
