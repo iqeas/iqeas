@@ -323,10 +323,6 @@ export async function getFilesByType(
       }
 
       if (normalizedType === "outgoing") {
-        if (!estimation_id) {
-          console.log("No estimation found for project_id:", numericProjectId);
-          return [];
-        }
         query = `
           SELECT
               uf.*,
@@ -339,18 +335,24 @@ export async function getFilesByType(
           LEFT JOIN drawings d ON duf.drawing_id = d.id
           LEFT JOIN drawing_stage_log_files dslf ON uf.id = dslf.uploaded_file_id
           WHERE (
-              (euf.estimation_id = $2 AND uf.uploaded_by_id = $1)
+              ${
+                estimation_id
+                  ? `(euf.estimation_id = $2 AND uf.uploaded_by_id = $1)`
+                  : "FALSE"
+              }
               OR
               (d.project_id = $3 AND uf.uploaded_by_id = $1 AND dslf.type = 'outgoing')
           )
           ORDER BY uf.created_at DESC
         `;
-        queryParams = [numericCurrentUserId, estimation_id, numericProjectId];
+        queryParams = estimation_id
+          ? [numericCurrentUserId, estimation_id, numericProjectId]
+          : [numericCurrentUserId, numericProjectId];
       } else if (normalizedType === "incoming") {
         query = `
           SELECT
               uf.*,
-              u.name AS uploaded_by_name93
+              u.name AS uploaded_by_name,
               'incoming' AS direction
           FROM uploaded_files uf
           JOIN users u ON u.id = uf.uploaded_by_id
@@ -362,63 +364,50 @@ export async function getFilesByType(
         queryParams = [numericProjectId];
       } else {
         // type = 'all'
-        if (!estimation_id) {
-          console.log(
-            "No estimation found for project_id, returning incoming files only:",
-            numericProjectId
-          );
-          query = `
-            SELECT
-                uf.*,
-                u.name AS uploaded_by_name,
-                'incoming' AS direction
-            FROM uploaded_files uf
-            JOIN users u ON u.id = uf.uploaded_by_id
-            JOIN projects_uploaded_files puf ON uf.id = puf.uploaded_file_id
-            WHERE puf.project_id = $1
-            AND u.role = 'rfq'
-            ORDER BY uf.created_at DESC
-          `;
-          queryParams = [numericProjectId];
-        } else {
-          query = `
-            SELECT
-                uf.*,
-                u.name AS uploaded_by_name,
-                CASE
-                    WHEN uf.uploaded_by_id = $1 THEN 'outgoing'
-                    ELSE 'incoming'
-                END AS direction
-            FROM uploaded_files uf
-            JOIN users u ON u.id = uf.uploaded_by_id
-            WHERE (
-                EXISTS (
-                    SELECT 1 FROM estimation_uploaded_files euf
-                    WHERE euf.uploaded_file_id = uf.id
-                    AND euf.estimation_id = $2
-                    AND uf.uploaded_by_id = $1
-                )
-                OR
-                EXISTS (
-                    SELECT 1 FROM drawings_uploaded_files duf
-                    JOIN drawings d ON duf.drawing_id = d.id
-                    JOIN drawing_stage_log_files dslf ON uf.id = dslf.uploaded_file_id
-                    WHERE d.project_id = $3
-                    AND uf.uploaded_by_id = $1
-                    AND dslf.type = 'outgoing'
-                )
-                OR
-                EXISTS (
-                    SELECT 1 FROM projects_uploaded_files puf
-                    WHERE puf.uploaded_file_id = uf.id
-                    AND puf.project_id = $3
-                    AND u.role = 'rfq'
-                )
-            )
-            ORDER BY uf.created_at DESC
-          `;
-          queryParams = [numericCurrentUserId, estimation_id, numericProjectId];
-        }
+        query = `
+          SELECT
+              uf.*,
+              u.name AS uploaded_by_name,
+              CASE
+                  WHEN uf.uploaded_by_id = $1 THEN 'outgoing'
+                  ELSE 'incoming'
+              END AS direction
+          FROM uploaded_files uf
+          JOIN users u ON u.id = uf.uploaded_by_id
+          WHERE (
+              ${
+                estimation_id
+                  ? `
+              EXISTS (
+                  SELECT 1 FROM estimation_uploaded_files euf
+                  WHERE euf.uploaded_file_id = uf.id
+                  AND euf.estimation_id = $2
+                  AND uf.uploaded_by_id = $1
+              )
+              OR`
+                  : ""
+              }
+              EXISTS (
+                  SELECT 1 FROM drawings_uploaded_files duf
+                  JOIN drawings d ON duf.drawing_id = d.id
+                  JOIN drawing_stage_log_files dslf ON uf.id = dslf.uploaded_file_id
+                  WHERE d.project_id = $3
+                  AND uf.uploaded_by_id = $1
+                  AND dslf.type = 'outgoing'
+              )
+              OR
+              EXISTS (
+                  SELECT 1 FROM projects_uploaded_files puf
+                  WHERE puf.uploaded_file_id = uf.id
+                  AND puf.project_id = $3
+                  AND u.role = 'rfq'
+              )
+          )
+          ORDER BY uf.created_at DESC
+        `;
+        queryParams = estimation_id
+          ? [numericCurrentUserId, estimation_id, numericProjectId]
+          : [numericCurrentUserId, null, numericProjectId];
       }
     } else {
       throw new Error("Invalid role");
