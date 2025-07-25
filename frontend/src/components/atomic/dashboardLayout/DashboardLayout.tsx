@@ -9,13 +9,24 @@ import {
   LogOut,
   Menu,
   X,
+  Users,
+  Clock,
+  FileText,
+  ListChecks,
+  FilePlus2,
+  BarChart3,
 } from "lucide-react";
 
 const menuConfig = {
   pm: [
-    { label: "Projects", to: "/pm", icon: Home, match: ["/pm/project/"] },
-    { label: "Document Center", to: "/pm/documents", icon: BookOpen },
-    { label: "Calendar", to: "/pm/calendar", icon: Calendar },
+    { label: "Projects", to: "/pm", icon: Folder, match: ["/pm/project/"] },
+    {
+      label: "Document Center",
+      to: "/pm/documents",
+      icon: BookOpen,
+      match: ["/pm/documents/"],
+    },
+    // { label: "Calendar", to: "/pm/calendar", icon: Calendar },
   ],
   rfq: [
     { label: "Dashboard", to: "/rfq", icon: Home },
@@ -25,36 +36,47 @@ const menuConfig = {
       icon: BookOpen,
       match: ["/rfq/documents/"],
     },
-    { label: "Calendar", to: "/rfq/calendar", icon: Calendar },
+    // { label: "Calendar", to: "/rfq/calendar", icon: Calendar },
   ],
   estimation: [
-    { label: "Estimation Tracker", to: "/estimation", icon: Home },
-    { label: "Document Center", to: "/estimation/documents", icon: BookOpen },
-    { label: "Calendar", to: "/estimation/calendar", icon: Calendar },
+    { label: "Estimation Tracker", to: "/estimation", icon: BarChart3 },
+    {
+      label: "Document Center",
+      to: "/estimation/documents",
+      icon: BookOpen,
+      match: ["/estimation/documents/"],
+    },
+    // { label: "Calendar", to: "/estimation/calendar", icon: Calendar },
   ],
   documentation: [
     {
       label: "Document submission",
       to: "/documentation",
-      icon: Home,
+      icon: FilePlus2,
       match: ["/documentation/project/"],
     },
     {
       label: "Document Center",
       to: "/documentation/documents",
       icon: BookOpen,
+      match: ["/documentation/documents/"],
     },
-    { label: "Calendar", to: "/documentation/calendar", icon: Calendar },
+    // { label: "Calendar", to: "/documentation/calendar", icon: Calendar },
   ],
   working: [
     {
       label: "My Task",
       to: "/working",
-      icon: Home,
+      icon: ListChecks,
       match: ["/working/project/"],
     },
-    { label: "Document Center", to: "/working/documents", icon: BookOpen },
-    { label: "Calendar", to: "/working/calendar", icon: Calendar },
+    {
+      label: "Document Center",
+      to: "/working/documents",
+      icon: BookOpen,
+      match: ["/working/documents/"],
+    },
+    // { label: "Calendar", to: "/working/calendar", icon: Calendar },
   ],
   admin: [
     {
@@ -63,12 +85,17 @@ const menuConfig = {
       icon: Folder,
       match: ["/admin/project/"],
     },
-    { label: "Members", to: "/admin/members", icon: Calendar },
-    { label: "Attendance", to: "/admin/attendance", icon: Calendar },
-    { label: "Salary", to: "/admin/salary", icon: Calendar },
+    { label: "Members", to: "/admin/members", icon: Users },
+    { label: "Attendance", to: "/admin/attendance", icon: Clock },
+    { label: "Salary", to: "/admin/salary", icon: FileText },
     { label: "Leave ", to: "/admin/leave", icon: Calendar },
-    { label: "Document Center", to: "/admin/documents", icon: Calendar },
-    { label: "Calendar", to: "/admin/calendar", icon: Calendar },
+    {
+      label: "Document Center",
+      to: "/admin/documents",
+      icon: BookOpen,
+      match: ["/admin/documents/"],
+    },
+    // { label: "Calendar", to: "/admin/calendar", icon: Calendar },
   ],
 };
 
@@ -122,7 +149,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-screen z-40 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto
+          fixed top-0 left-0 h-screen pt-5 z-40 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto
           w-64 transition-transform duration-200
           ${openMenu ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0 md:static md:block

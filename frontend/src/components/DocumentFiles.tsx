@@ -33,10 +33,11 @@ export default function DocumentFiles() {
   const { user, authToken } = useAuth();
 
   const [files, setFiles] = useState<IDocumentFile[]>([]);
+  const [finalFiles, setFinalFiles] = useState<IDocumentFile[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 2;
+  const pageSize = 30;
   const [totalPages, setTotalPages] = useState(1);
   const { makeApiCall, fetching, isFetched, fetchType } = useAPICall();
 
@@ -60,15 +61,22 @@ export default function DocumentFiles() {
     );
     if (response.status === 200) {
       // Support both array and paginated object response
+      let newFiles = [];
+      let newFinalFiles = [];
       if (Array.isArray(response.data)) {
-        setFiles(response.data);
-        setTotalPages(1);
+        newFiles = response.data;
       } else {
-        setFiles(response.data.files || []);
-        setTotalPages(response.data.total_pages || 1);
+        newFiles = response.data.files || [];
+        newFinalFiles = response.data.final_files || [];
       }
+      // Remove duplicates (by id) from files if present in final_files
+      const finalFileIds = new Set(newFinalFiles.map((f) => f.id));
+      setFiles(newFiles.filter((f) => !finalFileIds.has(f.id)));
+      setFinalFiles(newFinalFiles);
+      setTotalPages(response.data.total_pages || 1);
     } else {
       setFiles([]);
+      setFinalFiles([]);
       setTotalPages(1);
       toast.error("Failed to fetch files");
     }
@@ -160,6 +168,65 @@ export default function DocumentFiles() {
       )}
       {!fetching && (
         <div className="flex flex-col gap-4">
+          {/* Final Files on top with green background */}
+          {finalFiles.length > 0 &&
+            finalFiles.map((file) => (
+              <div
+                key={file.id}
+                className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-green-50 border border-green-200 rounded-lg shadow-sm px-4 py-4 hover:bg-green-100 transition"
+              >
+                <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-green-100 rounded-full">
+                  <FileText className="w-7 h-7 text-green-600" />
+                </div>
+                <div className="flex-1 w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full">
+                    <div>
+                      <div className="text-lg font-semibold text-green-900 mb-1">
+                        {file.label}
+                      </div>
+                      <div className="flex flex-wrap gap-4 text-xs text-green-700 mb-1">
+                        <span className="flex items-center gap-1">
+                          <User2 className="w-4 h-4" />{" "}
+                          {file.uploaded_by_name ?? "Unknown"}
+                        </span>
+                        <span>
+                          Direction:{" "}
+                          <span className="font-medium">
+                            {file.direction ?? "N/A"}
+                          </span>
+                        </span>
+                        <span>
+                          Uploaded: {new Date(file.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 sm:mt-0">
+                      <span className="px-2 py-1 rounded text-xs font-semibold bg-green-200 text-green-900">
+                        Final
+                      </span>
+                      <a
+                        href={file.file}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-green-600 text-white text-xs font-medium shadow hover:bg-green-700 transition"
+                        aria-label="View File"
+                      >
+                        <Eye className="w-4 h-4" /> View
+                      </a>
+                      <a
+                        href={file.file}
+                        download
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-green-100 text-green-900 text-xs font-medium shadow hover:bg-green-200 transition"
+                        aria-label="Download File"
+                      >
+                        <Download className="w-4 h-4" /> Download
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          {/* Regular files below */}
           {files.map((file) => (
             <div
               key={file.id}
