@@ -769,7 +769,16 @@ export const EstimationDashboard = () => {
                       {project.progress}%
                     </span>
                   </div>
-                  <Progress value={project.progress} className="h-2" />
+                  <Progress
+                    value={
+                      ["rejected", "approved"].includes(
+                        project.estimation_status
+                      )
+                        ? 100
+                        : project.progress
+                    }
+                    className="h-2"
+                  />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button

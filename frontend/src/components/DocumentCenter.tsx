@@ -95,9 +95,13 @@ export const DocumentCenter = () => {
                   key={file.id}
                   className="flex items-center gap-4 bg-white border border-slate-200 rounded-lg shadow-sm px-4 py-3 hover:bg-slate-100 transition cursor-pointer"
                   onClick={() =>
-                    navigate(`/${user.role}/documents/${file.id}`, {
-                      state: { project: file },
-                    })
+                    user.role == "admin"
+                      ? navigate(`/${user.role}/documents/${file.id}/all`, {
+                          state: { project: file },
+                        })
+                      : navigate(`/${user.role}/documents/${file.id}`, {
+                          state: { project: file },
+                        })
                   }
                 >
                   <FolderOpen className="w-8 h-8 text-blue-500" />

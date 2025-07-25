@@ -3,7 +3,6 @@ import { defineProjectProgress } from "../utils/defineProjectProgress.js";
 import { generateProjectId } from "../utils/projectIdCreator.js";
 import { nanoid } from "nanoid";
 
-
 // Functions that receive 'client' from a transactional controller MUST use client.query()
 export async function createProject(projectData, userId, client) {
   // 'client' is required here
@@ -59,7 +58,7 @@ export async function createProject(projectData, userId, client) {
     publicToken,
   ];
 
-  const result = await client.query(query, values); 
+  const result = await client.query(query, values);
   return result.rows[0];
 }
 
@@ -81,7 +80,7 @@ export async function createProjectUploadedFile(
 
   const promises = uploadedFileIds.map(async (uploadedFileId) => {
     const values = [projectId, uploadedFileId];
-    const result = await client.query(query, values); 
+    const result = await client.query(query, values);
     return result.rows[0];
   });
 
@@ -147,7 +146,7 @@ export async function getProjectByPagination(
       OR LOWER(p.client_name) ILIKE $1
       OR LOWER(p.contact_person) ILIKE $1
   `;
-  const countResult = await client.query(countQuery, [search]); 
+  const countResult = await client.query(countQuery, [search]);
   const totalCount = parseInt(countResult.rows[0].count, 10);
   const totalPages = Math.ceil(totalCount / limit);
 
@@ -204,7 +203,7 @@ export async function getProjectByPagination(
     LIMIT $2 OFFSET $3;
   `;
 
-  const dataResult = await client.query(dataQuery, [search, limit, offset]); 
+  const dataResult = await client.query(dataQuery, [search, limit, offset]);
 
   return {
     total_pages: totalPages,
@@ -217,7 +216,6 @@ export async function getProjectsEstimationProjects({
   size = 10,
   query = "",
 }) {
-
   const offset = (page - 1) * size;
   const values = [size, offset];
   let whereClause = `WHERE p.send_to_estimation = true`;
@@ -744,7 +742,6 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
   };
 }
 
-
 export async function getPMProjectsCards({ userId }) {
   const cardQuery = `
     SELECT
@@ -766,7 +763,6 @@ export async function getPMProjectsCards({ userId }) {
 
   const cardData = await pool.query(cardQuery, [userId]);
 
-
   return {
     total_projects: cardData.rows[0].total_projects,
     completed_works: cardData.rows[0].completed_works,
@@ -774,7 +770,6 @@ export async function getPMProjectsCards({ userId }) {
   };
 }
 
-// This function is NOT called with a client from a transactional controller, so it uses pool directly.
 export async function getAdminProjectsCards() {
   const cardQuery = `
     SELECT
@@ -794,14 +789,12 @@ export async function getAdminProjectsCards() {
 
   const cardData = await pool.query(cardQuery);
 
-
   return {
     total_projects: cardData.rows[0].total_projects,
     completed_works: cardData.rows[0].completed_works,
     pending_works: cardData.rows[0].pending_works,
   };
 }
-
 
 export async function getProjectsSentToPM() {
   const query = `SELECT * FROM projects WHERE send_to_pm = true ORDER BY created_at DESC;`;
@@ -836,7 +829,6 @@ export async function getEstimationCardData() {
   );
   const completed_estimations = await pool.query(
     `SELECT COUNT(*) AS count FROM projects WHERE estimation_status = 'approved' OR estimation_status = 'rejected'`
-
   );
   const total_value = await pool.query(
     // Use pool.query()
@@ -869,7 +861,7 @@ export async function createProjectRejectionUploadedFiles(
 
   const promises = uploadedFileIds.map(async (uploadedFileId) => {
     const values = [rejectionId, uploadedFileId];
-    const result = await client.query(query, values); 
+    const result = await client.query(query, values);
     return result.rows[0];
   });
 
@@ -891,7 +883,7 @@ export async function createProjectRejection({
   `;
 
   const values = [projectId, reason, userId];
-  const result = await client.query(query, values); 
+  const result = await client.query(query, values);
   const rejectionId = result.rows[0].id;
 
   if (uploaded_files_ids && uploaded_files_ids.length > 0) {
@@ -947,7 +939,7 @@ export async function projectRejectionById(rejectionId, client) {
     WHERE pr.id = $1
     LIMIT 1;
   `;
-  const result = await client.query(query, [rejectionId]); 
+  const result = await client.query(query, [rejectionId]);
   console.log([rejectionId], result.rows[0]);
   return result.rows[0] || null;
 }
@@ -966,9 +958,7 @@ export async function addProjectDeliveryFiles(projectId, fileIds, client) {
     ON CONFLICT (project_id, uploaded_file_id) DO NOTHING;
   `);
 
-
   const { rows } = await client.query(
-    
     `SELECT id, label, file FROM uploaded_files WHERE id = ANY($1::int[])`,
     [fileIds]
   );
@@ -1141,7 +1131,7 @@ export async function getWorkerProjectsPaginated(
   const values = [userId, userId, search, search, search, size, offset];
   const countValues = [userId, userId, search, search, search];
 
-  // Main paginated query
+  // 1. Paginated query
   const queryText = `
     WITH filtered AS (
       SELECT 
@@ -1154,18 +1144,15 @@ export async function getWorkerProjectsPaginated(
         p.contact_person,
         contact_person_phone,
         contact_person_email
-
       FROM drawing_stage_logs dsl
       JOIN drawings d ON dsl.drawing_id = d.id
       JOIN projects p ON d.project_id = p.id
-
       WHERE (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
       AND (
         LOWER(p.name) ILIKE $3 OR
         LOWER(p.project_id) ILIKE $4 OR
         LOWER(p.client_company) ILIKE $5
       )
-
       GROUP BY p.id
     )
     SELECT 
@@ -1193,6 +1180,7 @@ export async function getWorkerProjectsPaginated(
     LIMIT $6 OFFSET $7
   `;
 
+  // 2. Total project count
   const countQuery = `
     SELECT COUNT(*) AS count FROM (
       SELECT p.id
@@ -1209,9 +1197,28 @@ export async function getWorkerProjectsPaginated(
     ) AS count_alias
   `;
 
-  const [dataResult, countResult] = await Promise.all([
-    pool.query(queryText, values), // Use pool.query()
-    pool.query(countQuery, countValues), // Use pool.query()
+  // 3. Overall card stats query
+  const cardStatsQuery = `
+    SELECT
+      COUNT(DISTINCT p.id) AS total_projects,
+      COUNT(*) AS total_works,
+      COUNT(CASE WHEN dsl.status = 'completed' THEN 1 END) AS completed_works,
+      COUNT(CASE WHEN dsl.status != 'completed' THEN 1 END) AS pending_works
+    FROM drawing_stage_logs dsl
+    JOIN drawings d ON dsl.drawing_id = d.id
+    JOIN projects p ON d.project_id = p.id
+    WHERE (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+    AND (
+      LOWER(p.name) ILIKE $3 OR
+      LOWER(p.project_id) ILIKE $4 OR
+      LOWER(p.client_company) ILIKE $5
+    )
+  `;
+
+  const [dataResult, countResult, cardResult] = await Promise.all([
+    pool.query(queryText, values),
+    pool.query(countQuery, countValues),
+    pool.query(cardStatsQuery, countValues),
   ]);
 
   const totalProjects = parseInt(countResult.rows[0].count, 10);
@@ -1223,38 +1230,66 @@ export async function getWorkerProjectsPaginated(
     total_projects: totalProjects,
     current_page: page,
     page_size: size,
+    cards: cardResult.rows[0] || {
+      total_projects: 0,
+      total_works: 0,
+      completed_works: 0,
+      pending_works: 0,
+    },
   };
 }
 
-// This function is NOT called with a client from a transactional controller, so it uses pool directly.
+
 export async function getWorkerProjectDetail(userId, projectId) {
-  const query = `
-        SELECT 
-            p.*,
-            json_build_object(
-                'id', u.id,
-                'name', u.name,
-                'email', u.email
-            ) AS assigned_worker_details,
-            COALESCE(
-                (SELECT json_agg(json_build_object(
-                    'id', uf.id, 
-                    'file', uf.file, 
-                    'label', uf.label
-                ))
-                FROM project_delivery_files pdf
-                JOIN uploaded_files uf ON pdf.uploaded_file_id = uf.id
-                WHERE pdf.project_id = p.id),
-                '[]'::json
-            ) AS delivery_files
-        FROM projects p
-        LEFT JOIN project_assignments pa ON p.id = pa.project_id
-        LEFT JOIN users u ON pa.worker_id = u.id
-        WHERE p.id = $1 AND pa.worker_id = $2;
-    `;
-  const result = await pool.query(query, [projectId, userId]); // Use pool.query()
-  return result.rows[0];
+  const values = [userId, userId, projectId];
+
+  const queryText = `
+    SELECT 
+      p.id AS project_id,
+      p.project_id AS project_code,
+      p.name AS project_name,
+      p.client_company AS company_name,
+      p.created_at,
+      p.client_name,
+      p.contact_person,
+      contact_person_phone,
+      contact_person_email,
+
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+      ) AS total_works,
+
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status = 'completed'
+      ) AS completed_works,
+
+      (
+        SELECT COUNT(*) FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status != 'completed'
+      ) AS pending_works
+
+    FROM projects p
+    WHERE p.id = $3
+    LIMIT 1
+  `;
+
+  const result = await pool.query(queryText, values);
+
+  if (result.rows.length === 0) {
+    return null; // or throw new Error("Project not found");
+  }
+
+  const row = result.rows[0];
+
+  return row
 }
+
+
 
 export async function getProjectDetailsById(projectId) {
   const query = `
