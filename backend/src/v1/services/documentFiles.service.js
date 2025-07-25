@@ -161,9 +161,7 @@ export async function getFilesByType(
 
       if (searchTerm) {
         queryParams.push(searchTerm);
-        whereParts.push(
-          `(LOWER(uf.label) LIKE $${queryParams.length})`
-        );
+        whereParts.push(`(LOWER(uf.label) LIKE $${queryParams.length})`);
       }
 
       queryParams.push(limit, offset);
@@ -186,11 +184,7 @@ export async function getFilesByType(
       JOIN projects_uploaded_files puf ON uf.id = puf.uploaded_file_id
       JOIN projects p ON p.id = puf.project_id
       WHERE p.id = $1
-      ${
-        searchTerm
-          ? "AND (LOWER(uf.label) LIKE $2 )"
-          : ""
-      }
+      ${searchTerm ? "AND (LOWER(uf.label) LIKE $2 )" : ""}
     `;
     const countParams = searchTerm ? [projectId, searchTerm] : [projectId];
     const countResult = await pool.query(countQuery, countParams);
