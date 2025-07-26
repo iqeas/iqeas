@@ -118,7 +118,7 @@ export const RFCDashboard = () => {
   const [detailsProject, setDetailsProject] = useState(null);
   const [moreInfoProject, setMoreInfoProject] = useState(null);
   const [moreInfoForm, setMoreInfoForm] = useState({
-    files: [{ label: "", file: null }],
+    files: [],
     notes: "",
     enquiry: "",
   });
@@ -700,7 +700,7 @@ export const RFCDashboard = () => {
                     </ul>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mb-4">
+                {/* <div className="flex items-center gap-2 mb-4">
                   <Switch
                     id="sendToEstimation"
                     checked={sendToEstimation}
@@ -709,7 +709,7 @@ export const RFCDashboard = () => {
                   <label htmlFor="sendToEstimation" className="text-sm">
                     Send to Estimation Department now
                   </label>
-                </div>
+                </div> */}
                 <div className="flex justify-between">
                   <Button variant="outline" onClick={prevStep}>
                     Back

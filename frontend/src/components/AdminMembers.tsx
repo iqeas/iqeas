@@ -49,9 +49,12 @@ export default function AdminMembers() {
     base_salary: "",
   });
   const [editUserId, setEditUserId] = useState(null);
+  const [search,setSearch] = useState()
 
   // Team state
   const [teams, setTeams] = useState<ITeam[]>([]);
+  const [page,setPage] = useState()
+  const pageSize = 20
   const [teamFormData, setTeamFormData] = useState({
     title: "",
     members: [],
@@ -78,7 +81,7 @@ export default function AdminMembers() {
     const fetchData = async () => {
       const response = await makeApiCall(
         "get",
-        API_ENDPOINT.GET_ALL_USERS,
+        API_ENDPOINT.GET_ALL_USERS(search, page, pageSize),
         {},
         "application/json",
         authToken,

@@ -191,7 +191,7 @@ export const EstimationDashboard = () => {
       toast.error(`Please fill: ${missing[0]}`);
       return;
     }
-    if (!approvedForm.costBreakdownFile || approvedForm.estimationFile) {
+    if (!approvedForm.costBreakdownFile || !approvedForm.estimationFile) {
       toast.error(`Please Select Cost Break Down and Estimation`);
       return;
     }
@@ -271,6 +271,7 @@ export const EstimationDashboard = () => {
   };
 
   const handleEditEstimation = async () => {
+    console.log("enter");
     const requiredFields = ["cost", "deadline", "approvalDate", "forward_id"];
     const missing = validateRequiredFields(approvedForm, requiredFields);
     if (missing.length > 0) {
@@ -560,6 +561,7 @@ export const EstimationDashboard = () => {
   const handleSentToAdmin = async (project) => {
     await changeProjectStatus(project, "sent_to_admin");
   };
+  console.log(editEstimationData);
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">

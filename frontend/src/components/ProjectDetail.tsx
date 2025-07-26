@@ -191,6 +191,64 @@ const ProjectTrack: React.FC = () => {
               )}
             </div>
           </div>
+          {Array.isArray(project.more_info) && project.more_info.length > 0 && (
+            <div className="px-6 py-4 border-b">
+              <div className="text-sm font-semibold text-blue-600 mb-3">
+                Additional Info
+              </div>
+              <div className="flex flex-col gap-4">
+                {project.more_info.map((info, index) => (
+                  <div
+                    key={info.id || index}
+                    className="border rounded-lg p-4 bg-slate-50 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-slate-600">
+                        Entry #{index + 1}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {new Date(info.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                      <div>
+                        <span className="font-medium text-slate-700">
+                          Enquiry:
+                        </span>{" "}
+                        <span className="text-slate-800 capitalize">
+                          {info.enquiry || "—"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-slate-700">
+                          Notes:
+                        </span>{" "}
+                        <span className="text-slate-800 capitalize">
+                          {info.notes || "—"}
+                        </span>
+                      </div>
+                    </div>
+                    {info.uploaded_files?.length > 0 && (
+                      <div>
+                        <div className="font-medium text-slate-700 mb-1">
+                          Uploaded Files:
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {info.uploaded_files.map((file, i) => (
+                            <ShowFile
+                              key={file.id || i}
+                              label={file.label}
+                              url={file.file}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Progression Bar */}
           <div className="px-6 py-4 flex items-center gap-3">
             <Progress
@@ -207,6 +265,7 @@ const ProjectTrack: React.FC = () => {
     {
       label: "Project Estimation",
       key: "estimation",
+      status: project.estimation_status,
       getCompleted: (project) =>
         project.estimation && project.estimation.sent_to_pm == true,
       renderContent: (project, stepStatus) => (
@@ -631,6 +690,7 @@ const ProjectTrack: React.FC = () => {
       API_ENDPOINT.EDIT_PROJECT(project.id),
       {
         estimation_status: "rejected",
+        status: "rejected",
       },
       "application/json",
       authToken,
@@ -731,6 +791,14 @@ const ProjectTrack: React.FC = () => {
               border = "border-2 border-blue-700";
               iconColor = "text-white";
               labelColor = "text-yellow-700 font-semibold";
+              shadow = "shadow-lg";
+            }
+            const status = step.status;
+            if (status == "rejected") {
+              circleColor = "bg-red-500 text-white";
+              border = "border-2 border-red-600";
+              iconColor = "text-white";
+              labelColor = "text-red-700 font-semibold";
               shadow = "shadow-lg";
             }
             return (

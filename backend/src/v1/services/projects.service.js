@@ -1288,9 +1288,6 @@ export async function getWorkerProjectDetail(userId, projectId) {
 
   return row
 }
-
-
-
 export async function getProjectDetailsById(projectId) {
   const query = `
     SELECT 
@@ -1327,7 +1324,7 @@ export async function getProjectDetailsById(projectId) {
         WHERE pdf.project_id = p.id
       ), '[]'::json) AS delivery_files,
 
-      -- Estimation (if any)
+      -- Estimation
       (
         SELECT json_build_object(
           'id', e.id,
@@ -1383,7 +1380,30 @@ export async function getProjectDetailsById(projectId) {
         JOIN users eu ON eu.id = e.user_id
         WHERE e.project_id = p.id
         LIMIT 1
-      ) AS estimation
+      ) AS estimation,
+
+      -- More Infos
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', mi.id,
+          'notes', mi.notes,
+          'enquiry', mi.enquiry,
+          'created_at', mi.created_at,
+          'updated_at', mi.updated_at,
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf.id,
+              'label', uf.label,
+              'file', uf.file
+            ))
+            FROM project_more_info_uploaded_files mifu
+            JOIN uploaded_files uf ON mifu.uploaded_file_id = uf.id
+            WHERE mifu.project_more_info_id = mi.id
+          ), '[]'::json)
+        ) ORDER BY mi.created_at DESC)
+        FROM project_more_info mi
+        WHERE mi.project_id = p.id
+      ), '[]'::json) AS more_info
 
     FROM projects p
     LEFT JOIN users u ON p.user_id = u.id
@@ -1394,7 +1414,6 @@ export async function getProjectDetailsById(projectId) {
   const result = await pool.query(query, [projectId]);
   return result.rows[0] || null;
 }
-
 export async function getPublicProjectDetails(token) {
   const query = `
     SELECT 
