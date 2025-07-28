@@ -6,6 +6,7 @@ interface IUser {
   phonenumber: string;
   role: string;
   active: boolean;
+  base_salary: string;
 }
 
 interface IUserList {
@@ -188,6 +189,7 @@ export type DrawingStageLog = {
   is_sent: boolean;
   action_taken: string;
   step_order: 1;
+  sent_to: IUser;
   created_by: { id: number; name: string };
   incoming_files: UploadedFile[];
   outgoing_files: UploadedFile[];

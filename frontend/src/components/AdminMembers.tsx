@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { API_ENDPOINT } from "@/config/backend";
 import Loading from "./atomic/Loading";
 import { ITeam, IUser } from "@/types/apiTypes";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,15 @@ import {
 } from "@/components/ui/dialog";
 import { useConfirmDialog } from "@/components/ui/alert-dialog";
 import toast from "react-hot-toast";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "./ui/pagination";
+import { isValidEmail, isValidPhoneNumber } from "@/lib/utils";
 
 const ROLES = [
   { value: "rfq", label: "RFQ" },
@@ -49,12 +58,13 @@ export default function AdminMembers() {
     base_salary: "",
   });
   const [editUserId, setEditUserId] = useState(null);
-  const [search,setSearch] = useState()
-
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 40;
   // Team state
   const [teams, setTeams] = useState<ITeam[]>([]);
-  const [page,setPage] = useState()
-  const pageSize = 20
+  const [page, setPage] = useState(1);
   const [teamFormData, setTeamFormData] = useState({
     title: "",
     members: [],
@@ -90,13 +100,13 @@ export default function AdminMembers() {
       console.log(response.data);
       if (response.status == 200) {
         setUsers(response.data.users);
-        setTeams(response.data.teams);
+        setTotalPages(response.data.total_pages);
       } else {
         toast.error("Failed to fetch users");
       }
     };
     fetchData();
-  }, []);
+  }, [page, search]);
   // Add user
   const handleAddUser = async (e) => {
     e.preventDefault();
@@ -108,6 +118,14 @@ export default function AdminMembers() {
       !userFormData.base_salary
     ) {
       toast.error("fill all the field");
+      return;
+    }
+    if (!isValidEmail(userFormData.email)) {
+      toast.error("Please enter valid email.");
+      return;
+    }
+    if (!isValidPhoneNumber(userFormData.phoneNumber)) {
+      toast.error("Phone number must be 10  ");
       return;
     }
     const response = await makeApiCall(
@@ -335,7 +353,7 @@ export default function AdminMembers() {
     }
   };
 
-  if (!isFetched || (fetching && fetchType == "getUser")) {
+  if (!isFetched) {
     return <Loading full />;
   }
   return (
@@ -347,6 +365,34 @@ export default function AdminMembers() {
           Add User
         </Button>
       </div>
+      <div className="mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="flex w-full sm:w-80 items-center gap-2">
+          <Input
+            className="w-full border rounded-md px-3 py-2"
+            placeholder="Search by Project Name, Project ID"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                setSearch(query);
+                setPage(1);
+              }
+            }}
+          />
+          <button
+            className="flex items-center gap-1 px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium"
+            onClick={() => {
+              setSearch(query);
+              setPage(1);
+            }}
+            aria-label="Search"
+          >
+            <Search className="w-4 h-4" />
+            <span>Search</span>
+          </button>
+        </div>
+      </div>
+
       <Dialog
         open={userModal.open}
         onOpenChange={(open) => setUserModal((m) => ({ ...m, open }))}
@@ -385,6 +431,7 @@ export default function AdminMembers() {
             <div className="md:col-span-1">
               <Input
                 placeholder="Phone"
+                type="number"
                 value={userFormData.phoneNumber}
                 onChange={(e) =>
                   setUserFormData((u) => ({
@@ -398,6 +445,7 @@ export default function AdminMembers() {
               <Input
                 placeholder="Base Salary"
                 type="number"
+                min={0}
                 value={userFormData.base_salary}
                 onChange={(e) =>
                   setUserFormData((u) => ({
@@ -458,7 +506,7 @@ export default function AdminMembers() {
       <div className="mb-10">
         <h3 className="font-semibold mb-2">Users</h3>
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border rounded-xl">
+          <table className="min-w-full bg-white border rounded-xl ">
             <thead>
               <tr className="bg-slate-100 text-slate-700 text-sm">
                 <th className="p-2 text-left">Name</th>
@@ -471,45 +519,99 @@ export default function AdminMembers() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-b last:border-0">
-                  <td className="p-2">{u.name}</td>
-                  <td className="p-2">{u.email}</td>
-                  <td className="p-2">{u.phonenumber}</td>
-                  <td className="p-2">{u.base_salary}</td>
-                  <td className="p-2 text-center">
-                    <Switch
-                      checked={u.active}
-                      onCheckedChange={() => handleToggleActive(u.id)}
-                    />
-                  </td>
-                  <td className="p-2 text-center">
-                    <Badge>
-                      {ROLES.find((r) => r.value === u.role)?.label || u.role}
-                    </Badge>
-                  </td>
-                  <td className="p-2 text-center flex items-center justify-center gap-2">
-                    <button
-                      className="text-blue-600 hover:bg-blue-50 rounded p-1"
-                      title="Edit User"
-                      onClick={() => openUserModal(u)}
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button
-                      className="text-red-600 hover:bg-red-50 rounded p-1"
-                      title="Delete User"
-                      onClick={() => handleDeleteUser(u)}
-                    >
-                      <Trash2 size={18} />
-                    </button>
+              {fetching && fetchType == "getUser" && (
+                <tr className="border-b last:border-0">
+                  <td colSpan={7} className="p-2">
+                    <Loading full={false} />
                   </td>
                 </tr>
-              ))}
+              )}
+              {!(fetching && fetchType == "getUser") &&
+                users.map((u) => (
+                  <tr key={u.id} className="border-b last:border-0">
+                    <td className="p-2">{u.name}</td>
+                    <td className="p-2">{u.email}</td>
+                    <td className="p-2">{u.phonenumber}</td>
+                    <td className="p-2">{u.base_salary}</td>
+                    <td className="p-2 text-center">
+                      <Switch
+                        checked={u.active}
+                        onCheckedChange={() => handleToggleActive(u.id)}
+                      />
+                    </td>
+                    <td className="p-2 text-center">
+                      <Badge>
+                        {ROLES.find((r) => r.value === u.role)?.label || u.role}
+                      </Badge>
+                    </td>
+                    <td className="p-2 text-center flex items-center justify-center gap-2">
+                      <button
+                        className="text-blue-600 hover:bg-blue-50 rounded p-1"
+                        title="Edit User"
+                        onClick={() => openUserModal(u)}
+                      >
+                        <Pencil size={18} />
+                      </button>
+                      <button
+                        className="text-red-600 hover:bg-red-50 rounded p-1"
+                        title="Delete User"
+                        onClick={() => handleDeleteUser(u)}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && !fetching && (
+        <div className="mt-8 flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page > 1) setPage(page - 1);
+                  }}
+                  className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }).map((_, idx) => (
+                <PaginationItem key={idx}>
+                  <PaginationLink
+                    isActive={page === idx + 1}
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPage(idx + 1);
+                    }}
+                  >
+                    {idx + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page < totalPages) setPage(page + 1);
+                  }}
+                  className={
+                    page === totalPages ? "pointer-events-none opacity-50" : ""
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
       {/* <div className="flex items-center justify-between mb-6 mt-12">
         <h2 className="text-2xl font-bold">Team Management</h2>
         <Button onClick={() => openTeamModal()}>

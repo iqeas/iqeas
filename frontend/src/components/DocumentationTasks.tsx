@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
-import {
-  Mail,
-  Phone,
-  X,
-  FileText,
-  User,
-} from "lucide-react";
+import { Mail, Phone, X, FileText, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -32,7 +26,7 @@ export const DocumentationDashboard = () => {
   const { authToken } = useAuth();
   const { projectId } = useParams();
   const location = useLocation();
-  const [project,setProject] = useState<any>()
+  const [project, setProject] = useState<any>();
   const [tasks, setTasks] = useState<DocumentationTask[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -343,9 +337,7 @@ export const DocumentationDashboard = () => {
                     }
                     className="capitalize"
                   >
-                    {isTaskCompleted(task)
-                      ? task.action_taken
-                      : task.status}
+                    {isTaskCompleted(task) ? task.action_taken : task.status}
                   </Badge>
                 </div>
                 {/* Main Info */}
@@ -637,7 +629,7 @@ export const DocumentationDashboard = () => {
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-0 relative overflow-y-auto max-h-[90vh]">
               {/* Header */}
-              <div className="rounded-t-xl bg-gradient-to-r from-purple-600 to-purple-400 px-8 py-5 flex items-center gap-3 relative">
+              <div className="rounded-t-xl bg-gradient-to-r from-purple-600 to-purple-400 px-8 py-5 flex items-center gap-3 sticky top-0 z-10">
                 <FileText size={28} className="text-white" />
                 <h2 className="text-2xl font-bold text-white">
                   Documents Details
@@ -653,7 +645,7 @@ export const DocumentationDashboard = () => {
                 </button>
               </div>
               {/* Info Grid (task-specific only) */}
-              <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-4 text-base">
+              <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-4 text-base overflow-y-auto">
                 <div>
                   <span className="font-semibold text-slate-700">Drawing:</span>
                   <br />

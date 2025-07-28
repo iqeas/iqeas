@@ -47,9 +47,9 @@ export async function createUser(
   }
 
   const userResult = await client.query(
-    `INSERT INTO users (email, phoneNumber, name, role, password, active, user_id) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7,$8) 
-    RETURNING id, email, phoneNumber, name, role, active,base_salary`,
+    `INSERT INTO users (email, phoneNumber, name, role, password, active, user_id, base_salary) 
+   VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+   RETURNING id, email, phoneNumber, name, role, active, base_salary`,
     [
       email,
       phoneNumber,
@@ -136,7 +136,7 @@ export async function getAllUsers({ page = 1, size = 10, search = "" }) {
     params.length + 2
   }`;
   params.push(size, offset);
-
+  console.log(size,offset);
   const usersResult = await pool.query(baseQuery, params);
   const countResult = await pool.query(
     countQuery,

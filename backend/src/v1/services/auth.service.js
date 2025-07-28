@@ -46,9 +46,9 @@ export async function loginUser({ email, password }) {
   };
 }
 
-export async function sentForgotMail(email, client) {
+export async function sentForgotMail(email) {
   try {
-    const result = await client.query(
+    const result = await pool.query(
       "SELECT * FROM users WHERE email = $1 AND active = true",
       [email]
     );
@@ -61,7 +61,7 @@ export async function sentForgotMail(email, client) {
 
     const token = createForgotPasswordToken({ email });
     const resetUrl = `${process.env.FORGOT_PASSWORD_URL}?token=${token}`;
-
+    console.log(resetUrl,token);
     const emailSent = await sendForgotPasswordEmail(email, resetUrl);
     if (!emailSent) {
       return false;

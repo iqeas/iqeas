@@ -8,8 +8,12 @@ export default async function sendForgotPasswordEmail(to_email, url) {
       user: process.env.MAIL_ID,
       pass: process.env.MAIL_PASSWORD,
     },
+    tls:{
+      rejectUnauthorized:false
+    }
   });
-
+  console.log(process.env.MAIL_ID);
+  console.log(process.env.MAIL_PASSWORD);
   const mailOptions = {
     from: {
       name: "IQEAS ERP SYSTEM",

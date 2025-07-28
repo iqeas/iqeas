@@ -47,7 +47,7 @@ export const WorkerTasks = () => {
   const [project,setProject] = useState<any>()
   const [tasks, setTasks] = useState<WorkerTask[]>([]);
   const { makeApiCall, fetchType, fetching, isFetched } = useAPICall();
-  const { authToken } = useAuth();
+  const { authToken, user } = useAuth();
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const [totalPages, setTotalPages] = useState(1);
@@ -865,7 +865,7 @@ export const WorkerTasks = () => {
                   <SelectValue placeholder="Select User" />
                 </SelectTrigger>
                 <SelectContent>
-                  {workingUsers.map((user) => (
+                  {workingUsers.filter(item=>item.id!==user.id).map((user) => (
                     <SelectItem key={user.id} value={user.id.toString()}>
                       {user.name} ({user.role})
                     </SelectItem>

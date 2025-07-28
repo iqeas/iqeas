@@ -296,7 +296,7 @@ export async function getDrawingsWithLogs(projectId, stageId) {
         WHERE ff.drawing_id = d.id
       ), '[]'::json) AS final_files,
 
-      -- Drawing stage logs (ordered by created_at ASC)
+      -- Drawing stage logs with forwarded_user
       COALESCE((
         SELECT json_agg(log_entry ORDER BY log_entry->>'created_at')
         FROM (
@@ -311,11 +311,19 @@ export async function getDrawingsWithLogs(projectId, stageId) {
             'action_taken', l.action_taken,
             'created_at', l.created_at,
             'updated_at', l.updated_at, 
+
             'created_by', json_build_object(
-              'id', u.id,
-              'name', u.name,
-              'email', u.email
+              'id', u1.id,
+              'name', u1.name,
+              'email', u1.email
             ),
+
+            'sent_to', json_build_object(
+              'id', u2.id,
+              'name', u2.name,
+              'email', u2.email
+            ),
+
             'incoming_files', COALESCE((
               SELECT json_agg(json_build_object(
                 'id', uf1.id,
@@ -326,6 +334,7 @@ export async function getDrawingsWithLogs(projectId, stageId) {
               JOIN uploaded_files uf1 ON dslf1.uploaded_file_id = uf1.id
               WHERE dslf1.log_id = l.id AND dslf1.type = 'incoming'
             ), '[]'::json),
+
             'outgoing_files', COALESCE((
               SELECT json_agg(json_build_object(
                 'id', uf2.id,
@@ -336,9 +345,11 @@ export async function getDrawingsWithLogs(projectId, stageId) {
               JOIN uploaded_files uf2 ON dslf2.uploaded_file_id = uf2.id
               WHERE dslf2.log_id = l.id AND dslf2.type = 'outgoing'
             ), '[]'::json)
+
           ) AS log_entry
           FROM drawing_stage_logs l
-          LEFT JOIN users u ON l.created_by = u.id
+          LEFT JOIN users u1 ON l.created_by = u1.id
+          LEFT JOIN users u2 ON l.forwarded_user_id = u2.id
           WHERE l.drawing_id = d.id
           ORDER BY l.created_at ASC
         ) AS ordered_logs
@@ -871,6 +882,7 @@ export async function getUserAssignedTaskByLogId(logId) {
       JOIN projects p ON p.id = d.project_id
       JOIN users u ON u.id = l.created_by
       JOIN stages s ON s.id = d.stage_id
+      LEFT JOIN users fu ON fu.id = l.forwarded_user_id
       LEFT JOIN estimations e ON e.project_id = p.id
       WHERE l.id = $1
     )

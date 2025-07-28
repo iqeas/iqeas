@@ -46,6 +46,9 @@ const ProjectTrack: React.FC = () => {
   );
   const [showCorrectionDialog, setShowCorrectionDialog] = useState(false);
   const [correctionText, setCorrectionText] = useState("");
+  useEffect(() => {
+    document.getElementsByTagName("main")[0].style.overflowY = "hidden";
+  }, []);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -851,8 +854,8 @@ const ProjectTrack: React.FC = () => {
           })}
         </div>
       </div>
-      <div className="flex-1 flex justify-center items-start px-0 md:px-0  h-full">
-        <div className="w-full bg-white rounded-2xl shadow-xl p-2 md:p-8 border min-h-[30px] flex flex-col justify-start mt-2 h-full">
+      <div className="flex-1 flex justify-center items-start px-0 md:px-0  h-full  max-h-screen overflow-y-auto ">
+        <div className="w-full bg-white rounded-2xl shadow-xl p-2 md:p-8 border min-h-[30px] flex flex-col justify-start mt-2 ">
           {currentStep.renderContent(project, currentStep)}
         </div>
       </div>

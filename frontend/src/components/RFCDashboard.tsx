@@ -783,11 +783,14 @@ export const RFCDashboard = () => {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setSearchTerm(searchInput)}
+            onClick={() => {
+              setPage(1);
+              setSearchTerm(searchInput);
+            }}
             className="px-2"
             aria-label="Search"
           >
-            🔍
+            <Search size={18} />
           </Button>
         </div>
       </div>

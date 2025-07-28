@@ -69,8 +69,8 @@ const Submission = ({ projectId }) => {
   const [allStageConfigs, setAllStageConfigs] = useState(
     STAGES.map((stage) => ({
       name: stage,
-      weight: 0,
-      allocated_hours: 0,
+      weight: "",
+      allocated_hours: "",
     }))
   );
   const [sentToForm, setSentTOForm] = useState({
@@ -133,7 +133,7 @@ const Submission = ({ projectId }) => {
     setUserSelectedStage(false);
   }, [projectId]);
   useEffect(() => {
-    setLoadingStage(true)
+    setLoadingStage(true);
     const stageId = stageData[selectedStage]?.stage?.id;
     if (selectedStage && stageId) {
       fetchStageDrawings(stageId);
@@ -210,9 +210,8 @@ const Submission = ({ projectId }) => {
         },
       }));
     }
-    setLoadingStage(false)
+    setLoadingStage(false);
     setIsSetDrawing(true);
-
   };
 
   // Get current workflow step for a drawing
@@ -417,7 +416,7 @@ const Submission = ({ projectId }) => {
   };
   const validateConfigForm = () => {
     const allFilled = allStageConfigs.every(
-      (cfg) => cfg.weight > 0 && cfg.allocated_hours > 0
+      (cfg: any) => cfg.weight > 0 && cfg.allocated_hours > 0
     );
     const totalWeight = allStageConfigs.reduce(
       (sum, cfg) => sum + Number(cfg.weight),
@@ -489,7 +488,7 @@ const Submission = ({ projectId }) => {
       return;
     }
     if (sentToSelectedFiles.length == 0) {
-      toast.success("Choose at least one file to sent");
+      toast.error("Choose at least one file to sent");
       return;
     }
     const data = {
@@ -645,7 +644,7 @@ const Submission = ({ projectId }) => {
   const handleSendToDocumentation = async () => {
     const task = stageData[selectedStage].drawingLogs[0];
     if (sentToSelectedFiles.length == 0) {
-      toast.success("Choose at least one file to sent");
+      toast.error("Choose at least one file to sent");
       return;
     }
     const data = {
@@ -706,7 +705,7 @@ const Submission = ({ projectId }) => {
   const handleBackToChecking = async () => {
     const task = stageData[selectedStage].drawingLogs[0];
     if (sentToSelectedFiles.length == 0) {
-      toast.success("Choose at least one file to sent");
+      toast.error("Choose at least one file to sent");
       return;
     }
     const data = {
@@ -785,7 +784,7 @@ const Submission = ({ projectId }) => {
       toast.error("Failed to fetch drafting users");
     }
   };
-  
+
   return (
     <div className="w-full mx-auto p-4 z-50">
       {/* If no stages exist, show set weightage button/form */}
@@ -1007,6 +1006,7 @@ const Submission = ({ projectId }) => {
                   )}
               </div>
               {/* Complete Workflow Timeline */}
+              <div></div>
               {(stageData[selectedStage]?.drawingLogs as any[]).length > 0 && (
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex justify-between items-center mb-2">
@@ -1019,7 +1019,7 @@ const Submission = ({ projectId }) => {
                       Scroll to see all actions
                     </div>
                   </div>
-                  <div className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  <div className="max-h-full  space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                     {(
                       stageData[selectedStage]?.drawingLogs as DrawingStageLog[]
                     ).map((log, index) => {
@@ -1089,11 +1089,14 @@ const Submission = ({ projectId }) => {
                                 </div>
                               )}
                               <div className="text-gray-700 mb-2">
+                                Assigned to : {log.sent_to.name}
+                              </div>
+                              <div className="text-gray-700 mb-2">
                                 Notes: {log.notes}
                               </div>
                             </div>
                             <div className="flex flex-col justify-end items-end">
-                              <div className="flex gap-2 items-center">
+                              <div className="flex gap-2 items-center max-sm:flex-col flex-row">
                                 <span
                                   className={`px-2 py-1 rounded text-xs font-medium capitalize ${statusBadge}`}
                                 >
@@ -1317,7 +1320,7 @@ const Submission = ({ projectId }) => {
                     value={config.weight}
                     onChange={(e) => {
                       const val = parseFloat(e.target.value) || 0;
-                      setAllStageConfigs((prev) =>
+                      setAllStageConfigs((prev: any) =>
                         prev.map((c, i) =>
                           i === idx ? { ...c, weight: val } : c
                         )
@@ -1336,7 +1339,7 @@ const Submission = ({ projectId }) => {
                     value={config.allocated_hours}
                     onChange={(e) => {
                       const val = parseInt(e.target.value) || 0;
-                      setAllStageConfigs((prev) =>
+                      setAllStageConfigs((prev: any) =>
                         prev.map((c, i) =>
                           i === idx ? { ...c, allocated_hours: val } : c
                         )

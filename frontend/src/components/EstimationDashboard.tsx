@@ -12,6 +12,7 @@ import {
   Mail as MailIcon,
   X,
   StickyNote,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -638,25 +639,31 @@ export const EstimationDashboard = () => {
       </div>
 
       {/* Search and Pagination */}
-      <div className="flex items-center gap-2 mb-6">
-        <input
-          className="border rounded px-2 py-1 w-full"
-          type="text"
-          placeholder="Search by client, project ID, or deliverable..."
+      <div className=" relative flex items-center gap-2 mb-6">
+        <Search
+          size={18}
+          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+        />
+        <Input
+          placeholder="Search RFQs by client name or project ID..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") setSearchTerm(searchInput);
           }}
+          className="pl-10"
         />
         <Button
           size="sm"
           variant="outline"
-          onClick={() => setSearchTerm(searchInput)}
+          onClick={() => {
+            setPage(1);
+            setSearchTerm(searchInput);
+          }}
           className="px-2"
           aria-label="Search"
         >
-          🔍
+          <Search size={18} />
         </Button>
       </div>
 
@@ -768,7 +775,12 @@ export const EstimationDashboard = () => {
                   <div className="flex justify-between mb-2">
                     <span className="text-sm text-slate-500">Progress</span>
                     <span className="text-sm font-medium">
-                      {project.progress}%
+                      {["rejected", "approved"].includes(
+                        project.estimation_status
+                      )
+                        ? 100
+                        : project.progress}
+                      %
                     </span>
                   </div>
                   <Progress
@@ -971,7 +983,7 @@ export const EstimationDashboard = () => {
 
       {/* Project Modal */}
       {selectedProject && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 ">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative ">
             <button
               className="absolute top-2 right-2"
@@ -1265,7 +1277,9 @@ export const EstimationDashboard = () => {
                     Received Date:
                   </span>
                   <br />
-                  {rfcDetailsProject.received_date}
+                  {new Date(
+                    rfcDetailsProject.received_date
+                  ).toLocaleDateString()}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
@@ -1302,18 +1316,18 @@ export const EstimationDashboard = () => {
                     style={{ textDecoration: "none" }}
                   >
                     <PhoneIcon size={18} className="text-green-500" />
-                    {rfcDetailsProject.contact_phone}
+                    {rfcDetailsProject.contact_person_phone}
                   </a>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-700">Email:</span>
                   <a
-                    href={`mailto:${rfcDetailsProject.contact_email}`}
+                    href={`mailto:${rfcDetailsProject.contact_person_email}`}
                     className="inline-flex items-center gap-1 border border-blue-200 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 transition-colors text-sm font-medium outline-none focus:ring-2 focus:ring-blue-400"
                     style={{ textDecoration: "none" }}
                   >
                     <MailIcon size={18} className="text-rose-500" />
-                    {rfcDetailsProject.contact_email}
+                    {rfcDetailsProject.contact_person_email}
                   </a>
                 </div>
               </div>
@@ -1550,7 +1564,7 @@ export const EstimationDashboard = () => {
               <Calculator size={28} className="text-white" />
               <h2 className="text-2xl font-bold text-white">Estimation Data</h2>
               <span className="ml-auto text-white/80 font-mono text-sm pr-3">
-                {viewEstimationProject.id}
+                {/* {viewEstimationProject.id} */}
               </span>
             </div>
             <div className="p-8 overflow-y-auto max-h-[90vh]">
@@ -1605,18 +1619,7 @@ export const EstimationDashboard = () => {
                     <span className="text-slate-400">-</span>
                   )}
                 </div>
-                <div>
-                  <span className="font-semibold text-slate-700">
-                    Forward Type:
-                  </span>
-                  <br />
-                  {viewEstimationProject.estimation.forwarded_to?.type ??
-                    viewEstimationProject.forwarded_to?.type ?? (
-                      <span className="text-slate-400 capitalize">
-                        {viewEstimationProject.forwarded_to?.type}
-                      </span>
-                    )}
-                </div>
+
                 <div>
                   <span className="font-semibold text-slate-700">
                     Forward To:

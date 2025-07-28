@@ -16,7 +16,14 @@ import { sentForgotMail } from "../services/auth.service.js";
 export const createNewUser = async (req, res) => {
   const { email, phoneNumber, name, role, active,base_salary } = req.body;
 
-  if (!email || !phoneNumber || !name || !role || active === null) {
+  if (
+    !email ||
+    !phoneNumber ||
+    !name ||
+    !role ||
+    !base_salary ||
+    active === null
+  ) {
     return res.status(400).json(
       formatResponse({
         statusCode: 400,
@@ -100,10 +107,11 @@ export const toggleUserStatus = async (req, res) => {
 export const getUsersController = async (req, res) => {
   try {
     const { page = 1, size = 10, search = "" } = req.query;
+    console.log(page,size,search);
     const data = await getAllUsers({
-      page:page,
-      search:search,
-      size:size
+      page: parseInt(page),
+      search: search,
+      size: parseInt(size),
     });
 
     return res.status(200).json(

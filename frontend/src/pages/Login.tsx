@@ -44,8 +44,8 @@ const Login = () => {
       "post",
       API_ENDPOINT.LOGIN,
       {
-        email,
-        password,
+        email: email.trim(),
+        password: password.trim(),
       },
       "application/json",
       undefined,
@@ -87,7 +87,7 @@ const Login = () => {
       if (response.status === 200 || response.status === 201) {
         toast.success("Password reset link has been sent to your email");
       } else {
-        toast.error("Failed to sent email, please try again");
+        toast.error("This user is either not exist or not active");
       }
     } catch (error) {
       toast.error("An error occurred. Please try again.");
