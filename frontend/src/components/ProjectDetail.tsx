@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useConfirmDialog } from "./ui/alert-dialog";
 
 const ProjectTrack: React.FC = () => {
   const { projectId } = useParams();
@@ -36,6 +37,8 @@ const ProjectTrack: React.FC = () => {
   const { makeApiCall, fetching, fetchType, isFetched } = useAPICall();
   const { authToken, user } = useAuth();
   const isAdmin = user.role == "admin";
+  const confirmDialog = useConfirmDialog();
+
   const [selectedStepIdx, setSelectedStepIdx] = useState(null);
   type DeliveryFile = { id: number; label: string; url: string };
   const [files, setFiles] = useState<DeliveryFile[]>([]); // Store files for delivery
@@ -433,7 +436,8 @@ const ProjectTrack: React.FC = () => {
                             className="text-blue-400 shrink-0"
                           />
                           <span className="font-semibold text-blue-800 text-xs md:text-sm ">
-                            Correction #{corr.id}
+                            Correction #
+                            {project.estimation.corrections.length - i}
                           </span>
                         </div>
                         <div
@@ -497,44 +501,46 @@ const ProjectTrack: React.FC = () => {
                 open={showCorrectionDialog}
                 onOpenChange={setShowCorrectionDialog}
               >
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
+                <DialogContent>
+                  <DialogHeader className="px-6 py-4">
                     <DialogTitle>Correction Request</DialogTitle>
                   </DialogHeader>
-                  <div className="mb-4">
-                    <label className="block font-medium mb-1">
-                      Correction Details
-                    </label>
-                    <textarea
-                      className="border rounded w-full p-2 text-sm"
-                      rows={3}
-                      value={correctionText}
-                      onChange={(e) => setCorrectionText(e.target.value)}
-                      placeholder="Enter correction details..."
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowCorrectionDialog(false)}
-                      disabled={
-                        fetching && fetchType == "createEstimationCorrection"
-                      }
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                      onClick={handleCorrectionRequest}
-                      loading={
-                        fetching && fetchType == "createEstimationCorrection"
-                      }
-                      disabled={
-                        fetching && fetchType == "createEstimationCorrection"
-                      }
-                    >
-                      Send Correction
-                    </Button>
+                  <div className="p-6">
+                    <div className="mb-4 ">
+                      <label className="block font-medium mb-1">
+                        Correction Details
+                      </label>
+                      <textarea
+                        className="border rounded w-full p-2 text-sm"
+                        rows={3}
+                        value={correctionText}
+                        onChange={(e) => setCorrectionText(e.target.value)}
+                        placeholder="Enter correction details..."
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowCorrectionDialog(false)}
+                        disabled={
+                          fetching && fetchType == "createEstimationCorrection"
+                        }
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                        onClick={handleCorrectionRequest}
+                        loading={
+                          fetching && fetchType == "createEstimationCorrection"
+                        }
+                        disabled={
+                          fetching && fetchType == "createEstimationCorrection"
+                        }
+                      >
+                        Send Correction
+                      </Button>
+                    </div>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -686,28 +692,35 @@ const ProjectTrack: React.FC = () => {
     }
   };
 
-  // Handler for admin actions
   const handleCloseProject = async () => {
-    const response = await makeApiCall(
-      "patch",
-      API_ENDPOINT.EDIT_PROJECT(project.id),
-      {
-        estimation_status: "rejected",
-        status: "rejected",
-      },
-      "application/json",
-      authToken,
-      `EditCloseProject`
-    );
-    if (response.status == 200) {
-      setProject({
-        ...project,
-        estimation_status: response.data.estimation_status,
-        progress: response.data.progress,
-      });
-      toast.success("Successfully marked as closed");
-    } else {
-      toast.error(`Failed to mark as closed`);
+    const confirmed = await confirmDialog({
+      title: "Close Project",
+      description: `Are you sure you want to close this project?`,
+      confirmText: "Close",
+      cancelText: "Cancel",
+    });
+    if (confirmed) {
+      const response = await makeApiCall(
+        "patch",
+        API_ENDPOINT.EDIT_PROJECT(project.id),
+        {
+          estimation_status: "rejected",
+          status: "rejected",
+        },
+        "application/json",
+        authToken,
+        `EditCloseProject`
+      );
+      if (response.status == 200) {
+        setProject({
+          ...project,
+          estimation_status: response.data.estimation_status,
+          progress: response.data.progress,
+        });
+        toast.success("Successfully marked as closed");
+      } else {
+        toast.error(`Failed to mark as closed`);
+      }
     }
   };
   const handleApproveProject = async () => {
@@ -854,12 +867,11 @@ const ProjectTrack: React.FC = () => {
           })}
         </div>
       </div>
-      <div className="flex-1 flex justify-center items-start px-0 md:px-0  h-full  max-h-screen overflow-y-auto ">
-        <div className="w-full bg-white rounded-2xl shadow-xl p-2 md:p-8 border min-h-[30px] flex flex-col justify-start mt-2 ">
+      <div className="flex-1 bg-white flex justify-center items-start px-0 md:px-0  h-full  max-h-screen overflow-y-auto ">
+        <div className="w-full bg-white rounded-2xl  p-2 md:p-8 border min-h-[30px] flex flex-col justify-start mt-2 ">
           {currentStep.renderContent(project, currentStep)}
         </div>
       </div>
-
       <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

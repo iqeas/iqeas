@@ -398,11 +398,13 @@ export default function AdminMembers() {
         onOpenChange={(open) => setUserModal((m) => ({ ...m, open }))}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="px-6 py-5">
             <DialogTitle>
               {userModal.edit ? "Edit User" : "Add User"}
             </DialogTitle>
           </DialogHeader>
+          <div className="p-6">
+
           <form
             className="flex flex-col space-y-7"
             onSubmit={userModal.edit ? handleEditUser : handleAddUser}
@@ -501,6 +503,7 @@ export default function AdminMembers() {
               </Button>
             </div>
           </form>
+          </div>
         </DialogContent>
       </Dialog>
       <div className="mb-10">
@@ -612,23 +615,19 @@ export default function AdminMembers() {
           </Pagination>
         </div>
       )}
-      {/* <div className="flex items-center justify-between mb-6 mt-12">
-        <h2 className="text-2xl font-bold">Team Management</h2>
-        <Button onClick={() => openTeamModal()}>
-          <Plus className="mr-2" />
-          Add Team
-        </Button>
-      </div> */}
+      
       <Dialog
         open={teamModal.open}
         onOpenChange={(open) => setTeamModal((m) => ({ ...m, open }))}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>
               {teamModal.edit ? "Edit Team" : "Add Team"}
             </DialogTitle>
           </DialogHeader>
+          <div className="p-6">
+
           <form
             className="flex flex-col space-y-7"
             onSubmit={teamModal.edit ? handleEditTeam : handleAddTeam}
@@ -775,6 +774,7 @@ export default function AdminMembers() {
               </Button>
             </div>
           </form>
+          </div>
         </DialogContent>
       </Dialog>
       {/* <div>

@@ -20,6 +20,7 @@ import type { DocumentationTask } from "@/types/apiTypes";
 import Loading from "./atomic/Loading";
 import toast from "react-hot-toast";
 import { useLocation, useParams } from "react-router-dom";
+import { toReadableText } from "@/utils/utils";
 
 export const DocumentationDashboard = () => {
   const { makeApiCall, fetching, fetchType, isFetched } = useAPICall();
@@ -337,16 +338,20 @@ export const DocumentationDashboard = () => {
                     }
                     className="capitalize"
                   >
-                    {isTaskCompleted(task) ? task.action_taken : task.status}
+                    {isTaskCompleted(task)
+                      ? toReadableText(task.action_taken)
+                      : toReadableText(task.status)}
                   </Badge>
                 </div>
                 {/* Main Info */}
                 <div className="flex flex-wrap gap-4 text-sm text-slate-700">
                   <div>
-                    <span className="font-medium">Step:</span> {task.step_name}
+                    <span className="font-medium capitalize">Step:</span>{" "}
+                    {toReadableText(task.step_name)}
                   </div>
                   <div>
-                    <span className="font-medium">Status:</span> {task.status}
+                    <span className="font-medium capitalize">Status:</span>{" "}
+                    {toReadableText(task.status)}
                   </div>
                   <div>
                     <span className="font-medium capitalize">
@@ -484,11 +489,11 @@ export const DocumentationDashboard = () => {
         open={rejectModal.open}
         onOpenChange={() => setRejectModal({ open: false, task: null })}
       >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Reject Drawing</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 p-6">
             <Textarea
               placeholder="Enter rejection note..."
               value={rejectNotes}
@@ -565,11 +570,11 @@ export const DocumentationDashboard = () => {
           setBackToApprovalModal({ open: false, task: null });
         }}
       >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Back to Approval</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 p-6">
             <Textarea
               placeholder="Enter notes for back to approval..."
               value={backToApprovalNotes}
@@ -625,112 +630,110 @@ export const DocumentationDashboard = () => {
 
       {/* View Project Detail Modal (now only task-specific details) */}
       <Dialog open={!!viewDetail} onOpenChange={() => setViewDetail(null)}>
-        {!!viewDetail && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-0 relative overflow-y-auto max-h-[90vh]">
-              {/* Header */}
-              <div className="rounded-t-xl bg-gradient-to-r from-purple-600 to-purple-400 px-8 py-5 flex items-center gap-3 sticky top-0 z-10">
-                <FileText size={28} className="text-white" />
-                <h2 className="text-2xl font-bold text-white">
-                  Documents Details
-                </h2>
-                <span className="ml-auto text-white/80 font-mono text-sm">
-                  {viewDetail.project_code}
-                </span>
-                <button
-                  className="fixed z-50 top-6 right-6 text-white/80 hover:text-white text-2xl font-bold bg-purple-700/80 rounded-full p-1 shadow-lg"
-                  onClick={() => setViewDetail(null)}
-                >
-                  <X />
-                </button>
-              </div>
-              {/* Info Grid (task-specific only) */}
-              <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-4 text-base overflow-y-auto">
+        <DialogContent className="w-full max-w-2xl p-0 overflow-hidden">
+          {/* Wrapper to handle max height and scroll */}
+
+          {/* Header */}
+          <DialogHeader className=" px-6 py-4 rounded-t-xl bg-gradient-to-r from-purple-600 to-purple-400 flex-row gap-3 sticky  items-center top-0 z-10">
+            <FileText size={28} className="text-white" />
+            <h2 className="text-2xl font-bold text-white">Documents Details</h2>
+          </DialogHeader>
+          <div className="p-6">
+            {/* Scrollable Body */}
+            <div className="overflow-y-auto">
+              {/* Info Grid */}
+              <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-4 text-base">
                 <div>
                   <span className="font-semibold text-slate-700">Drawing:</span>
                   <br />
-                  {viewDetail.drawing_title}
+                  {viewDetail?.drawing_title}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
                     Submitted By:
                   </span>
                   <br />
-                  {viewDetail.drawing_uploaded_by_user.name}
+                  {viewDetail?.drawing_uploaded_by_user.name}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700">
                     Submission Date:
                   </span>
                   <br />
-                  {new Date(viewDetail.created_at).toLocaleString()}
+                  {new Date(viewDetail?.created_at).toLocaleString()}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-700 capitalize">
                     Status:
                   </span>
                   <br />
-                  {viewDetail.status}
+                  {viewDetail?.status}
                 </div>
               </div>
+
               <hr className="mx-8" />
+
               {/* Notes Section */}
               <div className="mx-8 my-4 bg-slate-100 rounded p-3 text-slate-800 min-h-[40px]">
-                {viewDetail.notes ? (
+                {viewDetail?.notes ? (
                   viewDetail.notes
                 ) : (
                   <span className="text-slate-400">No notes</span>
                 )}
               </div>
-              {/* Uploaded Files Section */}
+
+              {/* Incoming Files */}
               <div className="mx-8 my-4">
                 <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
                   <FileText size={18} className="text-purple-500" />
                   Incoming Files:
                 </div>
                 <ul className="list-disc ml-8 space-y-1">
-                  {viewDetail.incoming_files &&
-                    viewDetail.incoming_files.length === 0 && (
-                      <li className="text-slate-400">No files uploaded</li>
-                    )}
-                  {viewDetail.incoming_files &&
-                    viewDetail.incoming_files.map((f, i) => (
-                      <li key={i}>
-                        <ShowFile label={f.label} url={f.file} size="medium" />
-                      </li>
-                    ))}
+                  {viewDetail?.incoming_files?.length === 0 && (
+                    <li className="text-slate-400">No files uploaded</li>
+                  )}
+                  {viewDetail?.incoming_files?.map((f, i) => (
+                    <li key={i}>
+                      <ShowFile label={f.label} url={f.file} size="medium" />
+                    </li>
+                  ))}
                 </ul>
               </div>
+
+              {/* Outgoing Files */}
               <div className="mx-8 my-4">
                 <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
                   <FileText size={18} className="text-purple-500" />
                   Outgoing Files:
                 </div>
                 <ul className="list-disc ml-8 space-y-1">
-                  {viewDetail.outgoing_files &&
-                    viewDetail.outgoing_files.length === 0 && (
-                      <li className="text-slate-400">No files uploaded</li>
-                    )}
-                  {viewDetail.outgoing_files &&
-                    viewDetail.outgoing_files.map((f, i) => (
-                      <li key={i}>
-                        <ShowFile label={f.label} url={f.file} size="medium" />
-                      </li>
-                    ))}
+                  {viewDetail?.outgoing_files?.length === 0 && (
+                    <li className="text-slate-400">No files uploaded</li>
+                  )}
+                  {viewDetail?.outgoing_files?.map((f, i) => (
+                    <li key={i}>
+                      <ShowFile label={f.label} url={f.file} size="medium" />
+                    </li>
+                  ))}
                 </ul>
               </div>
-              {viewDetail.status === "rejected" && viewDetail.reason && (
-                <div className="mt-2 text-red-700 font-semibold">
+
+              {/* Rejection Note */}
+              {viewDetail?.status === "rejected" && viewDetail.reason && (
+                <div className="mt-2 text-red-700 font-semibold mx-8">
                   Rejection Note: {viewDetail.reason}
                 </div>
               )}
-              {/* Project Related Documents Dropdown */}
+
+              {/* Related Documents */}
               <div className="mx-8 my-4">
                 <ProjectDocumentsDropdown
-                  documents={viewDetail.drawing_files}
+                  documents={viewDetail?.drawing_files}
                   title="Drawing Related Documents"
                 />
               </div>
+
+              {/* Close Button */}
               <div className="flex justify-end px-8 pb-6">
                 <Button variant="outline" onClick={() => setViewDetail(null)}>
                   Close
@@ -738,7 +741,7 @@ export const DocumentationDashboard = () => {
               </div>
             </div>
           </div>
-        )}
+        </DialogContent>
       </Dialog>
     </div>
   );

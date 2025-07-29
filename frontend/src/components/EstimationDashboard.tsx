@@ -46,6 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
@@ -319,6 +320,7 @@ export const EstimationDashboard = () => {
         existUploadedFiles.find((item) => item.label == "Cost Breakdown")
       );
     }
+
     for (const file of deletedFiles) {
       const data = await deleteFile(file.id);
     }
@@ -983,265 +985,266 @@ export const EstimationDashboard = () => {
 
       {/* Project Modal */}
       {selectedProject && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 ">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative ">
-            <button
-              className="absolute top-2 right-2"
-              onClick={() => {
-                resetEditEstimation();
-              }}
-            >
-              <X />
-            </button>
-            <h2 className="text-xl font-bold mb-4">
-              Estimation Workflow for {selectedProject.name}
-            </h2>
-            <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-              <div>
-                <label className="block font-medium">Cost Estimate (₹)</label>
-                <Input
-                  type="text"
-                  value={approvedForm.cost}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/^\d*$/.test(val)) {
-                      handleFieldChange("cost", val);
-                    }
-                  }}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">
-                  Cost Breakdown File (Excel/PDF)
-                </label>
-                <Input
-                  type="file"
-                  onChange={(e) => handleFileChange("costBreakdownFile", e)}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">
-                  Estimation PDF Upload
-                </label>
-                <Input
-                  type="file"
-                  onChange={(e) => handleFileChange("estimationFile", e)}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Deadline</label>
-                <Input
-                  type="date"
-                  value={approvedForm.deadline}
-                  onChange={(e) =>
-                    handleFieldChange("deadline", e.target.value)
-                  }
-                  className="w-44"
-                />
-                {selectedProject.setExpectedDeadline &&
-                  selectedProject.expectedDeadline !== "" &&
-                  (() => {
-                    const deadlineDate = parseISO(
-                      selectedProject.expectedDeadline
-                    );
-                    const now = new Date();
-                    const duration = intervalToDuration({
-                      start: now,
-                      end: deadlineDate,
-                    });
-                    const parts = [];
-                    if (duration.years)
-                      parts.push(
-                        `${duration.years} year${duration.years > 1 ? "s" : ""}`
-                      );
-                    if (duration.months)
-                      parts.push(
-                        `${duration.months} month${
-                          duration.months > 1 ? "s" : ""
-                        }`
-                      );
-                    if (duration.days)
-                      parts.push(
-                        `${duration.days} day${duration.days > 1 ? "s" : ""}`
-                      );
-                    return (
-                      <div className="mt-2 text-blue-700 font-medium bg-blue-50 rounded px-3 py-2 inline-block">
-                        {parts.length > 0
-                          ? `Time until deadline: ${parts.join(", ")}`
-                          : "Deadline is today!"}
-                      </div>
-                    );
-                  })()}
-              </div>
-              <div>
-                <label className="block font-medium">Approval Date</label>
-                <div className="flex gap-2 items-center">
+        <Dialog open={!!selectedProject} onOpenChange={resetEditEstimation}>
+          <DialogContent>
+            <DialogHeader className="px-6 py-4">
+              <h2 className="text-xl font-bold">
+                Estimation Workflow for {selectedProject.name}
+              </h2>
+            </DialogHeader>
+            <div className=" px-6 pb-4">
+              <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                {/* Cost Estimate */}
+                <div>
+                  <label className="block font-medium">Cost Estimate (₹)</label>
                   <Input
-                    type="date"
-                    value={approvedForm.approvalDate}
-                    onChange={(e) =>
-                      handleFieldChange("approvalDate", e.target.value)
-                    }
+                    type="text"
+                    value={approvedForm.cost}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^\d*$/.test(val)) {
+                        handleFieldChange("cost", val);
+                      }
+                    }}
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block font-medium">
-                  Forward To {users.map((item) => item.name)}
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <Select
-                    value={
-                      approvedForm.forward_id
-                        ? approvedForm.forward_id.toString()
-                        : ""
-                    }
-                    onValueChange={(value) => {
-                      setApprovedForm({ ...approvedForm, forward_id: value });
-                    }}
-                  >
-                    <SelectContent>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id.toString()}>
-                          <span className="capitalize">{u.name}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={approvedForm.forward_id}
-                    onValueChange={(value) => {
-                      setApprovedForm({ ...approvedForm, forward_id: value });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Leader" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id.toString()}>
-                          <span className="capitalize">{u.name}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+
+                {/* Cost Breakdown File */}
+                <div>
+                  <label className="block font-medium">
+                    Cost Breakdown File (Excel/PDF)
+                  </label>
+                  <Input
+                    type="file"
+                    onChange={(e) => handleFileChange("costBreakdownFile", e)}
+                  />
                 </div>
-              </div>
-              <div className="col-span-2">
-                <label className="block font-medium">Remarks / Notes</label>
-                <Input
-                  value={approvedForm.notes}
-                  onChange={(e) => handleFieldChange("notes", e.target.value)}
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block font-medium">
-                  Client Clarification Log
-                </label>
-                <Textarea
-                  placeholder="Enter clarification..."
-                  value={approvedForm.clientClarificationLog}
-                  onChange={(e) =>
-                    setApprovedForm((f) => ({
-                      ...f,
-                      clientClarificationLog: e.target.value,
-                    }))
-                  }
-                  rows={3}
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2">
-                  Uploaded Files
-                </label>
-                <Input
-                  type="file"
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    setEstimationFiles((prev) => [
-                      ...prev,
-                      ...files.map((file) => ({
-                        file,
-                        label: "",
-                        tempUrl: URL.createObjectURL(file),
-                      })),
-                    ]);
-                    e.target.value = "";
-                  }}
-                />
-                {estimationFiles.map((uf, idx) => (
-                  <div key={idx} className="flex items-center gap-2 mt-1">
+
+                {/* Estimation PDF */}
+                <div>
+                  <label className="block font-medium">
+                    Estimation PDF Upload
+                  </label>
+                  <Input
+                    type="file"
+                    onChange={(e) => handleFileChange("estimationFile", e)}
+                  />
+                </div>
+
+                {/* Deadline */}
+                <div>
+                  <label className="block font-medium">Deadline</label>
+                  <Input
+                    type="date"
+                    value={approvedForm.deadline}
+                    onChange={(e) =>
+                      handleFieldChange("deadline", e.target.value)
+                    }
+                    className="w-44"
+                  />
+                  {selectedProject.setExpectedDeadline &&
+                    selectedProject.expectedDeadline !== "" &&
+                    (() => {
+                      const deadlineDate = parseISO(
+                        selectedProject.expectedDeadline
+                      );
+                      const now = new Date();
+                      const duration = intervalToDuration({
+                        start: now,
+                        end: deadlineDate,
+                      });
+                      const parts = [];
+                      if (duration.years)
+                        parts.push(
+                          `${duration.years} year${
+                            duration.years > 1 ? "s" : ""
+                          }`
+                        );
+                      if (duration.months)
+                        parts.push(
+                          `${duration.months} month${
+                            duration.months > 1 ? "s" : ""
+                          }`
+                        );
+                      if (duration.days)
+                        parts.push(
+                          `${duration.days} day${duration.days > 1 ? "s" : ""}`
+                        );
+                      return (
+                        <div className="mt-2 text-blue-700 font-medium bg-blue-50 rounded px-3 py-2 inline-block">
+                          {parts.length > 0
+                            ? `Time until deadline: ${parts.join(", ")}`
+                            : "Deadline is today!"}
+                        </div>
+                      );
+                    })()}
+                </div>
+
+                {/* Approval Date */}
+                <div>
+                  <label className="block font-medium">Approval Date</label>
+                  <div className="flex gap-2 items-center">
                     <Input
-                      type="text"
-                      placeholder="Label"
-                      value={uf.label}
-                      disabled={typeof uf.file == "string"}
+                      type="date"
+                      value={approvedForm.approvalDate}
                       onChange={(e) =>
-                        setEstimationFiles((prev) =>
-                          prev.map((u, i) =>
-                            i === idx ? { ...u, label: e.target.value } : u
-                          )
-                        )
-                      }
-                      className={
-                        uf.label && uf.label.trim() ? "" : "border-red-400"
+                        handleFieldChange("approvalDate", e.target.value)
                       }
                     />
-                    <span className="text-xs">{uf.file?.name}</span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() =>
-                        setEstimationFiles((prev) =>
-                          prev.filter((_, i) => i !== idx)
-                        )
+                  </div>
+                </div>
+
+                {/* Forward To */}
+                <div>
+                  <label className="block font-medium">
+                    Forward To {users.map((item) => item.name)}
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <Select
+                      value={approvedForm.forward_id?.toString() || ""}
+                      onValueChange={(value) =>
+                        setApprovedForm({
+                          ...approvedForm,
+                          forward_id: value,
+                        })
                       }
                     >
-                      &times;
-                    </Button>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Leader" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((u) => (
+                          <SelectItem key={u.id} value={u.id.toString()}>
+                            <span className="capitalize">{u.name}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))}
+                </div>
+
+                {/* Remarks */}
+                <div className="col-span-2">
+                  <label className="block font-medium">Remarks / Notes</label>
+                  <Input
+                    value={approvedForm.notes}
+                    onChange={(e) => handleFieldChange("notes", e.target.value)}
+                  />
+                </div>
+
+                {/* Client Clarification Log */}
+                <div className="col-span-2">
+                  <label className="block font-medium">
+                    Client Clarification Log
+                  </label>
+                  <Textarea
+                    placeholder="Enter clarification..."
+                    value={approvedForm.clientClarificationLog}
+                    onChange={(e) =>
+                      setApprovedForm((f) => ({
+                        ...f,
+                        clientClarificationLog: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                  />
+                </div>
+
+                {/* File Upload */}
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-2">
+                    Uploaded Files
+                  </label>
+                  <Input
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      setEstimationFiles((prev) => [
+                        ...prev,
+                        ...files.map((file) => ({
+                          file,
+                          label: "",
+                          tempUrl: URL.createObjectURL(file),
+                        })),
+                      ]);
+                      e.target.value = "";
+                    }}
+                  />
+                  {estimationFiles.map((uf, idx) => (
+                    <div key={idx} className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="text"
+                        placeholder="Label"
+                        value={uf.label}
+                        disabled={typeof uf.file === "string"}
+                        onChange={(e) =>
+                          setEstimationFiles((prev) =>
+                            prev.map((u, i) =>
+                              i === idx ? { ...u, label: e.target.value } : u
+                            )
+                          )
+                        }
+                        className={uf.label?.trim() ? "" : "border-red-400"}
+                      />
+                      <span className="text-xs">{uf.file?.name}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setEstimationFiles((prev) =>
+                            prev.filter((_, i) => i !== idx)
+                          )
+                        }
+                      >
+                        &times;
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-4 gap-2">
+                <Button
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={
+                    editEstimationData ? handleEditEstimation : SubmitEstimation
+                  }
+                  loading={
+                    fetching &&
+                    [
+                      "createEstimation",
+                      "uploadFile",
+                      "deleteFile",
+                      "editEstimation",
+                    ].includes(fetchType)
+                  }
+                >
+                  Submit
+                </Button>
               </div>
             </div>
-            <div className="flex justify-end mt-4 gap-2">
-              <Button
-                className={`bg-green-600 hover:bg-green-700 `}
-                onClick={
-                  editEstimationData ? handleEditEstimation : SubmitEstimation
-                }
-                loading={
-                  fetching &&
-                  (fetchType == "createEstimation" ||
-                    fetchType == "uploadFile" ||
-                    fetchType == "deleteFile" ||
-                    fetchType == "editEstimation")
-                }
-              >
-                Submit
-              </Button>
-            </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* RFC Details Modal */}
       {rfcDetailsProject && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-0 relative ">
-            <button
-              className="absolute top-4 right-4"
-              onClick={() => setRfcDetailsProject(null)}
-            >
-              <X size={22} />
-            </button>
-            <div className="rounded-t-xl bg-gradient-to-r from-blue-600 to-blue-400 px-8 py-5 flex items-center gap-3">
+        <Dialog
+          open={!!rfcDetailsProject}
+          onOpenChange={() => setRfcDetailsProject(null)}
+        >
+          <DialogContent className="w-full max-w-2xl p-0 bg-white rounded-xl shadow-2xl">
+            {/* Sticky Header */}
+            <DialogHeader className="rounded-t-xl bg-gradient-to-r from-blue-600 to-blue-400 px-8 py-5 flex flex-row items-center gap-3">
               <FileText size={28} className="text-white" />
               <h2 className="text-2xl font-bold text-white">RFQ Team Data</h2>
               <span className="ml-auto text-white/80 font-mono text-sm pr-3">
-                {rfcDetailsProject.project_id}
+                {rfcDetailsProject?.project_id}
               </span>
-            </div>
+            </DialogHeader>
+
+            {/* Scrollable Body */}
             <div className="p-8 overflow-y-auto max-h-[90vh]">
               <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-base">
                 <div>
@@ -1298,6 +1301,7 @@ export const EstimationDashboard = () => {
                   </div>
                 )}
               </div>
+
               <div className="my-6 border-t pt-6 grid grid-cols-2 gap-x-8 gap-y-4 text-base">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-700">
@@ -1313,7 +1317,6 @@ export const EstimationDashboard = () => {
                   <a
                     href={`tel:${rfcDetailsProject.contact_phone}`}
                     className="inline-flex items-center gap-1 border border-blue-200 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 transition-colors text-sm font-medium outline-none focus:ring-2 focus:ring-blue-400"
-                    style={{ textDecoration: "none" }}
                   >
                     <PhoneIcon size={18} className="text-green-500" />
                     {rfcDetailsProject.contact_person_phone}
@@ -1324,13 +1327,13 @@ export const EstimationDashboard = () => {
                   <a
                     href={`mailto:${rfcDetailsProject.contact_person_email}`}
                     className="inline-flex items-center gap-1 border border-blue-200 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 transition-colors text-sm font-medium outline-none focus:ring-2 focus:ring-blue-400"
-                    style={{ textDecoration: "none" }}
                   >
                     <MailIcon size={18} className="text-rose-500" />
                     {rfcDetailsProject.contact_person_email}
                   </a>
                 </div>
               </div>
+
               <div className="my-6 border-t pt-6">
                 <div className="bg-slate-100 rounded p-3 text-slate-800 min-h-[40px]">
                   {rfcDetailsProject.notes || (
@@ -1338,6 +1341,7 @@ export const EstimationDashboard = () => {
                   )}
                 </div>
               </div>
+
               <div className="my-6 border-t pt-6">
                 <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
                   <FileText size={18} className="text-blue-500" />
@@ -1358,14 +1362,14 @@ export const EstimationDashboard = () => {
                     ))}
                 </ul>
               </div>
+
               <div className="my-6 border-t pt-6">
                 <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
                   <AlertCircle size={18} className="text-yellow-500" />
                   RFC Updates:
                 </div>
                 <div className="space-y-2">
-                  {rfcDetailsProject.add_more_infos &&
-                  rfcDetailsProject.add_more_infos.length > 0 ? (
+                  {rfcDetailsProject.add_more_infos?.length > 0 ? (
                     <div className="space-y-4">
                       {rfcDetailsProject.add_more_infos.map((info, idx) => (
                         <div
@@ -1397,10 +1401,9 @@ export const EstimationDashboard = () => {
                   )}
                 </div>
               </div>
-              {/* Rejection Section */}
-              {(rfcDetailsProject.project_rejection &&
-                rfcDetailsProject.project_rejection.length > 0) ||
-              rfcDetailsProject.estimation_status === "rejected" ? (
+
+              {(rfcDetailsProject.project_rejection ||
+                rfcDetailsProject.estimation_status === "rejected") && (
                 <div className="my-6 border-t pt-6">
                   <div className="font-semibold text-red-700 mb-1 flex items-center gap-2">
                     <AlertCircle size={18} className="text-red-500" />
@@ -1412,9 +1415,8 @@ export const EstimationDashboard = () => {
                         {rfcDetailsProject.project_rejection.note}
                       </div>
                       <ul className="list-disc ml-8 space-y-1">
-                        {rfcDetailsProject.project_rejection.uploaded_files &&
-                        rfcDetailsProject.project_rejection.uploaded_files
-                          .length > 0 ? (
+                        {rfcDetailsProject.project_rejection.uploaded_files
+                          ?.length > 0 ? (
                           rfcDetailsProject.project_rejection.uploaded_files.map(
                             (f, i) => (
                               <li key={i}>
@@ -1434,41 +1436,35 @@ export const EstimationDashboard = () => {
                     </div>
                   )}
                 </div>
-              ) : null}
-              <div className="flex justify-end mt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => setRfcDetailsProject(null)}
-                >
-                  Close
-                </Button>
-              </div>
+              )}
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {showReadyPrompt && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white border border-green-400 rounded-lg shadow-lg p-8 max-w-md w-full flex flex-col items-center">
-            <CheckCircle className="text-green-600 mb-2" size={40} />
-            <div className="text-lg font-semibold mb-2 text-green-700">
-              Client Approved!
+        <Dialog open={true} onOpenChange={() => setShowReadyPrompt(false)}>
+          <DialogContent className="max-w-md w-full p-8 border-green-400">
+            <div className="flex flex-col items-center">
+              <CheckCircle className="text-green-600 mb-2" size={40} />
+              <div className="text-lg font-semibold mb-2 text-green-700">
+                Client Approved!
+              </div>
+              <div className="mb-4 text-center text-slate-700">
+                You have approved the client, but haven't forwarded the project
+                to the Project Management Team.
+                <br />
+                Please click <b>Mark as Ready for Execution</b> to continue.
+              </div>
+              <Button
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => setShowReadyPrompt(false)}
+              >
+                OK
+              </Button>
             </div>
-            <div className="mb-4 text-center text-slate-700">
-              You have approved the client, but haven't forwarded the project to
-              the Project Management Team.
-              <br />
-              Please click <b>Mark as Ready for Execution</b> to continue.
-            </div>
-            <Button
-              className="bg-green-600 hover:bg-green-700"
-              onClick={() => setShowReadyPrompt(false)}
-            >
-              OK
-            </Button>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Reject Modal */}
@@ -1552,22 +1548,19 @@ export const EstimationDashboard = () => {
 
       {/* View Estimation Modal */}
       {viewEstimationProject && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-0 relative ">
-            <button
-              className="absolute top-4 right-4"
-              onClick={() => setViewEstimationProject(null)}
-            >
-              <X size={22} />
-            </button>
-            <div className="rounded-t-xl bg-gradient-to-r from-green-600 to-green-400 px-8 py-5 flex items-center gap-3">
+        <Dialog
+          open={!!viewEstimationProject}
+          onOpenChange={() => setViewEstimationProject(null)}
+        >
+          <DialogContent className="max-w-2xl p-0 ">
+            <DialogHeader className="rounded-t-xl bg-gradient-to-r from-green-600 to-green-400 px-8 py-5 flex flex-row items-center gap-3">
               <Calculator size={28} className="text-white" />
               <h2 className="text-2xl font-bold text-white">Estimation Data</h2>
-              <span className="ml-auto text-white/80 font-mono text-sm pr-3">
-                {/* {viewEstimationProject.id} */}
-              </span>
-            </div>
-            <div className="p-8 overflow-y-auto max-h-[90vh]">
+            </DialogHeader>
+            {/* Header */}
+
+            {/* Body */}
+            <div className="p-6">
               <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-base">
                 <div>
                   <span className="font-semibold text-slate-700">Cost:</span>
@@ -1619,7 +1612,6 @@ export const EstimationDashboard = () => {
                     <span className="text-slate-400">-</span>
                   )}
                 </div>
-
                 <div>
                   <span className="font-semibold text-slate-700">
                     Forward To:
@@ -1627,9 +1619,7 @@ export const EstimationDashboard = () => {
                   <br />
                   {viewEstimationProject.estimation?.forwarded_to?.label ??
                     viewEstimationProject.forwarded_to?.label ?? (
-                      <span className="text-slate-400">
-                        {viewEstimationProject.forwarded_to?.label}
-                      </span>
+                      <span className="text-slate-400">-</span>
                     )}
                 </div>
                 <div className="col-span-2">
@@ -1674,6 +1664,8 @@ export const EstimationDashboard = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Uploaded Files */}
               <div className="my-6 border-t pt-6">
                 <div className="font-semibold text-slate-700 mb-1 flex items-center gap-2">
                   <FileText size={18} className="text-green-500" />
@@ -1684,41 +1676,38 @@ export const EstimationDashboard = () => {
                     viewEstimationProject.estimation?.uploaded_files ||
                     viewEstimationProject.uploaded_files ||
                     []
-                  ).length === 0 && (
+                  ).length === 0 ? (
                     <span className="text-slate-400">No files uploaded</span>
+                  ) : (
+                    (
+                      viewEstimationProject.estimation?.uploaded_files ||
+                      viewEstimationProject.uploaded_files
+                    ).map((f, i) => (
+                      <ShowFile
+                        key={i}
+                        label={f.label}
+                        url={f.file}
+                        size="small"
+                      />
+                    ))
                   )}
-                  {(
-                    viewEstimationProject.estimation?.uploaded_files ||
-                    viewEstimationProject.uploaded_files ||
-                    []
-                  ).map((f, i) => (
-                    <ShowFile
-                      key={i}
-                      label={f.label}
-                      url={f.file}
-                      size="small"
-                    />
-                  ))}
                 </div>
               </div>
 
-              {/* Rejection Section for View Estimation Modal */}
-              {(viewEstimationProject.project_rejection &&
-                viewEstimationProject.project_rejection.length > 0) ||
-              viewEstimationProject.estimation_status === "rejected" ? (
+              {/* Rejection Info */}
+              {(viewEstimationProject.project_rejection?.length > 0 ||
+                viewEstimationProject.estimation_status === "rejected") && (
                 <div className="my-6 border-t pt-6">
                   <div className="font-semibold text-red-700 mb-1 flex items-center gap-2">
                     <AlertCircle size={18} className="text-red-500" />
                     Rejection Details:
                   </div>
-                  {viewEstimationProject.project_rejection &&
-                  viewEstimationProject.project_rejection.length > 0 ? (
+                  {viewEstimationProject.project_rejection?.length > 0 ? (
                     viewEstimationProject.project_rejection.map((rej, idx) => (
                       <div key={idx} className="mb-4">
                         <div className="text-slate-700 mb-1">{rej.note}</div>
                         <ul className="list-disc ml-8 space-y-1">
-                          {rej.uploaded_files &&
-                          rej.uploaded_files.length > 0 ? (
+                          {rej.uploaded_files?.length > 0 ? (
                             rej.uploaded_files.map((f, i) => (
                               <li key={i}>
                                 <span className="font-medium text-slate-700">
@@ -1742,41 +1731,37 @@ export const EstimationDashboard = () => {
                     </div>
                   )}
                 </div>
-              ) : null}
-              <div className=" py-4 border-b">
+              )}
+
+              {/* Corrections */}
+              <div className="py-4 border-b">
                 <div className="font-semibold text-blue-700 mb-1 flex items-center gap-2">
                   <AlertCircle size={18} className="text-blue-500" />
-                  Corrections:{" "}
-                  {!viewEstimationProject.estimation.corrections && (
+                  Corrections:
+                  {!viewEstimationProject.estimation?.corrections && (
                     <span className="text-xs text-gray-400">
                       No Correction made
                     </span>
                   )}
                 </div>
                 <div className="space-y-3">
-                  {viewEstimationProject.estimation.corrections &&
-                  viewEstimationProject.estimation.corrections.length > 0 ? (
-                    viewEstimationProject.estimation.corrections.map(
-                      (corr, i) => (
+                  {viewEstimationProject.estimation?.corrections?.length > 0 ? (
+                    viewEstimationProject.estimation.corrections.map((corr) => (
+                      <div
+                        key={corr.id}
+                        className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col md:flex-col md:items-start gap-2 shadow-sm"
+                      >
                         <div
-                          key={corr.id}
-                          className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col md:flex-col md:items-start gap-2 shadow-sm"
+                          className="flex-1 text-slate-800 text-sm md:text-base max-w-full break-words"
+                          style={{ maxWidth: "600px", wordBreak: "break-word" }}
                         >
-                          <div
-                            className="flex-1 text-slate-800 text-sm md:text-base max-w-full break-words"
-                            style={{
-                              maxWidth: "600px",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {corr.correction}
-                          </div>
-                          <div className="text-xs text-gray-500 ml-auto whitespace-nowrap">
-                            {new Date(corr.created_at).toLocaleString()}
-                          </div>
+                          {corr.correction}
                         </div>
-                      )
-                    )
+                        <div className="text-xs text-gray-500 ml-auto whitespace-nowrap">
+                          {new Date(corr.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                    ))
                   ) : (
                     <div className="text-gray-400 ml-2 text-xs">
                       No corrections made.
@@ -1784,17 +1769,9 @@ export const EstimationDashboard = () => {
                   )}
                 </div>
               </div>
-              <div className="flex justify-end mt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => setViewEstimationProject(null)}
-                >
-                  Close
-                </Button>
-              </div>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

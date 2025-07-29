@@ -2,11 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import type { WorkerTask } from "@/types/apiTypes";
-import {
-  Clock,
-  CheckCircle2,
-  FileText,
-} from "lucide-react";
+import { Clock, CheckCircle2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -44,7 +40,7 @@ import {
 export const WorkerTasks = () => {
   const location = useLocation();
   const { projectId } = useParams();
-  const [project,setProject] = useState<any>()
+  const [project, setProject] = useState<any>();
   const [tasks, setTasks] = useState<WorkerTask[]>([]);
   const { makeApiCall, fetchType, fetching, isFetched } = useAPICall();
   const { authToken, user } = useAuth();
@@ -65,7 +61,7 @@ export const WorkerTasks = () => {
     open: boolean;
     task: WorkerTask | null;
   }>({ open: false, task: null });
-
+  console.log(detailsModal);
   const [checkingUser, setCheckingUser] = useState<string>("");
   const [checkingNotes, setCheckingNotes] = useState("");
 
@@ -85,7 +81,7 @@ export const WorkerTasks = () => {
 
   useEffect(() => {
     fetchTasks();
-  }, [ page]);
+  }, [page]);
   const fetchTasks = async () => {
     const response = await makeApiCall(
       "get",
@@ -102,7 +98,7 @@ export const WorkerTasks = () => {
     ) {
       setTasks(response.data.tasks);
       setTotalPages(response.data.total_pages || 1);
-      setProject(response.data.project );
+      setProject(response.data.project);
     } else {
       setTasks([]);
       toast.error("Failed to fetch tasks");
@@ -222,10 +218,10 @@ export const WorkerTasks = () => {
   };
   const handleSentToApproval = async () => {
     const task = tasks.find((item) => item.id == completeModal.taskId);
-    if (sentToSelectedFiles.length == 0) {
-      toast.success("Choose at least one file to sent");
-      return;
-    }
+    // if (sentToSelectedFiles.length == 0) {
+    //   toast.success("Choose at least one file to sent");
+    //   return;
+    // }
 
     const data = {
       uploaded_files_ids: [...sentToSelectedFiles],
@@ -417,6 +413,22 @@ export const WorkerTasks = () => {
       toast.error("Failed to send back to drafting");
     }
   };
+  const getAllFilesWithoutDuplicate = (tasks = []) => {
+    const fileMap = new Map();
+
+    tasks.forEach((task) => {
+      const allFileGroups = [...task.incoming_files, ...task.outgoing_files];
+
+      allFileGroups.forEach((file) => {
+        if (!fileMap.has(file.id)) {
+          fileMap.set(file.id, file);
+        }
+      });
+    });
+
+    return Array.from(fileMap.values());
+  };
+
   return (
     <div className="p-6">
       {/* Project Details Card at Top */}
@@ -490,10 +502,10 @@ export const WorkerTasks = () => {
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-slate-700">
-                  <div>
+                  <div className="capitalize">
                     <span className="font-medium">Step:</span> {task.step_name}
                   </div>
-                  <div>
+                  <div className="capitalize">
                     <span className="font-medium">Status:</span> {task.status}
                   </div>
                 </div>
@@ -603,10 +615,9 @@ export const WorkerTasks = () => {
                               size="sm"
                               onClick={() => {
                                 setSentToSelectedFiles([]);
-                                setCurrentSentToFiles([
-                                  ...task.incoming_files,
-                                  ...task.outgoing_files,
-                                ]);
+                                setCurrentSentToFiles(
+                                  getAllFilesWithoutDuplicate(tasks)
+                                );
                                 setCompleteModal({
                                   open: true,
                                   taskId: task.id,
@@ -625,8 +636,7 @@ export const WorkerTasks = () => {
                               onClick={() => {
                                 setSentToSelectedFiles([]);
                                 setCurrentSentToFiles([
-                                  ...task.incoming_files,
-                                  ...task.outgoing_files,
+                                  getAllFilesWithoutDuplicate(tasks),
                                 ]);
 
                                 setBackToDraftingModal({
@@ -710,10 +720,10 @@ export const WorkerTasks = () => {
           }}
         >
           <DialogContent>
-            <DialogHeader>
+            <DialogHeader className="px-6 py-4">
               <DialogTitle>Complete Task</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="space-y-3 p-6">
               <Input
                 type="file"
                 multiple
@@ -808,148 +818,149 @@ export const WorkerTasks = () => {
           setCompleteModal({ open: false, taskId: null, type: "" });
         }}
       >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>
               {completeModal.type === "sent_to_checking" && "Send to Checking"}
               {completeModal.type === "sent_to_approval" && "Send to Approval"}
               {completeModal.type === "back_to_drafting" && "Back to Drafting"}
             </DialogTitle>
           </DialogHeader>
-          <div className="mb-2 text-xs text-gray-600">
-            {completeModal.type === "sent_to_checking" &&
-              "Forward this drawing to a checker. Please add notes and upload any files if needed."}
-            {completeModal.type === "sent_to_approval" &&
-              "Forward this drawing to approval. Please add notes if needed."}
-            {completeModal.type === "back_to_drafting" &&
-              "Send this drawing back to drafting. Please add notes if needed."}
-          </div>
-          <div className="mb-4">
-            <label className="block font-medium mb-1">Notes</label>
-            <Textarea
-              value={checkingNotes}
-              onChange={(e) => setCheckingNotes(e.target.value)}
-              placeholder="Add notes..."
-            />
-          </div>
-          {currentSentToFiles.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-slate-500 mb-1">
-                Select files to send :
-              </div>
-              {currentSentToFiles.map((file) => (
-                <label key={file.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={sentToSelectedFiles.includes(file.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSentToSelectedFiles((prev) => [...prev, file.id]);
-                      } else {
-                        setSentToSelectedFiles((prev) =>
-                          prev.filter((id) => id !== file.id)
-                        );
-                      }
-                    }}
-                  />
-                  <span>{file.label}</span>
-                </label>
-              ))}
+          <div className="p-6 pt-0">
+            <div className="mb-2 text-xs text-gray-600">
+              {completeModal.type === "sent_to_checking" &&
+                "Forward this drawing to a checker. Please add notes and upload any files if needed."}
+              {completeModal.type === "sent_to_approval" &&
+                "Forward this drawing to approval. Please add notes if needed."}
+              {completeModal.type === "back_to_drafting" &&
+                "Send this drawing back to drafting. Please add notes if needed."}
             </div>
-          )}
-          {completeModal.type == "sent_to_checking" && (
             <div className="mb-4">
-              <label className="block font-medium mb-1">Forward To</label>
-              <Select value={checkingUser} onValueChange={setCheckingUser}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select User" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workingUsers.filter(item=>item.id!==user.id).map((user) => (
-                    <SelectItem key={user.id} value={user.id.toString()}>
-                      {user.name} ({user.role})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="block font-medium mb-1">Notes</label>
+              <Textarea
+                value={checkingNotes}
+                onChange={(e) => setCheckingNotes(e.target.value)}
+                placeholder="Add notes..."
+              />
             </div>
-          )}
-          <div className="flex justify-end gap-2 mt-4">
-            <Button
-              variant="outline"
-              onClick={() =>
-                setCompleteModal({ open: false, taskId: null, type: "" })
-              }
-              disabled={
-                fetching &&
-                (fetchType == "editSentToChecking" ||
-                  fetchType == "CreateSentToApproval")
-              }
-            >
-              Cancel
-            </Button>
-            {(() => {
-              const task = tasks.find(
-                (item) => item.id == completeModal.taskId
-              );
-              if (completeModal.type === "sent_to_checking") {
-                return (
-                  <Button
-                    onClick={() => handleSentToChecking()}
-                    loading={
-                      fetching &&
-                      (fetchType == "editSentToChecking" ||
-                        fetchType == "uploadFile")
-                    }
-                    disabled={
-                      fetching &&
-                      (fetchType == "editSentToChecking" ||
-                        fetchType == "uploadFile")
-                    }
-                  >
-                    Send to Checking
-                  </Button>
+            {currentSentToFiles.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-slate-500 mb-1">
+                  Select files to send :
+                </div>
+                {currentSentToFiles.map((file) => (
+                  <label key={file.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={sentToSelectedFiles.includes(file.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSentToSelectedFiles((prev) => [...prev, file.id]);
+                        } else {
+                          setSentToSelectedFiles((prev) =>
+                            prev.filter((id) => id !== file.id)
+                          );
+                        }
+                      }}
+                    />
+                    <span>{file.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            {completeModal.type == "sent_to_checking" && (
+              <div className="mb-4">
+                <label className="block font-medium mb-1">Forward To</label>
+                <Select value={checkingUser} onValueChange={setCheckingUser}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select User" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workingUsers
+                      .filter((item) => item.id !== user.id)
+                      .map((user) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.name} ({user.role})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setCompleteModal({ open: false, taskId: null, type: "" })
+                }
+                disabled={
+                  fetching &&
+                  (fetchType == "editSentToChecking" ||
+                    fetchType == "CreateSentToApproval")
+                }
+              >
+                Cancel
+              </Button>
+              {(() => {
+                const task = tasks.find(
+                  (item) => item.id == completeModal.taskId
                 );
-              }
-              if (completeModal.type === "sent_to_approval") {
-                return (
-                  <Button
-                    onClick={() => handleSentToApproval()}
-                    loading={fetching && fetchType == "CreateSentToApproval"}
-                    disabled={fetching && fetchType == "CreateSentToApproval"}
-                  >
-                    Send to Approval
-                  </Button>
-                );
-              }
+                if (completeModal.type === "sent_to_checking") {
+                  return (
+                    <Button
+                      onClick={() => handleSentToChecking()}
+                      loading={
+                        fetching &&
+                        (fetchType == "editSentToChecking" ||
+                          fetchType == "uploadFile")
+                      }
+                      disabled={
+                        fetching &&
+                        (fetchType == "editSentToChecking" ||
+                          fetchType == "uploadFile")
+                      }
+                    >
+                      Send to Checking
+                    </Button>
+                  );
+                }
+                if (completeModal.type === "sent_to_approval") {
+                  return (
+                    <Button
+                      onClick={() => handleSentToApproval()}
+                      loading={fetching && fetchType == "CreateSentToApproval"}
+                      disabled={fetching && fetchType == "CreateSentToApproval"}
+                    >
+                      Send to Approval
+                    </Button>
+                  );
+                }
 
-              return null;
-            })()}
+                return null;
+              })()}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Task Details Modal (rich UI) */}
-      <Dialog
-        open={detailsModal.open}
-        onOpenChange={() => setDetailsModal({ open: false, task: null })}
-      >
-        <DialogContent className="max-w-2xl p-0 overflow-hidden">
-          {detailsModal.task && (
-            <div className="bg-white rounded-lg shadow max-h-[80vh] overflow-y-auto ">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-400 px-7 py-5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="text-white" />
-                  <span className="text-white text-lg font-bold">
-                    Task Details
-                  </span>
-                </div>
-                <span className="text-white text-xs font-semibold">
-                  {detailsModal.task.project_code}
+      {detailsModal.open && (
+        <Dialog
+          open={true}
+          onOpenChange={() => setDetailsModal({ open: false, task: null })}
+        >
+          <DialogContent>
+            {/* Header */}
+            <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-400 px-6 py-4 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="text-white" />
+                <span className="text-white text-lg font-bold">
+                  Task Details
                 </span>
               </div>
-              {/* Main Info - Improved Spacing and Layout */}
+            </DialogHeader>
+            {/* Main Info - Improved Spacing and Layout */}
+            <div className="p-6">
               <div className="px-6 pt-6 pb-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-3">
                   <div>
@@ -965,7 +976,7 @@ export const WorkerTasks = () => {
                       <span className="block text-xs text-slate-500 font-semibold">
                         Step
                       </span>
-                      <span className="text-base capitalize">
+                      <span className="text-base !capitalize">
                         {detailsModal.task.step_name}
                       </span>
                     </div>
@@ -1092,19 +1103,10 @@ export const WorkerTasks = () => {
                   {detailsModal.task.notes || "No notes."}
                 </div>
               </div>
-
-              <div className="flex justify-end px-6 py-3 border-t border-slate-100">
-                <Button
-                  variant="outline"
-                  onClick={() => setDetailsModal({ open: false, task: null })}
-                >
-                  Close
-                </Button>
-              </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Reject Task Modal */}
       <Dialog
@@ -1112,10 +1114,10 @@ export const WorkerTasks = () => {
         onOpenChange={() => setRejectModal({ open: false, taskId: null })}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Reject Task</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 p-6 pt-0">
             <Input
               type="file"
               multiple
@@ -1202,10 +1204,10 @@ export const WorkerTasks = () => {
         }}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Back to Drafting</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 p-6 ">
             <Textarea
               value={backToDraftingNotes}
               onChange={(e) => setBackToDraftingNotes(e.target.value)}

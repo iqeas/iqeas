@@ -41,34 +41,22 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 w-full max-w-lg max-sm:max-w-[90%] translate-x-[-50%] translate-y-[-50%] rounded-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        "fixed left-[50%] top-[50%] z-50 flex flex-col max-h-[95%] w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] rounded-lg border bg-background shadow-lg duration-200 sm:rounded-lg max-sm:max-w-[90%] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
       {...props}
     >
-      <div className="flex flex-col max-h-[90vh]">
-        {/* Sticky header: inject your <DialogHeader> here */}
-        <div className="sticky top-0 z-10 bg-background px-6 py-4 border-b">
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-          {/* Optional title/description or use <DialogHeader> component */}
-          <DialogTitle className="text-lg font-semibold leading-none tracking-tight">
-            Dialog Title
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
-            Dialog description goes here.
-          </DialogDescription>
-        </div>
+      {/* Fixed Close Button */}
+      <DialogPrimitive.Close className="absolute right-3 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X size={22} />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
 
-        {/* Scrollable content */}
-        <div className="overflow-y-auto px-6 py-4">{children}</div>
-      </div>
+      {/* Scrollable Content */}
+      <div className="overflow-y-auto">{children}</div>
     </DialogPrimitive.Content>
   </DialogPortal>
 ));
-
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({
@@ -77,7 +65,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
+      "sticky top-0 z-10 bg-white flex flex-col space-y-1.5 text-center sm:text-left",
       className
     )}
     {...props}

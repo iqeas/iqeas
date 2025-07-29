@@ -346,130 +346,134 @@ const SalaryManagement = () => {
       {/* Modal for create/edit */}
       <Dialog open={modalOpen} onOpenChange={closeModal}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle aria-disabled={fetching}>
               {editRecord ? "Edit Salary" : "Pay Salary"}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label
-                htmlFor="employeeName"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Employee
-              </label>
-              <Input
-                id="employeeName"
-                type="text"
-                value={records.find((u) => u.id == form.user_id)?.name || ""}
-                disabled
-                className="w-full mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="month"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Month
-              </label>
-              <Input
-                id="month"
-                type="month"
-                value={form.month}
-                onChange={(e) => handleFormChange("month", e.target.value)}
-                required
-                className="w-full mt-1"
-                disabled
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="base_salary"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Base Salary
-              </label>
-              <Input
-                id="base_salary"
-                type="number"
-                placeholder="Base Salary"
-                value={form.base_salary}
-                onChange={(e) =>
-                  handleFormChange("base_salary", e.target.value)
-                }
-                required
-                disabled
-                className="w-full mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="bonus"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Bonus
-              </label>
-              <Input
-                id="bonus"
-                type="number"
-                placeholder="Bonus"
-                value={form.bonus}
-                onChange={(e) => handleFormChange("bonus", e.target.value)}
-                className="w-full mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="deduction"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Deduction
-              </label>
-              <Input
-                id="deduction"
-                type="number"
-                placeholder="Deduction"
-                value={form.deduction}
-                onChange={(e) => handleFormChange("deduction", e.target.value)}
-                className="w-full mt-1"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="paid_on"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Paid On
-              </label>
-              <Input
-                id="paid_on"
-                type="date"
-                value={form.paid_on}
-                onChange={(e) => handleFormChange("paid_on", e.target.value)}
-                required
-                className="w-full mt-1"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeModal}
-                disabled={fetching && fetchType == "createEditSalary"}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={fetching && fetchType == "createEditSalary"}
-                loading={fetching && fetchType == "createEditSalary"}
-              >
-                {editRecord ? "Update" : "Pay"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="employeeName"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Employee
+                </label>
+                <Input
+                  id="employeeName"
+                  type="text"
+                  value={records.find((u) => u.id == form.user_id)?.name || ""}
+                  disabled
+                  className="w-full mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="month"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Month
+                </label>
+                <Input
+                  id="month"
+                  type="month"
+                  value={form.month}
+                  onChange={(e) => handleFormChange("month", e.target.value)}
+                  required
+                  className="w-full mt-1"
+                  disabled
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="base_salary"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Base Salary
+                </label>
+                <Input
+                  id="base_salary"
+                  type="number"
+                  placeholder="Base Salary"
+                  value={form.base_salary}
+                  onChange={(e) =>
+                    handleFormChange("base_salary", e.target.value)
+                  }
+                  required
+                  disabled
+                  className="w-full mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="bonus"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Bonus
+                </label>
+                <Input
+                  id="bonus"
+                  type="number"
+                  placeholder="Bonus"
+                  value={form.bonus}
+                  onChange={(e) => handleFormChange("bonus", e.target.value)}
+                  className="w-full mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="deduction"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Deduction
+                </label>
+                <Input
+                  id="deduction"
+                  type="number"
+                  placeholder="Deduction"
+                  value={form.deduction}
+                  onChange={(e) =>
+                    handleFormChange("deduction", e.target.value)
+                  }
+                  className="w-full mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="paid_on"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Paid On
+                </label>
+                <Input
+                  id="paid_on"
+                  type="date"
+                  value={form.paid_on}
+                  onChange={(e) => handleFormChange("paid_on", e.target.value)}
+                  required
+                  className="w-full mt-1"
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeModal}
+                  disabled={fetching && fetchType == "createEditSalary"}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={fetching && fetchType == "createEditSalary"}
+                  loading={fetching && fetchType == "createEditSalary"}
+                >
+                  {editRecord ? "Update" : "Pay"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

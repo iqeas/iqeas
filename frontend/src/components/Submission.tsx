@@ -1088,9 +1088,11 @@ const Submission = ({ projectId }) => {
                                   Reason: {log.reason}
                                 </div>
                               )}
-                              <div className="text-gray-700 mb-2">
-                                Assigned to : {log.sent_to.name}
-                              </div>
+                              {log.sent_to && (
+                                <div className="text-gray-700 mb-2">
+                                  Assigned to : {log.sent_to.name}
+                                </div>
+                              )}
                               <div className="text-gray-700 mb-2">
                                 Notes: {log.notes}
                               </div>
@@ -1302,203 +1304,63 @@ const Submission = ({ projectId }) => {
         onOpenChange={setShowStageConfigDialog}
       >
         <DialogContent className="max-w-xl" overlayClassName="bg-black/40">
-          <DialogHeader>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Configure All Stages</DialogTitle>
           </DialogHeader>
-          <form className="space-y-4 w-full">
-            {allStageConfigs.map((config, idx) => (
-              <div key={config.name} className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <Label htmlFor={`weight-${config.name}`}>
-                    {config.name} Weightage (%)
-                  </Label>
-                  <Input
-                    id={`weight-${config.name}`}
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={config.weight}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value) || 0;
-                      setAllStageConfigs((prev: any) =>
-                        prev.map((c, i) =>
-                          i === idx ? { ...c, weight: val } : c
-                        )
-                      );
-                    }}
-                  />
-                </div>
-                <div className="flex-1">
-                  <Label htmlFor={`hours-${config.name}`}>
-                    {config.name} Allocated Hours
-                  </Label>
-                  <Input
-                    id={`hours-${config.name}`}
-                    type="number"
-                    min="0"
-                    value={config.allocated_hours}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 0;
-                      setAllStageConfigs((prev: any) =>
-                        prev.map((c, i) =>
-                          i === idx ? { ...c, allocated_hours: val } : c
-                        )
-                      );
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-            <div className="flex justify-end gap-2 mt-6">
-              <Button
-                onClick={handleCreateStages}
-                loading={fetching && fetchType == "createStages"}
-              >
-                Save
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={showDrawingDialog} onOpenChange={setShowDrawingDialog}>
-        <DialogContent className="max-w-lg" overlayClassName="bg-black/40">
-          <DialogHeader>
-            <DialogTitle>Add New Drawing</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="title">Drawing Title</Label>
-              <Input
-                id="title"
-                value={drawingForm.title}
-                onChange={(e) =>
-                  setDrawingForm((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                  }))
-                }
-                placeholder="Enter drawing title"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="type">Drawing Type</Label>
-                <Input
-                  id="type"
-                  value={drawingForm.drawing_type}
-                  onChange={(e) =>
-                    setDrawingForm((prev) => ({
-                      ...prev,
-                      drawing_type: e.target.value,
-                    }))
-                  }
-                  placeholder="P&ID, Layout, etc."
-                />
-              </div>
-              <div>
-                <Label htmlFor="client_dwg_no">Client Drawing No.</Label>
-                <Input
-                  id="client_dwg_no"
-                  value={drawingForm.client_dwg_no}
-                  onChange={(e) =>
-                    setDrawingForm((prev) => ({
-                      ...prev,
-                      client_dwg_no: e.target.value,
-                    }))
-                  }
-                  placeholder="Client Drawing Number"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="iqeas_dwg_no">IQEAS Drawing No.</Label>
-                <Input
-                  id="iqeas_dwg_no"
-                  value={drawingForm.iqeas_dwg_no}
-                  onChange={(e) =>
-                    setDrawingForm((prev) => ({
-                      ...prev,
-                      iqeas_dwg_no: e.target.value,
-                    }))
-                  }
-                  placeholder="IQEAS Drawing Number"
-                />
-              </div>
-              <div>
-                <Label htmlFor="weightage">Weightage (%)</Label>
-                <Input
-                  id="weightage"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={drawingForm.drawing_weightage}
-                  onChange={(e) =>
-                    setDrawingForm((prev) => ({
-                      ...prev,
-                      drawing_weightage: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="hours">Allocated Hours</Label>
-              <Input
-                id="hours"
-                type="number"
-                min="0"
-                value={drawingForm.allocated_hours}
-                onChange={(e) =>
-                  setDrawingForm((prev) => ({
-                    ...prev,
-                    allocated_hours: parseInt(e.target.value) || 0,
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="files">Upload Files</Label>
-              <Input
-                id="files"
-                type="file"
-                multiple
-                onChange={handleFileInput}
-              />
-              {actionFiles.map((f, idx) => (
-                <div key={idx} className="flex items-center gap-2 mt-1">
-                  <Input
-                    type="text"
-                    value={f.label}
-                    onChange={handleFileLabel(idx)}
-                    className={f.label.trim() ? "" : "border-red-400"}
-                  />
-                  <span className="text-xs">{f.file && f.file.name}</span>
-                  {!isAdmin && (
-                    <Button size="sm" variant="ghost" onClick={removeFile(idx)}>
-                      &times;
-                    </Button>
-                  )}
+          <div className="p-6">
+            <form className="space-y-4 w-full">
+              {allStageConfigs.map((config, idx) => (
+                <div key={config.name} className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor={`weight-${config.name}`}>
+                      {config.name} Weightage (%)
+                    </Label>
+                    <Input
+                      id={`weight-${config.name}`}
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={config.weight}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setAllStageConfigs((prev: any) =>
+                          prev.map((c, i) =>
+                            i === idx ? { ...c, weight: val } : c
+                          )
+                        );
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor={`hours-${config.name}`}>
+                      {config.name} Allocated Hours
+                    </Label>
+                    <Input
+                      id={`hours-${config.name}`}
+                      type="number"
+                      min="0"
+                      value={config.allocated_hours}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setAllStageConfigs((prev: any) =>
+                          prev.map((c, i) =>
+                            i === idx ? { ...c, allocated_hours: val } : c
+                          )
+                        );
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowDrawingDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => handleDrawingSubmit()}
-                loading={
-                  fetch &&
-                  (fetchType == "createDrawing" || fetchType == "uploadFile")
-                }
-              >
-                Create Drawing
-              </Button>
-            </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Button
+                  onClick={handleCreateStages}
+                  loading={fetching && fetchType == "createStages"}
+                >
+                  Save
+                </Button>
+              </div>
+            </form>
           </div>
         </DialogContent>
       </Dialog>
@@ -1510,105 +1372,110 @@ const Submission = ({ projectId }) => {
           setShowSendDialog(false);
         }}
       >
-        <DialogContent className="max-w-lg" overlayClassName="bg-black/40">
-          <DialogHeader>
+        <DialogContent>
+          <DialogHeader className="px-6 pt-4">
             <DialogTitle>Send to Drafting</DialogTitle>
           </DialogHeader>
-          <div className="mb-2 text-xs text-gray-600">
-            All the drawing files will be forwarded to drafting.
-          </div>
-          <div className="mb-4">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={sentToForm.notes}
-              onChange={(e) =>
-                setSentTOForm((prev) => ({ ...prev, notes: e.target.value }))
-              }
-              placeholder="Add any notes for drafting..."
-            />
-          </div>
-          <div>
-            {currentSentToFiles.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-xs font-semibold text-slate-500 mb-1">
-                  Select files to send back:
+          <div className="p-6">
+            <div className="mb-2 text-xs text-gray-600">
+              All the drawing files will be forwarded to drafting.
+            </div>
+            <div className="mb-4">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={sentToForm.notes}
+                onChange={(e) =>
+                  setSentTOForm((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                placeholder="Add any notes for drafting..."
+              />
+            </div>
+            <div>
+              {currentSentToFiles.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-slate-500 mb-1">
+                    Select files to send back:
+                  </div>
+                  {currentSentToFiles.map((file) => (
+                    <label key={file.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={sentToSelectedFiles.includes(file.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSentToSelectedFiles((prev) => [
+                              ...prev,
+                              file.id,
+                            ]);
+                          } else {
+                            setSentToSelectedFiles((prev) =>
+                              prev.filter((id) => id !== file.id)
+                            );
+                          }
+                        }}
+                      />
+                      <span>
+                        {<span className="capitalize">{file.label}</span>}
+                      </span>
+                    </label>
+                  ))}
                 </div>
-                {currentSentToFiles.map((file) => (
-                  <label key={file.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={sentToSelectedFiles.includes(file.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSentToSelectedFiles((prev) => [...prev, file.id]);
-                        } else {
-                          setSentToSelectedFiles((prev) =>
-                            prev.filter((id) => id !== file.id)
-                          );
-                        }
-                      }}
-                    />
-                    <span>
-                      {<span className="capitalize">{file.label}</span>}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="mt-4">
-            <Label htmlFor="forwardId">Select User</Label>
-            <Select
-              value={
-                sentToForm.selected_user
-                  ? sentToForm.selected_user.toString()
-                  : ""
-              }
-              onValueChange={(val) =>
-                setSentTOForm((prev) => ({ ...prev, selected_user: val }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select User" />
-              </SelectTrigger>
-              <SelectContent>
-                {workingUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id.toString()}>
-                    <span className="capitalize">{user.name}</span> ({user.role}
-                    )
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            {!isAdmin && (
-              <Button
-                variant="outline"
-                onClick={() => setShowSendDialog(false)}
+              )}
+            </div>
+            <div className="mt-4">
+              <Label htmlFor="forwardId">Select User</Label>
+              <Select
+                value={
+                  sentToForm.selected_user
+                    ? sentToForm.selected_user.toString()
+                    : ""
+                }
+                onValueChange={(val) =>
+                  setSentTOForm((prev) => ({ ...prev, selected_user: val }))
+                }
               >
-                Cancel
+                <SelectTrigger>
+                  <SelectValue placeholder="Select User" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workingUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      <span className="capitalize">{user.name}</span> (
+                      {user.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              {!isAdmin && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSendDialog(false)}
+                >
+                  Cancel
+                </Button>
+              )}
+              <Button
+                loading={
+                  fetching &&
+                  (fetchType == "createDrawingLog" || fetchType == "uploadFile")
+                }
+                onClick={handleSentToDraft}
+              >
+                Send
               </Button>
-            )}
-            <Button
-              loading={
-                fetching &&
-                (fetchType == "createDrawingLog" || fetchType == "uploadFile")
-              }
-              onClick={handleSentToDraft}
-            >
-              Send
-            </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
       <Dialog open={showDrawingDialog} onOpenChange={setShowDrawingDialog}>
-        <DialogContent className="max-w-lg" overlayClassName="bg-black/40">
-          <DialogHeader>
+        <DialogContent>
+          <DialogHeader className="px-6 pt-4">
             <DialogTitle>Add New Drawing</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 p-6">
             <div>
               <Label htmlFor="title">Drawing Title</Label>
               <Input
@@ -1891,11 +1758,11 @@ const Submission = ({ projectId }) => {
       </Dialog>
       {/* [5] Add modals for reject, send to documentation, back to checking */}
       <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-        <DialogContent className="max-w-lg" overlayClassName="bg-black/40">
-          <DialogHeader>
+        <DialogContent>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Reject Drawing</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 p-6">
             <div>
               <Label htmlFor="reject-files">Upload Files</Label>
               <Input
@@ -1972,10 +1839,10 @@ const Submission = ({ projectId }) => {
       </Dialog>
       <Dialog open={showSendDocModal} onOpenChange={setShowSendDocModal}>
         <DialogContent className="max-w-lg" overlayClassName="bg-black/40">
-          <DialogHeader>
+          <DialogHeader className="px-6 py-6">
             <DialogTitle>Send to Documentation</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 p-6 pt-0">
             <div>
               <Label htmlFor="send-doc-notes">Notes</Label>
               <Textarea
@@ -2050,11 +1917,11 @@ const Submission = ({ projectId }) => {
         open={showBackToCheckingModal}
         onOpenChange={setShowBackToCheckingModal}
       >
-        <DialogContent className="max-w-lg" overlayClassName="bg-black/40">
-          <DialogHeader>
+        <DialogContent>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Back to Checking</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 p-6">
             <div>
               <Label htmlFor="back-to-checking-notes">Notes</Label>
               <Textarea

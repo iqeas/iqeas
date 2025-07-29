@@ -465,97 +465,101 @@ const LeaveManagement = () => {
       )}
       <Dialog open={modalOpen} onOpenChange={closeModal}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>
               {editRecord ? "Edit Leave" : "Apply Leave"}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="employee-name">Employee</Label>
-              <Input
-                id="employee-name"
-                value={form.name}
-                disabled
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="leave-type-select">Leave Type</Label>
-              <Select
-                value={form.leave_type}
-                onValueChange={(v) => handleFormChange("leave_type", v)}
-                required
-              >
-                <SelectTrigger id="leave-type-select" className="w-full">
-                  <SelectValue placeholder="Leave Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {leaveTypes.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="from-date">From Date</Label>
-              <Input
-                id="from-date"
-                type="date"
-                value={form.from_date}
-                onChange={(e) => handleFormChange("from_date", e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="to-date">To Date</Label>
-              <Input
-                id="to-date"
-                type="date"
-                value={form.to_date}
-                onChange={(e) => handleFormChange("to_date", e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="reason">Reason</Label>
-              <textarea
-                id="reason"
-                placeholder="Reason (optional)"
-                value={form.reason}
-                onChange={(e) => handleFormChange("reason", e.target.value)}
-                className="w-full border rounded px-3 py-2 min-h-[80px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeModal}
-                disabled={
-                  fetching &&
-                  (fetchType == "createLeave" || fetchType == "editLeave")
-                }
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                loading={
-                  fetching &&
-                  (fetchType == "createLeave" || fetchType == "editLeave")
-                }
-                disabled={
-                  fetching &&
-                  (fetchType == "createLeave" || fetchType == "editLeave")
-                }
-              >
-                {editRecord ? "Update" : "Apply"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="employee-name">Employee</Label>
+                <Input
+                  id="employee-name"
+                  value={form.name}
+                  disabled
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="leave-type-select">Leave Type</Label>
+                <Select
+                  value={form.leave_type}
+                  onValueChange={(v) => handleFormChange("leave_type", v)}
+                  required
+                >
+                  <SelectTrigger id="leave-type-select" className="w-full">
+                    <SelectValue placeholder="Leave Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leaveTypes.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="from-date">From Date</Label>
+                <Input
+                  id="from-date"
+                  type="date"
+                  value={form.from_date}
+                  onChange={(e) =>
+                    handleFormChange("from_date", e.target.value)
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="to-date">To Date</Label>
+                <Input
+                  id="to-date"
+                  type="date"
+                  value={form.to_date}
+                  onChange={(e) => handleFormChange("to_date", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reason">Reason</Label>
+                <textarea
+                  id="reason"
+                  placeholder="Reason (optional)"
+                  value={form.reason}
+                  onChange={(e) => handleFormChange("reason", e.target.value)}
+                  className="w-full border rounded px-3 py-2 min-h-[80px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeModal}
+                  disabled={
+                    fetching &&
+                    (fetchType == "createLeave" || fetchType == "editLeave")
+                  }
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  loading={
+                    fetching &&
+                    (fetchType == "createLeave" || fetchType == "editLeave")
+                  }
+                  disabled={
+                    fetching &&
+                    (fetchType == "createLeave" || fetchType == "editLeave")
+                  }
+                >
+                  {editRecord ? "Update" : "Apply"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
       <AlertDialog

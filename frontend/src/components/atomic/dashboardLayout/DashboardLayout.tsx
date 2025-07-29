@@ -149,73 +149,75 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-screen pt-5 z-40 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto
-          w-64 transition-transform duration-200
-          ${openMenu ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0 md:static md:block
-        `}
+    fixed top-0 left-0 h-screen pt-5 z-40 bg-white border-r border-slate-200 flex flex-col overflow-y-auto
+    w-64 transition-transform duration-200
+    ${openMenu ? "translate-x-0" : "-translate-x-full"}
+    md:translate-x-0 md:static md:block
+  `}
         style={{ minWidth: "16rem" }}
       >
-        {/* Close button for mobile */}
-        <div className="flex-1">
-          <div className="md:hidden flex justify-between p-3">
-            <h2 className="text-lg font-bold text-blue-700 mb-1">
-              {roleLabel}
-            </h2>
-            <button
-              onClick={() => setOpenMenu(false)}
-              aria-label="Close menu"
-              className="text-slate-500 hover:text-red-500"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          {/* Sidebar content */}
+        <div className="flex h-full flex-col flex-1 justify-between">
           <div>
-            <div className="max-md:hidden p-4 pb-2 border-b border-slate-100">
+            <div className="md:hidden flex justify-between p-3">
               <h2 className="text-lg font-bold text-blue-700 mb-1">
                 {roleLabel}
               </h2>
+              <button
+                onClick={() => setOpenMenu(false)}
+                aria-label="Close menu"
+                className="text-slate-500 hover:text-red-500"
+              >
+                <X size={24} />
+              </button>
             </div>
-            <nav className="flex flex-col space-y-1">
-              {links.map(({ label, match, to, icon: Icon }) => {
-                const isMatch =
-                  (Array.isArray(match) &&
-                    match.some((m) => pathname.startsWith(m))) ||
-                  pathname === to;
 
-                return (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition ${
-                      isMatch
-                        ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                    onClick={() => setOpenMenu(false)}
-                  >
-                    {Icon && <Icon size={18} className="mr-3" />}
-                    {label}
-                  </NavLink>
-                );
-              })}
-            </nav>
+            {/* Sidebar content */}
+            <div>
+              <div className="max-md:hidden p-2 pb-2 border-b border-slate-100">
+                <h2 className="text-2xl max-sm:text-lg font-bold text-blue-700 mb-1">
+                  {roleLabel}
+                </h2>
+              </div>
+              <nav className="flex flex-col space-y-1">
+                {links.map(({ label, match, to, icon: Icon }) => {
+                  const isMatch =
+                    (Array.isArray(match) &&
+                      match.some((m) => pathname.startsWith(m))) ||
+                    pathname === to;
+
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      className={`flex items-center px-4 py-2 rounded-lg font-medium transition ${
+                        isMatch
+                          ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
+                          : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                      onClick={() => setOpenMenu(false)}
+                    >
+                      {Icon && <Icon size={18} className="mr-3" />}
+                      {label}
+                    </NavLink>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+
+          {/* Logout button */}
+          <div>
+            <button
+              onClick={logout}
+              className="flex items-center w-full px-4 py-2 rounded-lg font-medium transition text-red-600 hover:bg-red-50"
+              style={{ border: 0, background: "none" }}
+            >
+              <LogOut size={18} className="mr-3 text-red-600" />
+              Logout
+            </button>
           </div>
         </div>
-
-        {/* Logout button */}
-        <div className="p-0">
-          <button
-            onClick={logout}
-            className="flex items-center w-full px-4 py-2 rounded-lg font-medium transition text-red-600 hover:bg-red-50"
-            style={{ border: 0, background: "none" }}
-          >
-            <LogOut size={18} className="mr-3 text-red-600" />
-            Logout
-          </button>
-        </div>
+        {/* Close button for mobile */}
       </aside>
 
       {/* Main content */}

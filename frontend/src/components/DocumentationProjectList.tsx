@@ -179,7 +179,7 @@ const DocumentationProjectList = () => {
                   className="absolute right-4 top-4 text-gray-300 opacity-30"
                   size={48}
                 />
-                <CardContent className="flex flex-col items-center gap-2 pt-6 pb-4 px-6 w-full">
+                <CardContent className="flex h-full flex-col items-center gap-2 pt-6 pb-4 px-6 w-full">
                   <div className="flex flex-col items-center gap-1 w-full">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100">
@@ -196,7 +196,7 @@ const DocumentationProjectList = () => {
                       {project.company_name}
                     </span>
                   </div>
-                  <div className="flex flex-col items-center gap-1 mt-2 w-full  font-bold">
+                  <div className="flex flex-1 flex-col items-center gap-1 mt-2 w-full  font-bold">
                     <div className="text-xs text-gray-700">
                       <span className="font-medium">Project ID:</span>{" "}
                       {project.project_code}
@@ -210,7 +210,7 @@ const DocumentationProjectList = () => {
                       {project.pending_works}
                     </div>
                     {parseInt(project.pending_works) > 0 && (
-                      <span className="mt-1 px-2 py-0.5 rounded bg-gray-100 text-gray-900 text-xs font-semibold border border-gray-300">
+                      <span className="mt-1 px-2 py-0.5 rounded bg-yellow-100 text-gray-900 text-xs font-semibold border border-gray-300">
                         Verification Required
                       </span>
                     )}

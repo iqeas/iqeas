@@ -101,14 +101,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-slate-200">
       <div className="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-md flex flex-col items-center">
-        <div className="flex items-center mb-6">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-            <span className="text-white font-bold text-lg">OE</span>
-          </div>
-          <span className="text-2xl font-bold text-slate-800 tracking-tight">
-            Oil Engineering ERP
-          </span>
-        </div>
+        <img src="/logo.png" alt="Logo" className="h-16 mb-4" />
         <h2 className="text-3xl font-bold text-blue-700 mb-2 text-center">
           Sign In
         </h2>

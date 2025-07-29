@@ -652,7 +652,7 @@ export async function updateDrawingLog(
   try {
     await client.query("BEGIN");
     let result;
-    if (is_sent != null || is_sent == undefined) {
+    if (is_sent == null || is_sent == undefined) {
       result = await client.query(
         `UPDATE drawing_stage_logs
         SET status = $1, action_taken = $2, reason = $3, updated_at = NOW()
@@ -838,19 +838,19 @@ export async function getUserAssignedTaskByLogId(logId) {
         ), '[]'::json) AS drawing_files,
 
         -- Sent to user (next log)
-        (
-          SELECT json_build_object(
-            'name', fu.name,
-            'role', fu.role,
-            'datetime', next_l.created_at
-          )
-          FROM drawing_stage_logs next_l
-          JOIN users fu ON fu.id = next_l.forwarded_user_id
-          WHERE next_l.drawing_id = l.drawing_id
-            AND next_l.id > l.id
-          ORDER BY next_l.id ASC
-          LIMIT 1
-        ) AS sent_to,
+            (
+        SELECT json_build_object(
+          'name', fu.name,
+          'role', fu.role,
+          'datetime', next_l.created_at
+        )
+        FROM drawing_stage_logs next_l
+        JOIN users fu ON fu.id = next_l.forwarded_user_id
+        WHERE next_l.drawing_id = l.drawing_id
+          AND next_l.created_at > l.created_at
+        ORDER BY next_l.created_at ASC
+        LIMIT 1
+      ) AS sent_to,
 
         -- Incoming files
         COALESCE((

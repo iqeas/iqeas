@@ -43,6 +43,8 @@ import {
 } from "@/utils/validation";
 import Loading from "./atomic/Loading";
 import test from "node:test";
+import { Dialog, DialogClose, DialogContent, DialogHeader } from "./ui/dialog";
+import { isValidEmail } from "@/lib/utils";
 
 function generateProjectId() {
   return `PRJ-${new Date().getFullYear()}-${Math.floor(
@@ -136,7 +138,7 @@ export const RFCDashboard = () => {
         {},
         "application/json",
         authToken,
-        "fetchProjects"
+        "getProjects"
       );
       if (response.status === 200) {
         setProjects(response.data.projects);
@@ -158,38 +160,6 @@ export const RFCDashboard = () => {
     }
   };
 
-  // Update handleFormChange to handle labeled file inputs
-  const handleFileChange = (idx, e) => {
-    const file = e.target.files[0] || null;
-    setForm((f) => {
-      const uploadedFiles = f.uploadedFiles.map((uf, i) =>
-        i === idx ? { ...uf, file } : uf
-      );
-      return { ...f, uploadedFiles };
-    });
-  };
-  const handleLabelChange = (idx, e) => {
-    const label = e.target.value;
-    setForm((f) => {
-      const uploadedFiles = f.uploadedFiles.map((uf, i) =>
-        i === idx ? { ...uf, label } : uf
-      );
-      return { ...f, uploadedFiles };
-    });
-  };
-  const addFileInput = () => {
-    setForm((f) => ({
-      ...f,
-      uploadedFiles: [...f.uploadedFiles, { label: "", file: null }],
-    }));
-  };
-  const removeFileInput = (idx) => {
-    setForm((f) => ({
-      ...f,
-      uploadedFiles: f.uploadedFiles.filter((_, i) => i !== idx),
-    }));
-  };
-
   // Start new project entry
   const startNewProject = () => {
     setForm({
@@ -209,6 +179,9 @@ export const RFCDashboard = () => {
     if (missing.length > 0) {
       toast.error(`Missing required field: ${missing[0]}`);
       return;
+    }
+    if(!isValidEmail(form.contactEmail)){
+      toast.error(`Please enter valid contact email`);
     }
     // Check for missing file labels
     if (
@@ -279,7 +252,6 @@ export const RFCDashboard = () => {
 
   // Filtered projects is now just projects (API handles filtering)
   const filteredProjects = projects;
-
 
   // Refactor submitMoreInfo to upload files and send the correct payload
   const submitMoreInfo = async () => {
@@ -398,7 +370,7 @@ export const RFCDashboard = () => {
       toast.error("Failed to sent to estimation");
     }
   };
-  if (!isFetched || (fetching && fetchType == "getProjects")) {
+  if (!isFetched) {
     return <Loading full />;
   }
   return (
@@ -423,313 +395,313 @@ export const RFCDashboard = () => {
 
       {/* Modal/Form for New Project */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative">
-            <button
-              className="absolute top-2 right-2"
-              onClick={() => setShowForm(false)}
-            >
-              <X />
-            </button>
-            <h2 className="text-xl font-bold mb-4">Add New Project</h2>
-            {/* Stepper */}
-            <div className="flex mb-6 space-x-4">
-              <div
-                className={`flex-1 text-center ${
-                  formStep === 1 ? "font-bold text-blue-600" : "text-slate-500"
-                }`}
-              >
-                1. Data Collection
+        <Dialog open={showForm} onOpenChange={() => setShowForm(false)}>
+          <DialogContent className="">
+            <DialogHeader className="px-6 py-4">
+              <h2 className="text-xl font-bold ">Add New Project</h2>
+            </DialogHeader>
+            <div className="relative  p-6">
+              {/* Stepper */}
+              <div className="flex mb-6 space-x-4">
+                <div
+                  className={`flex-1 text-center ${
+                    formStep === 1
+                      ? "font-bold text-blue-600"
+                      : "text-slate-500"
+                  }`}
+                >
+                  1. Data Collection
+                </div>
+                <div
+                  className={`flex-1 text-center ${
+                    formStep === 2
+                      ? "font-bold text-blue-600"
+                      : "text-slate-500"
+                  }`}
+                >
+                  2. Review & Confirm
+                </div>
               </div>
-              <div
-                className={`flex-1 text-center ${
-                  formStep === 2 ? "font-bold text-blue-600" : "text-slate-500"
-                }`}
-              >
-                2. Review & Confirm
-              </div>
+
+              {formStep === 1 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Project Name
+                      </label>
+                      <Input
+                        name="name"
+                        value={form.name}
+                        onChange={handleFormChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Client Name
+                      </label>
+                      <Input
+                        name="clientName"
+                        value={form.clientName}
+                        onChange={handleFormChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Client Company
+                      </label>
+                      <Input
+                        name="clientCompany"
+                        value={form.clientCompany}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Location
+                      </label>
+                      <Input
+                        name="location"
+                        value={form.location}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Project Type
+                      </label>
+                      <Select
+                        value={form.projectType}
+                        onValueChange={(v) =>
+                          setForm((f) => ({ ...f, projectType: v }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Project Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pipeline">Pipeline</SelectItem>
+                          <SelectItem value="Plant">Plant</SelectItem>
+                          <SelectItem value="Maintenance">
+                            Maintenance
+                          </SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Priority
+                      </label>
+                      <Select
+                        value={form.priority}
+                        onValueChange={(v) =>
+                          setForm((f) => ({ ...f, priority: v.toLowerCase() }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Received Date
+                      </label>
+                      <Input
+                        type="date"
+                        name="received_date"
+                        value={form.received_date}
+                        onChange={handleFormChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium mb-2">
+                        Uploaded Files
+                      </label>
+                      <Input
+                        type="file"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          setForm((prev) => ({
+                            ...prev,
+                            uploadedFiles: [
+                              ...prev.uploadedFiles,
+                              ...files.map((file) => ({
+                                file,
+                                label: "",
+                                tempUrl: URL.createObjectURL(file),
+                              })),
+                            ],
+                          }));
+                          e.target.value = "";
+                        }}
+                      />
+                      {form.uploadedFiles.map((uf, idx) => (
+                        <div key={idx} className="flex items-center gap-2 mt-1">
+                          <Input
+                            type="text"
+                            placeholder="Label"
+                            value={uf.label}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                uploadedFiles: prev.uploadedFiles.map((u, i) =>
+                                  i === idx
+                                    ? { ...u, label: e.target.value }
+                                    : u
+                                ),
+                              }))
+                            }
+                            className={
+                              uf.label && uf.label.trim()
+                                ? ""
+                                : "border-red-400"
+                            }
+                          />
+                          <span className="text-xs">{uf.file.name}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                uploadedFiles: prev.uploadedFiles.filter(
+                                  (_, i) => i !== idx
+                                ),
+                              }))
+                            }
+                          >
+                            &times;
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Contact Person
+                      </label>
+                      <Input
+                        name="contactPerson"
+                        value={form.contactPerson}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">Phone</label>
+                      <Input
+                        name="contactPhone"
+                        value={form.contactPhone}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">Email</label>
+                      <Input
+                        name="contactEmail"
+                        value={form.contactEmail}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium">Notes</label>
+                      <Input
+                        name="notes"
+                        value={form.notes}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      onClick={nextStep}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {formStep === 2 && (
+                <div>
+                  <h3 className="font-semibold mb-2">Review Project Data</h3>
+                  <div className="bg-slate-50 p-4 rounded mb-4 text-sm space-y-2">
+                    <div>
+                      <strong>Project Name:</strong> {form.name}
+                    </div>
+                    <div>
+                      <strong>Client Name:</strong> {form.clientName}
+                    </div>
+                    <div>
+                      <strong>Client Company:</strong> {form.clientCompany}
+                    </div>
+                    <div>
+                      <strong>Location:</strong> {form.location}
+                    </div>
+                    <div>
+                      <strong>Project Type:</strong> {form.projectType}
+                    </div>
+                    <div>
+                      <strong>Received Date:</strong> {form.received_date}
+                    </div>
+                    <div>
+                      <strong>Priority:</strong> {form.priority}
+                    </div>
+                    <div>
+                      <strong>Contact Person:</strong> {form.contactPerson}
+                    </div>
+                    <div>
+                      <strong>Phone:</strong> {form.contactPhone}
+                    </div>
+                    <div>
+                      <strong>Email:</strong> {form.contactEmail}
+                    </div>
+                    {form.notes && <div>{form.notes}</div>}
+                    <div>
+                      <strong>Uploaded Files:</strong>
+                      <ul className="list-disc ml-6">
+                        {form.uploadedFiles
+                          .filter((f) => f.file)
+                          .map((f, i) => (
+                            <li key={i}>
+                              {f.label ? `${f.label}: ` : ""}
+                              {f.file?.name}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <Button variant="outline" onClick={prevStep}>
+                      Back
+                    </Button>
+                    <Button
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => submitProject(sendToEstimation)}
+                      loading={
+                        fetching &&
+                        (fetchType === "createProject" ||
+                          fetchType === "uploadFile")
+                      }
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
-            {formStep === 1 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Project Name
-                    </label>
-                    <Input
-                      name="name"
-                      value={form.name}
-                      onChange={handleFormChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Client Name
-                    </label>
-                    <Input
-                      name="clientName"
-                      value={form.clientName}
-                      onChange={handleFormChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Client Company
-                    </label>
-                    <Input
-                      name="clientCompany"
-                      value={form.clientCompany}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Location
-                    </label>
-                    <Input
-                      name="location"
-                      value={form.location}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Project Type
-                    </label>
-                    <Select
-                      value={form.projectType}
-                      onValueChange={(v) =>
-                        setForm((f) => ({ ...f, projectType: v }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Project Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pipeline">Pipeline</SelectItem>
-                        <SelectItem value="Plant">Plant</SelectItem>
-                        <SelectItem value="Maintenance">Maintenance</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Priority
-                    </label>
-                    <Select
-                      value={form.priority}
-                      onValueChange={(v) =>
-                        setForm((f) => ({ ...f, priority: v.toLowerCase() }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Received Date
-                    </label>
-                    <Input
-                      type="date"
-                      name="received_date"
-                      value={form.received_date}
-                      onChange={handleFormChange}
-                      required
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium mb-2">
-                      Uploaded Files
-                    </label>
-                    <Input
-                      type="file"
-                      multiple
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        setForm((prev) => ({
-                          ...prev,
-                          uploadedFiles: [
-                            ...prev.uploadedFiles,
-                            ...files.map((file) => ({
-                              file,
-                              label: "",
-                              tempUrl: URL.createObjectURL(file),
-                            })),
-                          ],
-                        }));
-                        e.target.value = "";
-                      }}
-                    />
-                    {form.uploadedFiles.map((uf, idx) => (
-                      <div key={idx} className="flex items-center gap-2 mt-1">
-                        <Input
-                          type="text"
-                          placeholder="Label"
-                          value={uf.label}
-                          onChange={(e) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              uploadedFiles: prev.uploadedFiles.map((u, i) =>
-                                i === idx ? { ...u, label: e.target.value } : u
-                              ),
-                            }))
-                          }
-                          className={
-                            uf.label && uf.label.trim() ? "" : "border-red-400"
-                          }
-                        />
-                        <span className="text-xs">{uf.file.name}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              uploadedFiles: prev.uploadedFiles.filter(
-                                (_, i) => i !== idx
-                              ),
-                            }))
-                          }
-                        >
-                          &times;
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Contact Person
-                    </label>
-                    <Input
-                      name="contactPerson"
-                      value={form.contactPerson}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">Phone</label>
-                    <Input
-                      name="contactPhone"
-                      value={form.contactPhone}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">Email</label>
-                    <Input
-                      name="contactEmail"
-                      value={form.contactEmail}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium">Notes</label>
-                    <Input
-                      name="notes"
-                      value={form.notes}
-                      onChange={handleFormChange}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    onClick={nextStep}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-            {formStep === 2 && (
-              <div>
-                <h3 className="font-semibold mb-2">Review Project Data</h3>
-                <div className="bg-slate-50 p-4 rounded mb-4 text-sm space-y-2">
-                  <div>
-                    <strong>Project Name:</strong> {form.name}
-                  </div>
-                  <div>
-                    <strong>Client Name:</strong> {form.clientName}
-                  </div>
-                  <div>
-                    <strong>Client Company:</strong> {form.clientCompany}
-                  </div>
-                  <div>
-                    <strong>Location:</strong> {form.location}
-                  </div>
-                  <div>
-                    <strong>Project Type:</strong> {form.projectType}
-                  </div>
-                  <div>
-                    <strong>Received Date:</strong> {form.received_date}
-                  </div>
-                  <div>
-                    <strong>Priority:</strong> {form.priority}
-                  </div>
-                  <div>
-                    <strong>Contact Person:</strong> {form.contactPerson}
-                  </div>
-                  <div>
-                    <strong>Phone:</strong> {form.contactPhone}
-                  </div>
-                  <div>
-                    <strong>Email:</strong> {form.contactEmail}
-                  </div>
-                  {form.notes && <div>{form.notes}</div>}
-                  <div>
-                    <strong>Uploaded Files:</strong>
-                    <ul className="list-disc ml-6">
-                      {form.uploadedFiles
-                        .filter((f) => f.file)
-                        .map((f, i) => (
-                          <li key={i}>
-                            {f.label ? `${f.label}: ` : ""}
-                            {f.file?.name}
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                </div>
-                {/* <div className="flex items-center gap-2 mb-4">
-                  <Switch
-                    id="sendToEstimation"
-                    checked={sendToEstimation}
-                    onCheckedChange={setSendToEstimation}
-                  />
-                  <label htmlFor="sendToEstimation" className="text-sm">
-                    Send to Estimation Department now
-                  </label>
-                </div> */}
-                <div className="flex justify-between">
-                  <Button variant="outline" onClick={prevStep}>
-                    Back
-                  </Button>
-                  <Button
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => submitProject(sendToEstimation)}
-                    loading={
-                      fetching &&
-                      (fetchType == "createProject" ||
-                        fetchType == "uploadFile")
-                    }
-                  >
-                    Save
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Quick Stats */}
@@ -796,7 +768,7 @@ export const RFCDashboard = () => {
       </div>
 
       {/* RFQ Cards */}
-      {!isFetched || (fetching && fetchType == "getProjects") ? (
+      {fetching && fetchType == "getProjects" ? (
         <Loading full={false} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -866,7 +838,7 @@ export const RFCDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-3 mt-5">
+                <div className="flex gap-3 mt-5 flex-wrap">
                   <Button
                     size="sm"
                     variant="outline"
@@ -931,11 +903,13 @@ export const RFCDashboard = () => {
 
       {/* Details View Modal */}
       {detailsProject && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl relative overflow-y-auto max-h-[90vh]">
-            {/* Header */}
-            <div
-              className="flex items-center justify-between px-6 py-4 rounded-t-lg"
+        <Dialog
+          open={!!detailsProject}
+          onOpenChange={() => setDetailsProject(null)}
+        >
+          <DialogContent>
+            <DialogHeader
+              className="flex flex-row items-center justify-between px-6 py-4 rounded-t-lg"
               style={{
                 background: "linear-gradient(90deg, #1976d2 0%, #4fc3f7 100%)",
               }}
@@ -949,14 +923,9 @@ export const RFCDashboard = () => {
               <div className="text-sm text-white font-mono opacity-80 pr-3">
                 {detailsProject.project_id}
               </div>
-              <button
-                className="absolute top-3 right-3 text-white hover:text-gray-200"
-                onClick={() => setDetailsProject(null)}
-                aria-label="Close"
-              >
-                <X size={22} />
-              </button>
-            </div>
+            </DialogHeader>
+            {/* Header */}
+
             {/* Content */}
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6">
@@ -1023,7 +992,9 @@ export const RFCDashboard = () => {
                   )}
                 </div>
               </div>
+
               <hr className="my-2" />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6">
                 <div className="flex items-center gap-2">
                   <User size={16} className="text-blue-600" />
@@ -1053,7 +1024,9 @@ export const RFCDashboard = () => {
                   </span>
                 </div>
               </div>
+
               <hr className="my-2" />
+
               {/* Notes */}
               <div className="mb-4">
                 <span className="font-semibold flex items-center gap-2 mb-1">
@@ -1067,14 +1040,14 @@ export const RFCDashboard = () => {
                   )}
                 </div>
               </div>
+
               {/* Uploaded Files */}
               <div className="mb-4">
                 <span className="font-semibold flex items-center gap-2 mb-1">
                   <FileText size={16} /> Uploaded Files:
                 </span>
                 <ul className="list-disc ml-6">
-                  {detailsProject.uploaded_files &&
-                  detailsProject.uploaded_files.length > 0 ? (
+                  {detailsProject.uploaded_files?.length > 0 ? (
                     detailsProject.uploaded_files.map((f, i) => (
                       <li key={i} className="mb-2">
                         <ShowFile label={f.label} url={f.file} />
@@ -1085,13 +1058,13 @@ export const RFCDashboard = () => {
                   )}
                 </ul>
               </div>
+
               {/* RFC Updates / Additional Info */}
               <div className="mb-4">
                 <span className="font-semibold flex items-center gap-2 mb-1 text-yellow-700">
                   <AlertCircle size={16} /> RFC Updates:
                 </span>
-                {detailsProject.add_more_infos &&
-                detailsProject.add_more_infos.length > 0 ? (
+                {detailsProject.add_more_infos?.length > 0 ? (
                   <div className="space-y-4">
                     {detailsProject.add_more_infos.map((info, idx) => (
                       <div
@@ -1127,149 +1100,142 @@ export const RFCDashboard = () => {
                   <div className="text-gray-400 ml-2">No updates yet.</div>
                 )}
               </div>
-              <div className="flex justify-end mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => setDetailsProject(null)}
-                >
-                  Close
-                </Button>
-              </div>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* More Info Modal */}
       {moreInfoProject && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative overflow-y-auto max-h-[90vh]">
-            <button
-              className="absolute top-2 right-2"
-              onClick={() => setMoreInfoProject(null)}
-            >
-              <X />
-            </button>
-            <h2 className="text-xl font-bold mb-4">
-              Add More Info to {moreInfoProject.id}
-            </h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                Upload Additional Files
-              </label>
-              <Input
-                type="file"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  setMoreInfoForm((prev) => ({
-                    ...prev,
-                    files: [
-                      ...prev.files,
-                      ...files.map((file) => ({
-                        file,
-                        label: "",
-                        tempUrl: URL.createObjectURL(file),
-                      })),
-                    ],
-                  }));
-                  e.target.value = "";
-                }}
-              />
-              {moreInfoForm.files.map((uf, idx) => (
-                <div key={idx} className="flex items-center gap-2 mt-1">
-                  <Input
-                    type="text"
-                    placeholder="Label"
-                    value={uf.label}
-                    onChange={(e) =>
-                      setMoreInfoForm((prev) => ({
-                        ...prev,
-                        files: prev.files.map((u, i) =>
-                          i === idx ? { ...u, label: e.target.value } : u
-                        ),
-                      }))
-                    }
-                    className={
-                      uf.label && uf.label.trim() ? "" : "border-red-400"
-                    }
-                  />
-                  <span className="text-xs">{uf.file?.name}</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setMoreInfoForm((prev) => ({
-                        ...prev,
-                        files: prev.files.filter((_, i) => i !== idx),
-                      }))
-                    }
-                  >
-                    &times;
-                  </Button>
-                </div>
-              ))}
+        <Dialog open={true} onOpenChange={() => setMoreInfoProject(null)}>
+          <DialogContent className="">
+            <DialogHeader className="px-6 py-5">
+              <h2 className="text-xl font-bold">
+                Add More Info to {moreInfoProject.project_id}
+              </h2>
+            </DialogHeader>
+            <div className=" p-6 ">
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  Upload Additional Files
+                </label>
+                <Input
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setMoreInfoForm((prev) => ({
+                      ...prev,
+                      files: [
+                        ...prev.files,
+                        ...files.map((file) => ({
+                          file,
+                          label: "",
+                          tempUrl: URL.createObjectURL(file),
+                        })),
+                      ],
+                    }));
+                    e.target.value = "";
+                  }}
+                />
+                {moreInfoForm.files.map((uf, idx) => (
+                  <div key={idx} className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="text"
+                      placeholder="Label"
+                      value={uf.label}
+                      onChange={(e) =>
+                        setMoreInfoForm((prev) => ({
+                          ...prev,
+                          files: prev.files.map((u, i) =>
+                            i === idx ? { ...u, label: e.target.value } : u
+                          ),
+                        }))
+                      }
+                      className={
+                        uf.label && uf.label.trim() ? "" : "border-red-400"
+                      }
+                    />
+                    <span className="text-xs">{uf.file?.name}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setMoreInfoForm((prev) => ({
+                          ...prev,
+                          files: prev.files.filter((_, i) => i !== idx),
+                        }))
+                      }
+                    >
+                      &times;
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">
+                  Add Notes
+                </label>
+                <textarea
+                  className="border rounded w-full p-2 text-sm"
+                  rows={2}
+                  value={moreInfoForm.notes}
+                  onChange={(e) =>
+                    setMoreInfoForm((form) => ({
+                      ...form,
+                      notes: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">
+                  Add Enquiry
+                </label>
+                <textarea
+                  className="border rounded w-full p-2 text-sm"
+                  rows={2}
+                  value={moreInfoForm.enquiry}
+                  onChange={(e) =>
+                    setMoreInfoForm((form) => ({
+                      ...form,
+                      enquiry: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setMoreInfoProject(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={submitMoreInfo}
+                  loading={
+                    fetching &&
+                    (fetchType == "addMoreInfo" ||
+                      fetchType == "editMoreInfo" ||
+                      fetchType == "uploadFile")
+                  }
+                  disabled={
+                    fetching &&
+                    (fetchType == "addMoreInfo" ||
+                      fetchType == "editMoreInfo" ||
+                      fetchType == "uploadFile")
+                  }
+                >
+                  Submit
+                </Button>
+              </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
-                Add Notes
-              </label>
-              <textarea
-                className="border rounded w-full p-2 text-sm"
-                rows={2}
-                value={moreInfoForm.notes}
-                onChange={(e) =>
-                  setMoreInfoForm((form) => ({
-                    ...form,
-                    notes: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
-                Add Enquiry
-              </label>
-              <textarea
-                className="border rounded w-full p-2 text-sm"
-                rows={2}
-                value={moreInfoForm.enquiry}
-                onChange={(e) =>
-                  setMoreInfoForm((form) => ({
-                    ...form,
-                    enquiry: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setMoreInfoProject(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={submitMoreInfo}
-                loading={
-                  fetching &&
-                  (fetchType == "addMoreInfo" ||
-                    fetchType == "editMoreInfo" ||
-                    fetchType == "uploadFile")
-                }
-                disabled={
-                  fetching &&
-                  (fetchType == "addMoreInfo" ||
-                    fetchType == "editMoreInfo" ||
-                    fetchType == "uploadFile")
-                }
-              >
-                Submit
-              </Button>
-            </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

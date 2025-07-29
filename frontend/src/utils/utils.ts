@@ -1,6 +1,10 @@
 export const toReadableText = (text: string) => {
-  return text.split("_").join(" ");
+  return text
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 };
+
 export function formatRevenue(value) {
   if (value < 1000) return `₹${value}`;
   const units = ["K", "M", "B", "T"];

@@ -21,14 +21,12 @@ import {
 } from "@/components/ui/select";
 import { ProjectCard } from "@/components/ProjectCard";
 import { Badge } from "@/components/ui/badge";
-import ProjectSlidingPanel from "./ProjectSlidingPanel";
 import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
 import Loading from "./atomic/Loading";
 import { Project, ProjectListResponse } from "@/types/apiTypes";
-import ProjectFullPanel from "./ProjectSlidingPanel";
 import { useNavigate } from "react-router-dom";
 
 export const ProjectsDashboard = () => {

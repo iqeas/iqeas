@@ -1129,8 +1129,7 @@ export async function getWorkerProjectsPaginated(
   const search = `%${query.toLowerCase()}%`;
 
   const values = [userId, userId, search, search, search, size, offset];
-  const countValues = [userId, userId, search, search, search];
-
+  const countValues = [userId, search, search, search];
   // 1. Paginated query
   const queryText = `
     WITH filtered AS (
@@ -1160,19 +1159,19 @@ export async function getWorkerProjectsPaginated(
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = f.project_id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+        WHERE d.project_id = f.project_id AND (dsl.forwarded_user_id = $2)
       ) AS total_works,
 
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = f.project_id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status = 'completed'
+        WHERE d.project_id = f.project_id AND (dsl.forwarded_user_id = $2) AND  dsl.is_sent='true'
       ) AS completed_works,
 
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = f.project_id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status != 'completed'
+        WHERE d.project_id = f.project_id AND (dsl.forwarded_user_id = $2) AND dsl.is_sent='false'
       ) AS pending_works
 
     FROM filtered f
@@ -1187,11 +1186,11 @@ export async function getWorkerProjectsPaginated(
       FROM drawing_stage_logs dsl
       JOIN drawings d ON dsl.drawing_id = d.id
       JOIN projects p ON d.project_id = p.id
-      WHERE (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+      WHERE (dsl.forwarded_user_id = $1::int)
       AND (
-        LOWER(p.name) ILIKE $3 OR
-        LOWER(p.project_id) ILIKE $4 OR
-        LOWER(p.client_company) ILIKE $5
+        LOWER(p.name) ILIKE $2 OR
+        LOWER(p.project_id) ILIKE $3 OR
+        LOWER(p.client_company) ILIKE $4
       )
       GROUP BY p.id
     ) AS count_alias
@@ -1202,16 +1201,16 @@ export async function getWorkerProjectsPaginated(
     SELECT
       COUNT(DISTINCT p.id) AS total_projects,
       COUNT(*) AS total_works,
-      COUNT(CASE WHEN dsl.status = 'completed' THEN 1 END) AS completed_works,
-      COUNT(CASE WHEN dsl.status != 'completed' THEN 1 END) AS pending_works
+      COUNT(CASE WHEN dsl.is_sent = 'true' THEN 1 END) AS completed_works,
+      COUNT(CASE WHEN dsl.is_sent = 'false' THEN 1 END) AS pending_works
     FROM drawing_stage_logs dsl
     JOIN drawings d ON dsl.drawing_id = d.id
     JOIN projects p ON d.project_id = p.id
-    WHERE (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+    WHERE (dsl.forwarded_user_id = $1::int)
     AND (
-      LOWER(p.name) ILIKE $3 OR
-      LOWER(p.project_id) ILIKE $4 OR
-      LOWER(p.client_company) ILIKE $5
+      LOWER(p.name) ILIKE $2 OR
+      LOWER(p.project_id) ILIKE $3 OR
+      LOWER(p.client_company) ILIKE $4
     )
   `;
 
@@ -1238,7 +1237,6 @@ export async function getWorkerProjectsPaginated(
     },
   };
 }
-
 
 export async function getWorkerProjectDetail(userId, projectId) {
   const values = [userId, userId, projectId];
@@ -1286,7 +1284,7 @@ export async function getWorkerProjectDetail(userId, projectId) {
 
   const row = result.rows[0];
 
-  return row
+  return row;
 }
 export async function getProjectDetailsById(projectId) {
   const query = `

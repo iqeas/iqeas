@@ -382,66 +382,68 @@ const AttendanceManagement = () => {
       {/* Modal for create/edit */}
       <Dialog open={modalOpen} onOpenChange={closeModal}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="px-6 py-5">
             <DialogTitle
               aria-disabled={fetching && fetchType == `editAttendance`}
             >
               {editRecord ? "Edit Attendance" : "Mark Attendance"}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              type="text"
-              value={records.find((u) => u.id === form.user_id)?.name || ""}
-              disabled
-              className="w-full"
-            />
-            <Input
-              type="date"
-              value={form.date}
-              onChange={(e) => handleFormChange("date", e.target.value)}
-              required
-              disabled
-            />
-            <Select
-              value={form.status}
-              onValueChange={(v) => handleFormChange("status", v)}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              placeholder="Note (optional)"
-              value={form.note}
-              onChange={(e) => handleFormChange("note", e.target.value)}
-            />
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeModal}
-                disabled={fetching && fetchType == `editAttendance`}
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                type="text"
+                value={records.find((u) => u.id === form.user_id)?.name || ""}
+                disabled
+                className="w-full"
+              />
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(e) => handleFormChange("date", e.target.value)}
+                required
+                disabled
+              />
+              <Select
+                value={form.status}
+                onValueChange={(v) => handleFormChange("status", v)}
+                required
               >
-                Cancel
-              </Button>
-              <Button
-                loading={fetching && fetchType == `createAttendance`}
-                disabled={fetching && fetchType == `editAttendance`}
-                type="submit"
-              >
-                {editRecord ? "Update" : "Mark"}
-              </Button>
-            </DialogFooter>
-          </form>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Note (optional)"
+                value={form.note}
+                onChange={(e) => handleFormChange("note", e.target.value)}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeModal}
+                  disabled={fetching && fetchType == `editAttendance`}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  loading={fetching && fetchType == `createAttendance`}
+                  disabled={fetching && fetchType == `editAttendance`}
+                  type="submit"
+                >
+                  {editRecord ? "Update" : "Mark"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
