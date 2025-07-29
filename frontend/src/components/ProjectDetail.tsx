@@ -873,10 +873,12 @@ const ProjectTrack: React.FC = () => {
         </div>
       </div>
       <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent >
+          <DialogHeader className="px-6 py-4">
             <DialogTitle>Select Files for Delivery</DialogTitle>
           </DialogHeader>
+          <div className="p-6">
+
           <div className="space-y-4 max-h-80 overflow-y-auto">
             {files.length === 0 ? (
               <div className="text-slate-500 text-center">
@@ -914,6 +916,7 @@ const ProjectTrack: React.FC = () => {
             >
               Submit Delivery
             </Button>
+          </div>
           </div>
         </DialogContent>
       </Dialog>
