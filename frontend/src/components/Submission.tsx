@@ -1317,7 +1317,7 @@ const Submission = ({ projectId }) => {
                     </Label>
                     <Input
                       id={`weight-${config.name}`}
-                      type="number"
+                      type="tel"
                       min="0"
                       max="100"
                       value={config.weight}
@@ -1337,7 +1337,7 @@ const Submission = ({ projectId }) => {
                     </Label>
                     <Input
                       id={`hours-${config.name}`}
-                      type="number"
+                      type="tel"
                       min="0"
                       value={config.allocated_hours}
                       onChange={(e) => {
