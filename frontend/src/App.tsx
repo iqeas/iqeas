@@ -85,14 +85,7 @@ const App = () => (
                     </DashboardLayout>
                   }
                 />
-                {/* <Route
-                  path="my-task"
-                  element={
-                    <DashboardLayout>
-                      <MyTasks />
-                    </DashboardLayout>
-                  }
-                /> */}
+               
                 <Route
                   path="documents/:project_id"
                   element={
