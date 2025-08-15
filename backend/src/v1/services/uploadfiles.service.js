@@ -154,3 +154,22 @@ export async function getUploadedFilesByRolePaginated(
     },
   };
 }
+
+export async function getFileById(id) {
+  const result = await pool.query(
+    `
+    SELECT * FROM uploaded_files WHERE id = $1
+    `,
+    [id]
+  );
+  return result.rows[0]
+}
+
+export async function deleteFileById(id) {
+  await pool.query(
+    `
+    DELETE FROM uploaded_files WHERE id = $1
+    `,
+    [id]
+  );
+}

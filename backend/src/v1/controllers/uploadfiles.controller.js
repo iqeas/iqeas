@@ -1,5 +1,5 @@
-import { deleteFile, uploadFileToDO } from "../utils/do-upload.js";
-import { getUploadedFilesByRolePaginated, saveUploadedFile } from "../services/uploadfiles.service.js";
+import {  deleteFileFromDO, uploadFileToDO } from "../utils/do-upload.js";
+import { deleteFileById, getFileById, getUploadedFilesByRolePaginated, saveUploadedFile } from "../services/uploadfiles.service.js";
 import {formatResponse} from '../utils/response.js'
 const is_production = process.env.PRODUCTION === "true";
 
@@ -18,7 +18,8 @@ export const uploadFileHandler = async (req, res) => {
     let filenameOrUrl;
 
     if (is_production) {
-      filenameOrUrl = await uploadFileToDO(file, role);
+      console.log('uploading to space')
+      filenameOrUrl = await uploadFileToDO(file,label, role);
     } else {
       filenameOrUrl = file.filename;
     }
@@ -59,8 +60,9 @@ export const deleteFileHandler = async (req, res) => {
         .json(formatResponse({ statusCode: 400, detail: "File id required" }));
     }
 
-
-    await deleteFile(fileId);
+    const db_file = await getFileById(fileId)
+    await deleteFileFromDO(db_file)
+    await deleteFileById(fileId);
     
     return res.status(201).json(
       formatResponse({

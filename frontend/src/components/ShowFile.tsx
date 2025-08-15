@@ -30,6 +30,21 @@ export const ShowFile: React.FC<ShowFileProps> = ({
   url,
   size = "medium",
 }) => {
+  const handleDownload = async (url: string, label: string) => {
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      const blob = await response.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", label); // force download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error("Download failed:", error);
+    }
+  };
   const s = sizeMap[size];
   return (
     <span
@@ -45,14 +60,18 @@ export const ShowFile: React.FC<ShowFileProps> = ({
       >
         <Eye className={s.icon} />
       </a>
-      <a
-        href={url}
-        download={label}
-        className="ml-1 text-blue-600 hover:text-blue-900"
+      <div
+        onClick={(e) => {
+          e.preventDefault();
+
+          e.stopPropagation();
+          handleDownload(url, label);
+        }}
+        className="ml-1 cursor-pointer text-blue-600 hover:text-blue-900"
         title="Download"
       >
         <Download className={s.icon} />
-      </a>
+      </div>
     </span>
   );
 };

@@ -180,8 +180,9 @@ export const RFCDashboard = () => {
       toast.error(`Missing required field: ${missing[0]}`);
       return;
     }
-    if(!isValidEmail(form.contactEmail)){
+    if (!isValidEmail(form.contactEmail)) {
       toast.error(`Please enter valid contact email`);
+      return;
     }
     // Check for missing file labels
     if (
