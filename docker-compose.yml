@@ -3,8 +3,8 @@ services:
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_USER: iqeas@2025
-      POSTGRES_PASSWORD: !@#%1321^&3451@#%^027!@R^uigv%^&*cyg$%x&G*b$)(
+      POSTGRES_USER: iqeas2025
+      POSTGRES_PASSWORD: !#%1321^&3451#%^027!R^uigv%^&cyg$%x&Gb$
       POSTGRES_DB: mydb
     volumes:
       - pgdata:/var/lib/postgresql/data
