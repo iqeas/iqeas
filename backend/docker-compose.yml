@@ -1,26 +1,27 @@
 version: "3.9"
+
 services:
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mydb
+      POSTGRES_USER: iqeas
+      POSTGRES_PASSWORD: yP5-4DC43894hjdsinciAfw
+      POSTGRES_DB: iqeas
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
 
   backend:
-    build: ./backend
+    build: .
     container_name: backend_app
     restart: always
     env_file:
-      - ./backend/.env   
+      - ./.env
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/mydb"
+      DATABASE_URL: "postgres://iqeas:yourpassword@postgres:5432/iqeas"
     ports:
       - "8080:8080"
 
