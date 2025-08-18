@@ -46,11 +46,15 @@ app.use("/api/v1", attendanceRoute);
 app.use("/api/v1", salaryRoute);
 app.use("/api/v1", leaveRoute);
 
-
 // call seed function on startup
 (async () => {
   await createInitialAdmin();
 })();
 
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 
+  // run seed after server starts
+  await createInitialAdmin();
+});
 export default app;
