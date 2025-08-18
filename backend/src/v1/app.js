@@ -46,6 +46,8 @@ app.use("/api/v1", attendanceRoute);
 app.use("/api/v1", salaryRoute);
 app.use("/api/v1", leaveRoute);
 
+const PORT = process.env.PORT || 8080;
+
 // call seed function on startup
 (async () => {
   await createInitialAdmin();
@@ -54,7 +56,7 @@ app.use("/api/v1", leaveRoute);
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
 
-  // run seed after server starts
-  await createInitialAdmin();
+  // // run seed after server starts
+  // await createInitialAdmin();
 });
 export default app;
