@@ -20,6 +20,7 @@ import salaryRoute from "./routes/salary.routes.js";
 import leaveRoute from "./routes/leave.route.js";
 
 import cors from "cors"; // <-- Import cors
+import createInitialAdmin from "./utils/seed.js";
 
 const app = express();
 app.use(cors());
@@ -44,5 +45,12 @@ app.use("/api/v1", documentFileRoute);
 app.use("/api/v1", attendanceRoute);
 app.use("/api/v1", salaryRoute);
 app.use("/api/v1", leaveRoute);
+
+
+// call seed function on startup
+(async () => {
+  await createInitialAdmin();
+})();
+
 
 export default app;
