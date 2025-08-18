@@ -21,7 +21,7 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: "postgres://iqeas:yourpassword@postgres:5432/iqeas"
+      DATABASE_URL: "postgresql://iqeas:yP5-4DC43894hjdsinciAfw@postgres:5432/iqeas?sslmode=disable"
     ports:
       - "8080:8080"
 
