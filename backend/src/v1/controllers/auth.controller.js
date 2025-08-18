@@ -29,7 +29,7 @@ export const login = async (req, res) => {
       );
     }
 
-    console.error("Login error", error);
+    console.log("Login error", error);
     return res.status(500).json(
       formatResponse({
         statusCode: 500,
