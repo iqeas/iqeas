@@ -15,7 +15,7 @@ export async function createUser(
   const password = generatePassword(email, phoneNumber);
   const hashedPassword = await bcrypt.hash(password, 10);
   const uniqueId = uuidGenerator();
-
+  console.log("Password : ", hashedPassword);
   const existingUser = await client.query(
     `SELECT id FROM users WHERE email = $1 AND is_deleted = true LIMIT 1`,
     [email]
