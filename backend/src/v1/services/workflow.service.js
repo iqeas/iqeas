@@ -662,7 +662,7 @@ export async function updateDrawingLog(
     } else {
       result = await client.query(
         `UPDATE drawing_stage_logs
-        SET status = $1, action_taken = $2, reason = $3,is_sent=$6, updated_at = NOW()
+        SET status = $1, action_taken = $2, reason = $3,is_sent=$5, updated_at = NOW()
          WHERE id = $4 RETURNING *`,
         [status, action_taken, reason, logId, is_sent]
       );
