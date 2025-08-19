@@ -954,8 +954,11 @@ export async function addProjectDeliveryFiles(projectId, fileIds, client) {
   // Use ON CONFLICT DO NOTHING to prevent errors if files are already linked
   await client.query(`
     INSERT INTO project_delivery_files (project_id, uploaded_file_id)
-    VALUES ${insertValues}
-    ON CONFLICT (project_id, uploaded_file_id) DO NOTHING;
+SELECT $1, unnest($2::int[])
+WHERE NOT EXISTS (
+  SELECT 1 FROM project_delivery_files
+  WHERE project_id = $1 AND uploaded_file_id = unnest($2::int[])
+);
   `);
 
   const { rows } = await client.query(
