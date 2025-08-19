@@ -1451,7 +1451,38 @@ export async function getPublicProjectDetails(token) {
         ) ORDER BY s.created_at)
         FROM stages s
         WHERE s.project_id = p.id
-      ), '[]'::json) AS stages
+      ), '[]'::json) AS stages,
+
+      -- Estimation info
+      (
+        SELECT json_build_object(
+          'id', e.id,
+          'status', e.status,
+          'cost', e.cost,
+          'deadline', e.deadline,
+          'approved', e.approved,
+          'approval_date', e.approval_date,
+          'notes', e.notes
+        )
+        FROM estimations e
+        WHERE e.project_id = p.id
+        LIMIT 1
+      ) AS estimation,
+
+      -- Last update (from drawing logs)
+      (
+        SELECT json_build_object(
+          'step_name', dsl.step_name,
+          'status', dsl.status,
+          'notes', dsl.notes,
+          'updated_at', dsl.updated_at
+        )
+        FROM drawing_stage_logs dsl
+        JOIN drawings d ON dsl.drawing_id = d.id
+        WHERE d.project_id = p.id
+        ORDER BY dsl.updated_at DESC
+        LIMIT 1
+      ) AS last_update
 
     FROM projects p
     WHERE p.public_share_token = $1
