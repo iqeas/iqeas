@@ -1425,6 +1425,7 @@ export async function getPublicProjectDetails(token) {
       p.received_date,
       p.notes,
       p.progress,
+      p.status,
 
       -- Delivery files
       COALESCE((
