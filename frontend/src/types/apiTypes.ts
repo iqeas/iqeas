@@ -3,7 +3,7 @@ interface IUser {
   id: string;
   name: string;
   email: string;
-  phonenumber: string;
+  phone: string;
   role: string;
   active: boolean;
   base_salary: string;
@@ -28,7 +28,7 @@ export interface IRFCProjectUser {
   id: number;
   name: string;
   email: string;
-  phonenumber: string;
+  phone: string;
 }
 
 export interface IRFCProject {

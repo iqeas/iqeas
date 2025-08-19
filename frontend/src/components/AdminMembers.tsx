@@ -52,7 +52,7 @@ export default function AdminMembers() {
   const [userFormData, setUserFormData] = useState({
     name: "",
     email: "",
-    phoneNumber: "",
+    phone: "",
     active: true,
     role: "rfq",
     base_salary: "",
@@ -113,7 +113,7 @@ export default function AdminMembers() {
     if (
       !userFormData.name ||
       !userFormData.email ||
-      !userFormData.phoneNumber ||
+      !userFormData.phone ||
       !userFormData.role ||
       !userFormData.base_salary
     ) {
@@ -124,7 +124,7 @@ export default function AdminMembers() {
       toast.error("Please enter valid email.");
       return;
     }
-    if (!isValidPhoneNumber(userFormData.phoneNumber)) {
+    if (!isValidPhoneNumber(userFormData.phone)) {
       toast.error("Phone number must be 10  ");
       return;
     }
@@ -134,7 +134,7 @@ export default function AdminMembers() {
       {
         ...userFormData,
         base_salary: parseFloat(userFormData.base_salary) || 0,
-        phoneNumber: userFormData.phoneNumber,
+        phone: userFormData.phone,
       },
       "application/json",
       authToken,
@@ -212,7 +212,7 @@ export default function AdminMembers() {
     if (
       !userFormData.name ||
       !userFormData.email ||
-      !userFormData.phoneNumber ||
+      !userFormData.phone ||
       !userFormData.role ||
       !userFormData.base_salary
     ) {
@@ -223,7 +223,7 @@ export default function AdminMembers() {
       id: editUserId,
       name: userFormData.name,
       email: userFormData.email,
-      phoneNumber: userFormData.phoneNumber,
+      phone: userFormData.phone,
       role: userFormData.role,
       active: userFormData.active,
       base_salary: parseFloat(userFormData.base_salary) || 0,
@@ -308,7 +308,7 @@ export default function AdminMembers() {
         ? {
             name: user.name,
             email: user.email,
-            phoneNumber: user.phonenumber,
+            phone: user.phone,
             active: user.active,
             role: user.role,
             base_salary: user.base_salary || "",
@@ -316,7 +316,7 @@ export default function AdminMembers() {
         : {
             name: "",
             email: "",
-            phoneNumber: "",
+            phone: "",
             active: true,
             role: "rfq",
             base_salary: "",
@@ -404,105 +404,104 @@ export default function AdminMembers() {
             </DialogTitle>
           </DialogHeader>
           <div className="p-6">
-
-          <form
-            className="flex flex-col space-y-7"
-            onSubmit={userModal.edit ? handleEditUser : handleAddUser}
-          >
-            <div className="md:col-span-1">
-              <Input
-                placeholder="Name"
-                value={userFormData.name}
-                onChange={(e) =>
-                  setUserFormData((u) => ({ ...u, name: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Input
-                placeholder="Email"
-                type="email"
-                value={userFormData.email}
-                onChange={(e) =>
-                  setUserFormData((u) => ({ ...u, email: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="md:col-span-1">
-              <Input
-                placeholder="Phone"
-                type="number"
-                value={userFormData.phoneNumber}
-                onChange={(e) =>
-                  setUserFormData((u) => ({
-                    ...u,
-                    phoneNumber: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="md:col-span-1">
-              <Input
-                placeholder="Base Salary"
-                type="number"
-                min={0}
-                value={userFormData.base_salary}
-                onChange={(e) =>
-                  setUserFormData((u) => ({
-                    ...u,
-                    base_salary: e.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="md:col-span-1 flex items-center gap-2">
-              <span className="text-xs">Active</span>
-              <Switch
-                checked={userFormData.active}
-                onCheckedChange={(v) =>
-                  setUserFormData((u) => ({ ...u, active: v }))
-                }
-              />
-            </div>
-            <div className="md:col-span-1">
-              <Select
-                value={userFormData.role}
-                onValueChange={(value) =>
-                  setUserFormData((u) => ({ ...u, role: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>
-                      {r.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-1">
-              <Button
-                type="submit"
-                className="w-full"
-                loading={
-                  fetching &&
-                  (fetchType == "addUser" || fetchType == "editUser")
-                }
-                disabled={
-                  fetching &&
-                  (fetchType == "addUser" || fetchType == "editUser")
-                }
-              >
-                {userModal.edit ? "Save Changes" : "Add User"}
-              </Button>
-            </div>
-          </form>
+            <form
+              className="flex flex-col space-y-7"
+              onSubmit={userModal.edit ? handleEditUser : handleAddUser}
+            >
+              <div className="md:col-span-1">
+                <Input
+                  placeholder="Name"
+                  value={userFormData.name}
+                  onChange={(e) =>
+                    setUserFormData((u) => ({ ...u, name: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Input
+                  placeholder="Email"
+                  type="email"
+                  value={userFormData.email}
+                  onChange={(e) =>
+                    setUserFormData((u) => ({ ...u, email: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="md:col-span-1">
+                <Input
+                  placeholder="Phone"
+                  type="number"
+                  value={userFormData.phone}
+                  onChange={(e) =>
+                    setUserFormData((u) => ({
+                      ...u,
+                      phone: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="md:col-span-1">
+                <Input
+                  placeholder="Base Salary"
+                  type="number"
+                  min={0}
+                  value={userFormData.base_salary}
+                  onChange={(e) =>
+                    setUserFormData((u) => ({
+                      ...u,
+                      base_salary: e.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <div className="md:col-span-1 flex items-center gap-2">
+                <span className="text-xs">Active</span>
+                <Switch
+                  checked={userFormData.active}
+                  onCheckedChange={(v) =>
+                    setUserFormData((u) => ({ ...u, active: v }))
+                  }
+                />
+              </div>
+              <div className="md:col-span-1">
+                <Select
+                  value={userFormData.role}
+                  onValueChange={(value) =>
+                    setUserFormData((u) => ({ ...u, role: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-1">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  loading={
+                    fetching &&
+                    (fetchType == "addUser" || fetchType == "editUser")
+                  }
+                  disabled={
+                    fetching &&
+                    (fetchType == "addUser" || fetchType == "editUser")
+                  }
+                >
+                  {userModal.edit ? "Save Changes" : "Add User"}
+                </Button>
+              </div>
+            </form>
           </div>
         </DialogContent>
       </Dialog>
@@ -534,7 +533,7 @@ export default function AdminMembers() {
                   <tr key={u.id} className="border-b last:border-0">
                     <td className="p-2">{u.name}</td>
                     <td className="p-2">{u.email}</td>
-                    <td className="p-2">{u.phonenumber}</td>
+                    <td className="p-2">{u.phone}</td>
                     <td className="p-2">{u.base_salary}</td>
                     <td className="p-2 text-center">
                       <Switch
@@ -615,7 +614,7 @@ export default function AdminMembers() {
           </Pagination>
         </div>
       )}
-      
+
       <Dialog
         open={teamModal.open}
         onOpenChange={(open) => setTeamModal((m) => ({ ...m, open }))}
@@ -627,153 +626,152 @@ export default function AdminMembers() {
             </DialogTitle>
           </DialogHeader>
           <div className="p-6">
-
-          <form
-            className="flex flex-col space-y-7"
-            onSubmit={teamModal.edit ? handleEditTeam : handleAddTeam}
-          >
-            <div className="md:col-span-2">
-              <Input
-                placeholder="Team Title"
-                value={teamFormData.title}
-                onChange={(e) =>
-                  setTeamFormData((f) => ({ ...f, title: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-xs font-medium mb-1">
-                Team Members
-              </label>
-              <div className="relative">
-                <button
-                  type="button"
-                  className="w-full border rounded px-2 py-2 text-left bg-white"
-                  onClick={() => setShowMembersDropdown((v) => !v)}
+            <form
+              className="flex flex-col space-y-7"
+              onSubmit={teamModal.edit ? handleEditTeam : handleAddTeam}
+            >
+              <div className="md:col-span-2">
+                <Input
+                  placeholder="Team Title"
+                  value={teamFormData.title}
+                  onChange={(e) =>
+                    setTeamFormData((f) => ({ ...f, title: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium mb-1">
+                  Team Members
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="w-full border rounded px-2 py-2 text-left bg-white"
+                    onClick={() => setShowMembersDropdown((v) => !v)}
+                  >
+                    {teamFormData.members.length === 0
+                      ? "Select team members..."
+                      : users
+                          .filter((u) =>
+                            teamFormData.members.includes(u.id.toString())
+                          )
+                          .map((u) => u.name)
+                          .join(", ")}
+                  </button>
+                  {showMembersDropdown && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow max-h-48 overflow-y-auto">
+                      {users.map((u) => {
+                        const idStr = u.id.toString();
+                        return (
+                          <label
+                            key={u.id}
+                            className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={teamFormData.members.includes(idStr)}
+                              onChange={() => {
+                                setTeamFormData((f) => {
+                                  const exists = f.members.includes(idStr);
+                                  const newMembers = exists
+                                    ? f.members.filter((m) => m !== idStr)
+                                    : [...f.members, idStr];
+                                  return {
+                                    ...f,
+                                    members: newMembers,
+                                    leader: newMembers.includes(
+                                      f.leader_id.toString()
+                                    )
+                                      ? f.leader_id.toString()
+                                      : "",
+                                  };
+                                });
+                              }}
+                              className="mr-2"
+                            />
+                            {u.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Click to select multiple members
+                </div>
+              </div>
+              <div className="md:col-span-1">
+                <label className="block text-xs font-medium mb-1">
+                  Team Leader
+                </label>
+                <Select
+                  value={teamFormData.leader_id}
+                  onValueChange={(value) =>
+                    setTeamFormData((f) => ({ ...f, leader_id: value }))
+                  }
                 >
-                  {teamFormData.members.length === 0
-                    ? "Select team members..."
-                    : users
-                        .filter((u) =>
-                          teamFormData.members.includes(u.id.toString())
-                        )
-                        .map((u) => u.name)
-                        .join(", ")}
-                </button>
-                {showMembersDropdown && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow max-h-48 overflow-y-auto">
-                    {users.map((u) => {
-                      const idStr = u.id.toString();
-                      return (
-                        <label
-                          key={u.id}
-                          className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={teamFormData.members.includes(idStr)}
-                            onChange={() => {
-                              setTeamFormData((f) => {
-                                const exists = f.members.includes(idStr);
-                                const newMembers = exists
-                                  ? f.members.filter((m) => m !== idStr)
-                                  : [...f.members, idStr];
-                                return {
-                                  ...f,
-                                  members: newMembers,
-                                  leader: newMembers.includes(
-                                    f.leader_id.toString()
-                                  )
-                                    ? f.leader_id.toString()
-                                    : "",
-                                };
-                              });
-                            }}
-                            className="mr-2"
-                          />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Leader" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users
+                      .filter((u) =>
+                        teamFormData.members.includes(u.id.toString())
+                      )
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.id.toString()}>
                           {u.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="text-xs text-slate-500 mt-1">
-                Click to select multiple members
+              <div className="md:col-span-1 flex items-center gap-2">
+                <span className="text-xs">Active</span>
+                <Switch
+                  checked={teamFormData.active}
+                  onCheckedChange={(v) =>
+                    setTeamFormData((f) => ({ ...f, active: v }))
+                  }
+                />
               </div>
-            </div>
-            <div className="md:col-span-1">
-              <label className="block text-xs font-medium mb-1">
-                Team Leader
-              </label>
-              <Select
-                value={teamFormData.leader_id}
-                onValueChange={(value) =>
-                  setTeamFormData((f) => ({ ...f, leader_id: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Leader" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users
-                    .filter((u) =>
-                      teamFormData.members.includes(u.id.toString())
-                    )
-                    .map((u) => (
-                      <SelectItem key={u.id} value={u.id.toString()}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-1 flex items-center gap-2">
-              <span className="text-xs">Active</span>
-              <Switch
-                checked={teamFormData.active}
-                onCheckedChange={(v) =>
-                  setTeamFormData((f) => ({ ...f, active: v }))
-                }
-              />
-            </div>
-            <div className="md:col-span-1">
-              <label className="block text-xs font-medium mb-1">
-                Team Role
-              </label>
-              <Select
-                value={teamFormData.role}
-                onValueChange={(value) =>
-                  setTeamFormData((f) => ({ ...f, role: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="working">Working</SelectItem>
-                  <SelectItem value="pm">PM</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-1">
-              <Button
-                type="submit"
-                className="w-full"
-                loading={
-                  fetching &&
-                  (fetchType == "createTeam" || fetchType == "editUser")
-                }
-                disabled={
-                  fetching &&
-                  (fetchType == "createTeam" || fetchType == "editUser")
-                }
-              >
-                {teamModal.edit ? "Save Changes" : "Add Team"}
-              </Button>
-            </div>
-          </form>
+              <div className="md:col-span-1">
+                <label className="block text-xs font-medium mb-1">
+                  Team Role
+                </label>
+                <Select
+                  value={teamFormData.role}
+                  onValueChange={(value) =>
+                    setTeamFormData((f) => ({ ...f, role: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="working">Working</SelectItem>
+                    <SelectItem value="pm">PM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-1">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  loading={
+                    fetching &&
+                    (fetchType == "createTeam" || fetchType == "editUser")
+                  }
+                  disabled={
+                    fetching &&
+                    (fetchType == "createTeam" || fetchType == "editUser")
+                  }
+                >
+                  {teamModal.edit ? "Save Changes" : "Add Team"}
+                </Button>
+              </div>
+            </form>
           </div>
         </DialogContent>
       </Dialog>
