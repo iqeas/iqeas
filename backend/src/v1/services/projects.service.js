@@ -361,6 +361,7 @@ export async function getProjectsEstimationProjects({
       ) AS project_rejection
 
     FROM filtered_projects p
+    ORDER BY p.created_at DESC
     LEFT JOIN users u ON p.user_id = u.id;
   `;
 
@@ -541,6 +542,7 @@ export async function getPMProjects({
       ) AS delivery_files
 
     FROM filtered_projects fp
+    ORDER BY p.created_at DESC
     LEFT JOIN users u ON fp.user_id = u.id;
   `;
 
@@ -715,6 +717,7 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
       ) AS delivery_files
 
     FROM filtered_projects fp
+    ORDER BY p.created_at DESC
     LEFT JOIN users u ON fp.user_id = u.id;
   `;
 
