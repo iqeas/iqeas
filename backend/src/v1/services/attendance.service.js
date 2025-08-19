@@ -53,7 +53,7 @@ export async function getAttendanceList({
           'status', a.status,
           'note', a.note,
           'date', a.date,
-          'user_id', a.user_id,
+          'user_id', a.user_id
         )
       END AS attendance
     FROM users u
