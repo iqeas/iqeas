@@ -46,14 +46,14 @@ export async function getAttendanceList({
     SELECT 
       u.id AS id,
       u.name AS name,
-      u.user_id AS user_id,
       CASE
         WHEN a.id IS NULL THEN NULL
         ELSE json_build_object(
           'id', a.id,
           'status', a.status,
           'note', a.note,
-          'date', a.date
+          'date', a.date,
+          'user_id', a.user_id,
         )
       END AS attendance
     FROM users u
