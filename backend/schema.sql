@@ -5,9 +5,10 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,grer
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(15),
+    user_id VARCHAR(1024),
     active BOOLEAN DEFAULT TRUE NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'rfq', 'estimation', 'pm', 'working', 'documentation')),
     password VARCHAR(128) NOT NULL,
