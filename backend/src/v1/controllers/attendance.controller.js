@@ -63,7 +63,13 @@ export async function updateAttendanceController(req, res) {
   try {
     const { id } = req.params;
     const updated = await updateAttendance(id, req.body);
-    res.json(updated);
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Attendance updated successfully",
+        data: updated,
+      })
+    );
   } catch (err) {
     res
       .status(500)
