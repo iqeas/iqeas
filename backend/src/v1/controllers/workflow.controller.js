@@ -244,10 +244,10 @@ export async function EditDrawingLogsController(req, res) {
     await WorkflowService.updateDrawingLog(
       id,
       status,
-      action_taken ?? null,
-      reason ?? null,
+      action_taken ?? 'bot_yet',
+      reason ?? '',
       is_sent ?? false,
-      uploaded_files_ids ?? null
+      uploaded_files_ids ?? []
     );
     console.log("Drawing log updated in DB");
 
