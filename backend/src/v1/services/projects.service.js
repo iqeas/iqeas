@@ -543,7 +543,7 @@ export async function getPMProjects({
 
     FROM filtered_projects fp
     LEFT JOIN users u ON fp.user_id = u.id
-    ORDER BY p.created_at DESC;
+    ORDER BY fp.created_at DESC;
   `;
 
   const totalQuery = `
@@ -718,7 +718,7 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
 
     FROM filtered_projects fp
     LEFT JOIN users u ON fp.user_id = u.id
-    ORDER BY p.created_at DESC;
+    ORDER BY fp.created_at DESC;
   `;
 
   const totalQuery = `
