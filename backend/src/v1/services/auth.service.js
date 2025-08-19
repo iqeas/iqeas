@@ -27,7 +27,7 @@ export async function loginUser({ email, password }) {
       id: user.id,
       name: user.name,
       email: user.email,
-      phonenumber: user.phonenumber,
+      phone: user.phone,
       role: user.role,
     },
     process.env.JWT_SECRET,
@@ -39,7 +39,7 @@ export async function loginUser({ email, password }) {
     user: {
       id: user.id,
       email: user.email,
-      phonenumber: user.phonenumber,
+      phone: user.phone,
       role: user.role,
       active: user.active,
     },
@@ -61,7 +61,7 @@ export async function sentForgotMail(email) {
 
     const token = createForgotPasswordToken({ email });
     const resetUrl = `${process.env.FORGOT_PASSWORD_URL}?token=${token}`;
-    console.log(resetUrl,token);
+    console.log(resetUrl, token);
     const emailSent = await sendForgotPasswordEmail(email, resetUrl);
     if (!emailSent) {
       return false;

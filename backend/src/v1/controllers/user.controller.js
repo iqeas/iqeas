@@ -14,16 +14,9 @@ import { getAllTeams } from "../services/teams.service.js";
 import { sentForgotMail } from "../services/auth.service.js";
 
 export const createNewUser = async (req, res) => {
-  const { email, phoneNumber, name, role, active,base_salary } = req.body;
+  const { email, phone, name, role, active, base_salary } = req.body;
 
-  if (
-    !email ||
-    !phoneNumber ||
-    !name ||
-    !role ||
-    !base_salary ||
-    active === null
-  ) {
+  if (!email || !phone || !name || !role || !base_salary || active === null) {
     return res.status(400).json(
       formatResponse({
         statusCode: 400,
@@ -38,7 +31,7 @@ export const createNewUser = async (req, res) => {
 
     const { user, password } = await createUser(
       email,
-      phoneNumber,
+      phone,
       name,
       role,
       active,
@@ -46,7 +39,7 @@ export const createNewUser = async (req, res) => {
       client
     );
 
-const sentEmail = await sentForgotMail(email, client);
+    const sentEmail = await sentForgotMail(email, client);
     console.log(sentEmail);
 
     await client.query("COMMIT");
@@ -107,7 +100,7 @@ export const toggleUserStatus = async (req, res) => {
 export const getUsersController = async (req, res) => {
   try {
     const { page = 1, size = 10, search = "" } = req.query;
-    console.log(page,size,search);
+    console.log(page, size, search);
     const data = await getAllUsers({
       page: parseInt(page),
       search: search,
@@ -157,7 +150,8 @@ export const getUsersByRoleController = async (req, res) => {
 
 export const EditUserDataController = async (req, res) => {
   const { id } = req.params;
-  const { name, email, phoneNumber, active, role, is_deleted,base_salary } = req.body;
+  const { name, email, phone, active, role, is_deleted, base_salary } =
+    req.body;
 
   if (!id) {
     return res
@@ -169,11 +163,11 @@ export const EditUserDataController = async (req, res) => {
     const updatedUser = await updateUserData(id, {
       name,
       email,
-      phoneNumber,
+      phone,
       active,
       role,
       is_deleted,
-      base_salary
+      base_salary,
     });
     return res.status(200).json(
       formatResponse({

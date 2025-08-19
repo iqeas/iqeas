@@ -158,7 +158,7 @@ export async function getProjectByPagination(
         'id', u.id,
         'name', u.name,
         'email', u.email,
-        'phonenumber', u.phonenumber
+        'phone', u.phone
       ) AS user,
 
       COALESCE((
@@ -245,7 +245,7 @@ export async function getProjectsEstimationProjects({
         'id', u.id,
         'name', u.name,
         'email', u.email,
-        'phonenumber', u.phonenumber
+        'phone', u.phone
       ) AS user,
 
       COALESCE((
@@ -428,7 +428,7 @@ export async function getPMProjects({
         'id', u.id,
         'name', u.name,
         'email', u.email,
-        'phonenumber', u.phonenumber
+        'phone', u.phone
       ) AS user,
 
       COALESCE((
@@ -599,7 +599,7 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
         'id', u.id,
         'name', u.name,
         'email', u.email,
-        'phonenumber', u.phonenumber
+        'phone', u.phone
       ) AS user,
 
       COALESCE((
