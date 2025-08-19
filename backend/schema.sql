@@ -63,6 +63,7 @@ CREATE TABLE projects (
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
+    progress NUMERIC(5,2) DEFAULT 0,
     project_id VARCHAR(50) UNIQUE NOT NULL,
     received_date DATE NOT NULL,
     client_name VARCHAR(100) NOT NULL,
@@ -134,8 +135,7 @@ CREATE TABLE estimations (
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     project_id INTEGER UNIQUE NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'under_review', 'sent_to_client','created_estimation','edited_estimation','estimation_approved', 'estimation_rejected','sent_to_admin','back_to_you')),
-    log TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',
     cost NUMERIC(10, 2),
     deadline DATE,
     approval_date DATE,
@@ -187,6 +187,7 @@ CREATE TABLE drawings (
     uploaded_by INTEGER REFERENCES users(id),
     client_dwg_no VARCHAR(100),
     iqeas_dwg_no VARCHAR(100),
+    revision VARCHAR(50),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE TABLE drawings_uploaded_files (

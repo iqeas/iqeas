@@ -7,9 +7,8 @@ import getNextStage, {
   getNewProgressOfProject,
   getNextRevision,
 } from "../utils/getNextStage.js";
-import { formatResponse } from "../utils/response.js"
+import { formatResponse } from "../utils/response.js";
 import pool from "../config/db.js";
-
 
 export async function createStage(req, res) {
   try {
@@ -245,10 +244,10 @@ export async function EditDrawingLogsController(req, res) {
     await WorkflowService.updateDrawingLog(
       id,
       status,
-      action_taken,
-      reason,
-      is_sent,
-      uploaded_files_ids
+      action_taken ?? null,
+      reason ?? null,
+      is_sent ?? false,
+      uploaded_files_ids ?? null
     );
     console.log("Drawing log updated in DB");
 
