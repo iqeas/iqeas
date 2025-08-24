@@ -14,8 +14,10 @@ import {
   Calendar,
   Layers3,
   ClipboardList,
+  DollarSign,
+  Clock,
+  Info,
 } from "lucide-react";
-import toast from "react-hot-toast";
 
 const capitalize = (str) => (str ? str.toString().toUpperCase() : "-");
 
@@ -31,6 +33,24 @@ const StageStatusBadge = ({ status }) => {
       {capitalize(status)}
     </span>
   );
+};
+const getStatusStyle = (status) => {
+  switch (status?.toLowerCase()) {
+    case "draft":
+      return "bg-gray-200 text-gray-700 border border-gray-300";
+    case "estimating":
+      return "bg-yellow-100 text-yellow-700 border border-yellow-300";
+    case "working":
+      return "bg-blue-100 text-blue-700 border border-blue-300";
+    case "delivered":
+      return "bg-green-100 text-green-700 border border-green-300";
+    case "completed":
+      return "bg-green-100 text-green-700 border border-green-300";
+    case "rejected":
+      return "bg-red-100 text-red-700 border border-red-300";
+    default:
+      return "bg-slate-100 text-slate-700 border border-slate-300";
+  }
 };
 
 const ProjectPublicInfo = () => {
@@ -50,7 +70,6 @@ const ProjectPublicInfo = () => {
         undefined,
         "getPublicProjectInfo"
       );
-      console.log(response);
       if (response.status === 200) {
         setProject(response.data);
       }
@@ -70,6 +89,7 @@ const ProjectPublicInfo = () => {
 
   return (
     <div className="w-full min-h-screen bg-slate-50 flex flex-col items-center px-2 py-4">
+      {/* Project Header */}
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-4 md:p-8 mb-6 mt-2">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
@@ -104,13 +124,9 @@ const ProjectPublicInfo = () => {
             </span>
           </div>
         </div>
+
+        {/* Notes + Progress */}
         <div className="flex flex-col md:flex-row gap-4 mt-2">
-          <div className="flex-1">
-            <div className="text-xs text-gray-500 mb-1">Notes</div>
-            <div className="bg-slate-100 rounded p-2 text-gray-700 text-sm min-h-[40px] break-words">
-              {capitalize(project.notes)}
-            </div>
-          </div>
           <div className="flex-1 flex flex-col gap-2">
             <div className="text-xs text-gray-500 mb-1">Progress</div>
             <Progress value={parseFloat(project.progress)} className="h-2" />
@@ -119,7 +135,45 @@ const ProjectPublicInfo = () => {
             </div>
           </div>
         </div>
+        <div
+          className={`w-full max-w-2xl mb-4 p-3 rounded-lg text-center font-semibold text-lg mt-4 ${getStatusStyle(
+            project.status
+          )}`}
+        >
+          {capitalize(project.status)}
+        </div>
       </div>
+
+      {/* Estimation Info */}
+      {project.estimation && (
+        // <div className="w-full max-w-2xl bg-white rounded-xl shadow p-4 md:p-8 mb-6">
+        //   <div className="flex items-center gap-2 mb-3">
+        //     <DollarSign className="text-blue-600" size={22} />
+        //     <div className="text-lg font-semibold text-blue-800">
+        //       Estimation
+        //     </div>
+        //   </div>
+        //   <div className="text-sm text-gray-600 flex flex-col gap-1">
+        //     <span>Status: {capitalize(project.estimation.status)}</span>
+        //     <span>Cost: {project.estimation.cost ?? "-"}</span>
+        //     <span>
+        //       Deadline:{" "}
+        //       {project.estimation.deadline
+        //         ? new Date(project.estimation.deadline).toLocaleDateString()
+        //         : "-"}
+        //     </span>
+        //     <span>
+        //       Approved: {project.estimation.approved ? "Yes" : "No"}
+        //       {project.estimation.approval_date &&
+        //         ` (${new Date(
+        //           project.estimation.approval_date
+        //         ).toLocaleDateString()})`}
+        //     </span>
+        //     <span>Notes: {project.estimation.notes ?? "-"}</span>
+        //   </div>
+        // </div>
+        <></>
+      )}
 
       {/* Delivery Files */}
       <div className="w-full max-w-2xl bg-white rounded-xl shadow p-4 md:p-8 mb-6">
@@ -140,7 +194,7 @@ const ProjectPublicInfo = () => {
         </div>
       </div>
 
-      {/* Stages Timeline */}
+      {/* Stages */}
       <div className="w-full max-w-2xl bg-white rounded-xl shadow p-4 md:p-8 mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Layers3 className="text-blue-600" size={22} />
@@ -150,7 +204,7 @@ const ProjectPublicInfo = () => {
         </div>
         <div className="flex flex-col gap-4">
           {project.stages && project.stages.length > 0 ? (
-            project.stages.map((stage, idx) => (
+            project.stages.map((stage) => (
               <div
                 key={stage.id}
                 className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b pb-2 last:border-b-0 last:pb-0"
@@ -179,6 +233,29 @@ const ProjectPublicInfo = () => {
           )}
         </div>
       </div>
+
+      {/* Last Update */}
+      {project.last_update && (
+        <div className="w-full max-w-2xl bg-white rounded-xl shadow p-4 md:p-8 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Info className="text-blue-600" size={22} />
+            <div className="text-lg font-semibold text-blue-800">
+              Latest Update
+            </div>
+          </div>
+          <div className="text-sm text-gray-600 flex flex-col gap-1">
+            <span>Step: {capitalize(project.last_update.step_name)}</span>
+            <span>Status: {capitalize(project.last_update.status)}</span>
+            <span>Notes: {project.last_update.notes ?? "-"}</span>
+            <span>
+              Updated:{" "}
+              {project.last_update.updated_at
+                ? new Date(project.last_update.updated_at).toLocaleString()
+                : "-"}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

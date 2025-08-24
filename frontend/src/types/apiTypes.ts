@@ -311,6 +311,7 @@ export type WorkerTask = {
   reason?: string;
   created_at: string;
   updated_at: string;
+  stage_id:number;
   assigned_by: {
     name: string;
     email: string;

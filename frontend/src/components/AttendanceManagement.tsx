@@ -205,6 +205,7 @@ const AttendanceManagement = () => {
   if (!isFetched) {
     return <Loading full />;
   }
+  console.log(form);
   return (
     <div className="p-6 mx-auto">
       <div className="flex items-center justify-start mb-6">

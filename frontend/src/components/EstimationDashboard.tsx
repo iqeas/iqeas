@@ -124,66 +124,66 @@ export const EstimationDashboard = () => {
   // Add state for estimation modal mode and editing
   const [editEstimationData, setEditEstimationData] = useState(null);
 
-  useEffect(() => {
-    const getProjects = async () => {
-      // Add page and pageSize to API call if supported
+    useEffect(() => {
+      const getProjects = async () => {
+        // Add page and pageSize to API call if supported
+        const response = await makeApiCall(
+          "get",
+          API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS(searchTerm, page, 20),
+          {},
+          "application/json",
+          authToken,
+          "getProjects"
+        );
+        if (response.status == 200) {
+          setProjects(response.data.projects);
+          setTotalPages(response.data.total_pages);
+          setCards(response.data.cards);
+        } else {
+          toast.error("Failed to fetch projects");
+        }
+      };
+      getProjects();
+    }, [searchTerm, page]);
+    // Helper to advance workflow step for a project
+    const getUsers = async () => {
       const response = await makeApiCall(
         "get",
-        API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS(searchTerm, page, 20),
+        API_ENDPOINT.GET_USERS_BY_ROLE("pm"),
         {},
         "application/json",
         authToken,
-        "getProjects"
+        "getUsersAndTeams"
       );
-      if (response.status == 200) {
-        setProjects(response.data.projects);
-        setTotalPages(response.data.total_pages);
-        setCards(response.data.cards);
-      } else {
-        toast.error("Failed to fetch projects");
+      if (response.status === 200) {
+        setUsers(response.data || []);
       }
     };
-    getProjects();
-  }, [searchTerm, page]);
-  // Helper to advance workflow step for a project
-  const getUsers = async () => {
-    const response = await makeApiCall(
-      "get",
-      API_ENDPOINT.GET_USERS_BY_ROLE("pm"),
-      {},
-      "application/json",
-      authToken,
-      "getUsersAndTeams"
-    );
-    if (response.status === 200) {
-      setUsers(response.data || []);
-    }
-  };
-  const handleStatusTransition = async (project, nextStatus) => {
-    if (nextStatus === "Rejected") {
-      if (users.length == 0) {
-        getUsers();
+    const handleStatusTransition = async (project, nextStatus) => {
+      if (nextStatus === "Rejected") {
+        if (users.length == 0) {
+          getUsers();
+        }
+        openRejectModal(project);
+      } else if (nextStatus === "Approved") {
+        resetApprovedForm();
+        if (users.length == 0) {
+          getUsers();
+        }
+        setSelectedProject(project);
+      } else {
+        await changeProjectStatus(project, nextStatus);
       }
-      openRejectModal(project);
-    } else if (nextStatus === "Approved") {
-      resetApprovedForm();
-      if (users.length == 0) {
-        getUsers();
-      }
-      setSelectedProject(project);
-    } else {
-      await changeProjectStatus(project, nextStatus);
-    }
-  };
-  // Handlers for project modal fields
-  const handleFieldChange = (field, value) => {
-    setSelectedProject((p) => ({ ...p, [field]: value }));
-    setApprovedForm((f) => ({ ...f, [field]: value }));
-  };
+    };
+    // Handlers for project modal fields
+    const handleFieldChange = (field, value) => {
+      setSelectedProject((p) => ({ ...p, [field]: value }));
+      setApprovedForm((f) => ({ ...f, [field]: value }));
+    };
 
-  const handleFileChange = (field, e) => {
-    setApprovedForm((f) => ({ ...f, [field]: e.target.files[0] }));
-  };
+    const handleFileChange = (field, e) => {
+      setApprovedForm((f) => ({ ...f, [field]: e.target.files[0] }));
+    };
 
   const SubmitEstimation = async () => {
     // Validation
@@ -906,7 +906,7 @@ export const EstimationDashboard = () => {
                       return null;
                     }
                     // Default: show previous workflow buttons
-                    if (project.estimation_status === "not_started") {
+                    if (project.estimation_status === "not_started" || project.estimation_status === "draft") {
                       return (
                         <Button
                           size="sm"

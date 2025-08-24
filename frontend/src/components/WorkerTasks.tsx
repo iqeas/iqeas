@@ -413,10 +413,13 @@ export const WorkerTasks = () => {
       toast.error("Failed to send back to drafting");
     }
   };
-  const getAllFilesWithoutDuplicate = (tasks = []) => {
+  const getAllFilesWithoutDuplicate = (tasks = [],stage_id=1) => {
     const fileMap = new Map();
 
     tasks.forEach((task) => {
+      if (task.stage_id != stage_id){
+        return
+      }
       const allFileGroups = [...task.incoming_files, ...task.outgoing_files];
 
       allFileGroups.forEach((file) => {
@@ -616,7 +619,7 @@ export const WorkerTasks = () => {
                               onClick={() => {
                                 setSentToSelectedFiles([]);
                                 setCurrentSentToFiles(
-                                  getAllFilesWithoutDuplicate(tasks)
+                                  getAllFilesWithoutDuplicate(tasks,task.stage_id)
                                 );
                                 setCompleteModal({
                                   open: true,
@@ -635,9 +638,9 @@ export const WorkerTasks = () => {
                               size="sm"
                               onClick={() => {
                                 setSentToSelectedFiles([]);
-                                setCurrentSentToFiles([
-                                  getAllFilesWithoutDuplicate(tasks),
-                                ]);
+                                setCurrentSentToFiles(
+                                  getAllFilesWithoutDuplicate(tasks,task.stage_id),
+                                );
 
                                 setBackToDraftingModal({
                                   open: true,

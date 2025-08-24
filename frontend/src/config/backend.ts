@@ -62,7 +62,7 @@ export const API_ENDPOINT = {
   GET_PUBLIC_PROJECT_INFO: (token) => `${API_URL}/projects/public/${token}`,
   CREATE_ESTIMATION_CORRECTION: `${API_URL}/estimation/correction`,
   ATTENDANCE_RECORDS: `${API_URL}/attendance`,
-  ACTION_ATTENDANCE_RECORDS: (id: any) => `${API_URL}/attendance${id}`,
+  ACTION_ATTENDANCE_RECORDS: (id: any) => `${API_URL}/attendance/${id}`,
   GET_SALARIES: (date, page, size, search) =>
     `${API_URL}/salary?date=${date}&page=${page}&size=${size}&search=${search}`,
   EDIT_CREATE_SALARY: `${API_URL}/salary`,

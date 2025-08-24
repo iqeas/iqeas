@@ -21,6 +21,7 @@ import Loading from "./atomic/Loading";
 import toast from "react-hot-toast";
 import { useLocation, useParams } from "react-router-dom";
 import { toReadableText } from "@/utils/utils";
+import { useConfirmDialog } from "./ui/alert-dialog";
 
 export const DocumentationDashboard = () => {
   const { makeApiCall, fetching, fetchType, isFetched } = useAPICall();
@@ -47,6 +48,7 @@ export const DocumentationDashboard = () => {
   const [backToApprovalNotes, setBackToApprovalNotes] = useState("");
   const [sentToSelectedFiles, setSentToSelectedFiles] = useState([]);
   const [currentSentToFiles, setCurrentSentToFiles] = useState([]);
+  const confirmDialog = useConfirmDialog();
   // Fetch tasks
   useEffect(() => {
     fetchTasks();
@@ -100,6 +102,16 @@ export const DocumentationDashboard = () => {
   };
   // Approve
   const handleApprove = async (task: DocumentationTask) => {
+    const confirmed = await confirmDialog({
+      title: "Approve Document",
+      description: `Are you sure you want to approve ?`,
+      confirmText: "Approve",
+      cancelText: "Cancel",
+      loading: fetching && fetchType === `DocMarkAsApproved${task.id}`,
+    });
+
+    if (!confirmed) return;
+
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.EDIT_DRAWING_LOG(task.id),
@@ -108,20 +120,17 @@ export const DocumentationDashboard = () => {
       authToken,
       `DocMarkAsApproved${task.id}`
     );
+
     if (response.status === 200) {
       setTasks((prev) =>
-        prev.map((item) => {
-          if (item.id == task.id) {
-            return response.data;
-          }
-          return item;
-        })
+        prev.map((item) => (item.id === task.id ? response.data : item))
       );
       toast.success("Successfully approved document");
     } else {
       toast.error("Failed to approve this document");
     }
   };
+
   // Reject
   const handleReject = async () => {
     if (rejectFiles.find((item) => !item.label || !item.label.trim())) {

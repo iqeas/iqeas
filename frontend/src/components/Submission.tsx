@@ -336,6 +336,10 @@ const Submission = ({ projectId }) => {
         return;
       }
     }
+    if(uploadedFileIds.length == 0){
+      toast.error("Please choose at least one file");
+      return;
+    }
     const revision =
       selectedStage == "IDC"
         ? "A"
