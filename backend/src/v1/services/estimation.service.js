@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { generateInvoiceExcel } from "../lib/excel.js";
 import { updateProjectPartial } from "./projects.service.js";
 export async function createEstimation(data) {
   const {
@@ -260,3 +261,7 @@ export async function getEstimationById(estimationId, client) {
   return result.rows[0];
 }
 
+
+export async function createInvoice(pool,estimationId,data){
+  const file = await generateInvoiceExcel(data)
+}

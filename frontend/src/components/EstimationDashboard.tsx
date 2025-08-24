@@ -81,6 +81,38 @@ export const EstimationDashboard = () => {
   });
   const [viewEstimationProject, setViewEstimationProject] = useState(null);
   const [users, setUsers] = useState<IUser[]>([]);
+  const [invoiceModal, setInvoiceModal] = useState({
+    open: false,
+    project: null,
+    invoiceData: {
+      paymentApplicationNo: "",
+      paymentApplicationDate: "",
+      invoiceReference: "",
+      invoiceDate: "",
+      clientName: "",
+      clientAddress: "",
+      clientEmail: "",
+      clientGSTN: "",
+      projectNo: "",
+      projectName: "",
+      projectValue: "",
+      variationAmount: "",
+      billingPeriod: "",
+      totalTaxAmount: "",
+      totalPOAmount: "",
+      items: [
+        {
+          slNo: 1,
+          description: "",
+          previousProgress: "",
+          receivedAmount: "",
+          currentProgress: "",
+          currentAmount: "",
+          currentTax: "",
+        },
+      ],
+    },
+  });
   const [approvedForm, setApprovedForm] = useState({
     forward_type: "user",
     forward_id: "",
@@ -383,6 +415,141 @@ export const EstimationDashboard = () => {
     setEditEstimationData(null);
     setDeleteSelectedIds([]);
     resetApprovedForm();
+  };
+
+  const openInvoiceModal = (project) => {
+    const today = new Date().toISOString().split('T')[0];
+    setInvoiceModal({
+      open: true,
+      project,
+      invoiceData: {
+        paymentApplicationNo: "",
+        paymentApplicationDate: today,
+        invoiceReference: "",
+        invoiceDate: today,
+        clientName: project.client_name || "",
+        clientAddress: project.location || "",
+        clientEmail: project.contact_person_email || "",
+        clientGSTN: "",
+        projectNo: project.project_id || "",
+        projectName: project.name || "",
+        projectValue: project.estimation?.cost ? `₹${project.estimation.cost}` : "",
+        variationAmount: "",
+        billingPeriod: "",
+        totalTaxAmount: "",
+        totalPOAmount: "",
+        items: [
+          {
+            slNo: 1,
+            description: "",
+            previousProgress: "",
+            receivedAmount: "",
+            currentProgress: "",
+            currentAmount: "",
+            currentTax: "",
+          },
+        ],
+      },
+    });
+  };
+
+  const closeInvoiceModal = () => {
+    setInvoiceModal({
+      open: false,
+      project: null,
+      invoiceData: {
+        paymentApplicationNo: "",
+        paymentApplicationDate: "",
+        invoiceReference: "",
+        invoiceDate: "",
+        clientName: "",
+        clientAddress: "",
+        clientEmail: "",
+        clientGSTN: "",
+        projectNo: "",
+        projectName: "",
+        projectValue: "",
+        variationAmount: "",
+        billingPeriod: "",
+        totalTaxAmount: "",
+        totalPOAmount: "",
+        items: [
+          {
+            slNo: 1,
+            description: "",
+            previousProgress: "",
+            receivedAmount: "",
+            currentProgress: "",
+            currentAmount: "",
+            currentTax: "",
+          },
+        ],
+      },
+    });
+  };
+
+  const handleInvoiceFieldChange = (field, value) => {
+    setInvoiceModal((modal) => ({
+      ...modal,
+      invoiceData: {
+        ...modal.invoiceData,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleInvoiceItemChange = (index, field, value) => {
+    setInvoiceModal((modal) => ({
+      ...modal,
+      invoiceData: {
+        ...modal.invoiceData,
+        items: modal.invoiceData.items.map((item, i) =>
+          i === index ? { ...item, [field]: value } : item
+        ),
+      },
+    }));
+  };
+
+  const addInvoiceItem = () => {
+    setInvoiceModal((modal) => ({
+      ...modal,
+      invoiceData: {
+        ...modal.invoiceData,
+        items: [
+          ...modal.invoiceData.items,
+          {
+            slNo: modal.invoiceData.items.length + 1,
+            description: "",
+            previousProgress: "",
+            receivedAmount: "",
+            currentProgress: "",
+            currentAmount: "",
+            currentTax: "",
+          },
+        ],
+      },
+    }));
+  };
+
+  const removeInvoiceItem = (index) => {
+    if (invoiceModal.invoiceData.items.length > 1) {
+      setInvoiceModal((modal) => ({
+        ...modal,
+        invoiceData: {
+          ...modal.invoiceData,
+          items: modal.invoiceData.items.filter((_, i) => i !== index),
+        },
+      }));
+    }
+  };
+
+  const createInvoice = async () => {
+    // Here you can implement the API call to create the invoice
+    console.log("Creating invoice:", invoiceModal.invoiceData);
+    
+    // For now, just show a success message and close the modal
+    toast.success("Invoice created successfully!");
+    closeInvoiceModal();
   };
   const deleteFile = async (file_id) => {
     const data = new FormData();
@@ -1769,10 +1936,285 @@ export const EstimationDashboard = () => {
                   )}
                 </div>
               </div>
+
+              {/* Create Invoice Button */}
+              <div className="py-4 flex justify-center flex-col">
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2"
+                  onClick={() => openInvoiceModal(viewEstimationProject)}
+                >
+                  Create Invoice
+                </Button>
+                <div className="text-center mt-2">
+                  <p className="text-xs text-slate-500 italic">
+                    Note: If you create a new invoice even after creating one before, the previous invoice will be automatically deleted.
+                  </p>
+                </div>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Invoice Modal */}
+      <Dialog open={invoiceModal.open}  onOpenChange={closeInvoiceModal}>
+        <DialogContent className="max-w-3xl p-0 bg-white rounded-xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl px-8 py-5 font-bold text-green-700">
+              Create Invoice
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 p-6">
+            {/* Basic Information */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Payment Application No
+                </label>
+                <Input
+                  value={invoiceModal.invoiceData.paymentApplicationNo}
+                  onChange={(e) => handleInvoiceFieldChange("paymentApplicationNo", e.target.value)}
+                  placeholder="Enter payment application number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Payment Application Date
+                </label>
+                <Input
+                  type="date"
+                  value={invoiceModal.invoiceData.paymentApplicationDate}
+                  onChange={(e) => handleInvoiceFieldChange("paymentApplicationDate", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Invoice Reference
+                </label>
+                <Input
+                  value={invoiceModal.invoiceData.invoiceReference}
+                  onChange={(e) => handleInvoiceFieldChange("invoiceReference", e.target.value)}
+                  placeholder="Enter invoice reference"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Invoice Date
+                </label>
+                <Input
+                  type="date"
+                  value={invoiceModal.invoiceData.invoiceDate}
+                  onChange={(e) => handleInvoiceFieldChange("invoiceDate", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Client Information */}
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">Client Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Client Name</label>
+                  <Input
+                    value={invoiceModal.invoiceData.clientName}
+                    onChange={(e) => handleInvoiceFieldChange("clientName", e.target.value)}
+                    placeholder="Enter client name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Client Address</label>
+                  <Textarea
+                    value={invoiceModal.invoiceData.clientAddress}
+                    onChange={(e) => handleInvoiceFieldChange("clientAddress", e.target.value)}
+                    placeholder="Enter client address"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Client Email</label>
+                  <Input
+                    type="email"
+                    value={invoiceModal.invoiceData.clientEmail}
+                    onChange={(e) => handleInvoiceFieldChange("clientEmail", e.target.value)}
+                    placeholder="Enter client email"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Client GSTN/TRN</label>
+                  <Input
+                    value={invoiceModal.invoiceData.clientGSTN}
+                    onChange={(e) => handleInvoiceFieldChange("clientGSTN", e.target.value)}
+                    placeholder="Enter GSTN/TRN"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Project Information */}
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">Project Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Project No. / Quotation Reference</label>
+                  <Input
+                    value={invoiceModal.invoiceData.projectNo}
+                    onChange={(e) => handleInvoiceFieldChange("projectNo", e.target.value)}
+                    placeholder="Enter project number"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Project Name</label>
+                  <Input
+                    value={invoiceModal.invoiceData.projectName}
+                    onChange={(e) => handleInvoiceFieldChange("projectName", e.target.value)}
+                    placeholder="Enter project name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Project Value</label>
+                  <Input
+                    value={invoiceModal.invoiceData.projectValue}
+                    onChange={(e) => handleInvoiceFieldChange("projectValue", e.target.value)}
+                    placeholder="Enter project value"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Variation Amount & Reference</label>
+                  <Input
+                    value={invoiceModal.invoiceData.variationAmount}
+                    onChange={(e) => handleInvoiceFieldChange("variationAmount", e.target.value)}
+                    placeholder="Enter variation amount"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Billing Period</label>
+                  <Input
+                    value={invoiceModal.invoiceData.billingPeriod}
+                    onChange={(e) => handleInvoiceFieldChange("billingPeriod", e.target.value)}
+                    placeholder="Enter billing period"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Total Tax Amount</label>
+                  <Input
+                    value={invoiceModal.invoiceData.totalTaxAmount}
+                    onChange={(e) => handleInvoiceFieldChange("totalTaxAmount", e.target.value)}
+                    placeholder="Enter total tax amount"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Total PO Amount</label>
+                  <Input
+                    value={invoiceModal.invoiceData.totalPOAmount}
+                    onChange={(e) => handleInvoiceFieldChange("totalPOAmount", e.target.value)}
+                    placeholder="Enter total PO amount"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Invoice Items */}
+            <div className="border-t pt-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold text-slate-700">Invoice Items</h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={addInvoiceItem}
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  + Add Item
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {invoiceModal.invoiceData.items.map((item, index) => (
+                  <div key={index} className="border rounded-lg p-4 bg-slate-50">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="font-medium text-slate-700">Item {item.slNo}</span>
+                      {invoiceModal.invoiceData.items.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeInvoiceItem(index)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Description of Work</label>
+                        <Textarea
+                          value={item.description}
+                          onChange={(e) => handleInvoiceItemChange(index, "description", e.target.value)}
+                          placeholder="Enter work description"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Previous Progress (%) or Amount</label>
+                        <Input
+                          value={item.previousProgress}
+                          onChange={(e) => handleInvoiceItemChange(index, "previousProgress", e.target.value)}
+                          placeholder="Enter previous progress"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Received Amount with Tax</label>
+                        <Input
+                          value={item.receivedAmount}
+                          onChange={(e) => handleInvoiceItemChange(index, "receivedAmount", e.target.value)}
+                          placeholder="Enter received amount"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Current Progress (%) or Amount</label>
+                        <Input
+                          value={item.currentProgress}
+                          onChange={(e) => handleInvoiceItemChange(index, "currentProgress", e.target.value)}
+                          placeholder="Enter current progress"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Current Amount without Tax</label>
+                        <Input
+                          value={item.currentAmount}
+                          onChange={(e) => handleInvoiceItemChange(index, "currentAmount", e.target.value)}
+                          placeholder="Enter current amount"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Current Tax (CGST + SGST)</label>
+                        <Input
+                          value={item.currentTax}
+                          onChange={(e) => handleInvoiceItemChange(index, "currentTax", e.target.value)}
+                          placeholder="Enter current tax"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-6 px-8 py-5">
+            <Button variant="outline" onClick={closeInvoiceModal}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={createInvoice}
+            >
+              Create Invoice
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

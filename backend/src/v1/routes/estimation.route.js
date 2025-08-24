@@ -7,6 +7,7 @@ import {
   getApproved,
   getDraft,
   createEstimationCorrectionHandler,
+  createInvoiceController,
 } from "../controllers/estimation.controller.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 const router = express.Router();
@@ -24,4 +25,6 @@ router.get("/estimation/pm", getPMProjects);
 router.get("/estimation/approves", getApproved); // This is the new route
 router.get("/estimation/draft", getDraft); // This is the new route
 
+
+router.post("/estimation/invoice/:id", createInvoiceController);
 export default router;

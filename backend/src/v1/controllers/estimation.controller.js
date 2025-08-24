@@ -6,6 +6,7 @@ import {
   getProjectsApproved,
   getProjectsDraft,
   createEstimationCorrection,
+  createInvoice,
 } from "../services/estimation.service.js";
 import { updateProjectPartial } from "../services/projects.service.js";
 import { formatResponse } from "../utils/response.js";
@@ -273,5 +274,37 @@ export const getDraft = async (req, res) => {
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  }
+};
+
+
+
+
+export const createInvoiceController = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+
+    const invoiceData = req.body;
+    const fileData = createInvoice(client,id, invoiceData);
+
+    await client.query("COMMIT");
+    return res.status(201).json(
+      formatResponse({
+        statusCode: 201,
+        detail: "Estimation created",
+        data: fileData,
+      })
+    );
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error creating estimation:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  } finally {
+    client.release();
   }
 };
