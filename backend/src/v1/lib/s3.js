@@ -24,7 +24,6 @@ const s3 = new S3Client({
   },
 });
 
-// Helper to get public URL
 function buildPublicUrl(key) {
   return `https://${SPACE}.${ENDPOINT}/${encodeURIComponent(key).replace(
     /%2F/g,
@@ -41,7 +40,7 @@ function buildPublicUrl(key) {
  */
 export async function uploadFile(
   fileBuffer,
-  downloadLabel,
+  // downloadLabel,
   fileName,
   folder = ""
 ) {

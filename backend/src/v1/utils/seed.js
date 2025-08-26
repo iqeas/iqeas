@@ -6,7 +6,6 @@ async function createInitialAdmin() {
   const client = await pool.connect();
 
   try {
-    // check if admin already exists
     const result = await client.query(
       "SELECT id FROM users WHERE role = 'admin' AND is_deleted = false LIMIT 1"
     );

@@ -44,6 +44,7 @@ CREATE TABLE teams_users (
 -- =====================
 -- UPLOADED FILES
 -- =====================
+
 CREATE TABLE uploaded_files (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,

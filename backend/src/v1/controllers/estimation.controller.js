@@ -12,7 +12,6 @@ import { updateProjectPartial } from "../services/projects.service.js";
 import { formatResponse } from "../utils/response.js";
 import pool from "../config/db.js";
 
-
 export const createEstimationHandler = async (req, res) => {
   const client = await pool.connect();
   try {
@@ -257,6 +256,8 @@ export const getApproved = async (req, res) => {
   }
 };
 
+
+
 export const getDraft = async (req, res) => {
   try {
     const projects = await getProjectsDraft();
@@ -278,27 +279,34 @@ export const getDraft = async (req, res) => {
 };
 
 
-
-
 export const createInvoiceController = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { id } = req.params;
+    const { id } = req.params; 
+    const { invoiceData } = req.body;
+    const currentUserId = req.user.id;
 
-    const invoiceData = req.body;
-    const fileData = createInvoice(client,id, invoiceData);
+    await client.query("BEGIN");
+
+    const fileData = await createInvoice(
+      client,
+      id,
+      invoiceData,
+      currentUserId
+    );
 
     await client.query("COMMIT");
+
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
-        detail: "Estimation created",
+        detail: "Invoice created and linked to estimation",
         data: fileData,
       })
     );
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("Error creating estimation:", error);
+    console.error("Error creating invoice:", error);
     return res
       .status(500)
       .json(
