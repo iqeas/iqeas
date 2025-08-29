@@ -12,3 +12,4 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`\x1b[34m[+] Server running on ${port} ==> ${base_url}\x1b[0m`);
 });
+
