@@ -7,8 +7,24 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   </head>
   <body class="text-sm">
-    <header class="w-full">
-      <img src="./header.png" alt="header" />
+    <header class="w-full pb-6">
+      <img src="https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/test/bg.png" alt="header" class="h-34 w-full" />
+      <img src="https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/test/logo.png" alt="header" class="w-30 absolute top-8 left-8" />
+      <h3 class="absolute top-0 text-white left-1/2 -translate-x-1/2 text-3xl font-bold">TAX INVOICE</h3>
+      <div class="absolute right-0 top-10">
+        <div>
+          <h2 class="text-xl">IQEAS Offshore Engineering private Limited</h2>
+          <h3 class="text-xs">CIN: U45204KL2022PTC077369</h3>
+          <h3 class="text-xs">
+            Creche and Dispensary Building, Kinfra Textile Centre, Nadukani
+          </h3>
+          <h3 class="text-xs">
+            Taliparamba - Manakadavu - Coorg Rd, Kannur - 670 142 , Kerala,
+            India
+          </h3>
+          <h3 class="text-xs">GSTN : 32AAGCI8105D1Z1</h3>
+        </div>
+      </div>
     </header>
 
     <section class="py-2 px-4">
@@ -23,13 +39,17 @@
           <p class="text-xs">
             Payment Application No : <strong>{{paymentApplicationNo}}</strong>
           </p>
-          <p class="text-xs">Date : <strong>{{paymentApplicationDate}}</strong></p>
+          <p class="text-xs">
+            Date : <strong>{{paymentApplicationDate}}</strong>
+          </p>
         </div>
         <div class="flex justify-between">
           <p class="text-xs">
             Buyer P.O/Quotation Ref : <strong>{{projectNo}}</strong>
           </p>
-          <p class="text-xs">Billing Period : <strong>{{billingPeriod}}</strong></p>
+          <p class="text-xs">
+            Billing Period : <strong>{{billingPeriod}}</strong>
+          </p>
         </div>
       </div>
     </section>
@@ -58,7 +78,8 @@
             <span class="text-blue-600">Project Value:</span> {{projectValue}}
           </h3>
           <h3 class="text-xs">
-            <span class="text-blue-600">Variation Amount:</span> {{variationAmount}}
+            <span class="text-blue-600">Variation Amount:</span>
+            {{variationAmount}}
           </h3>
         </div>
       </div>
@@ -100,8 +121,97 @@
       </p>
     </div>
 
-    <footer class="p-4 w-full">
-      <img src="./footer.png" alt="footer" />
+    <footer class="relative w-full bg-white p-4">
+      <div class="absolute bottom-0 left-0 right-0 h-40 overflow-hidden">
+        <div class="relative w-full h-full">
+          <div
+            class="absolute top-0 left-0 w-full h-full transform scale-x-150 rotate-[2deg] -translate-y-8 origin-bottom-left"
+          ></div>
+        </div>
+      </div>
+
+      <div
+        class="relative z-10 gap-8 text-gray-800"
+      >
+        <div class="flex flex-col items-center md:items-start md:mt-10">
+          <img
+            src="https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/test/stamp.png"
+            alt="IQEAS Logo"
+            class="w-40 h-40 mb-4 md:mb-0 absolute left-0"
+          />
+
+          
+
+        <div class="absolute right-0 md:mt-8">
+          <div class="text-right">
+            <p class="font-semibold text-sm">
+              Payment Terms:
+              <span class="font-normal"
+                >Incoterm, 100% Payment against Proforma Invoice</span
+              >
+            </p>
+
+            <h3 class="font-bold text-lg mt-4">Account Details</h3>
+            <div class="mt-2 space-y-1 text-sm">
+              <p>
+                <span class="font-semibold">Remittance Through DD:</span> IQEAS
+                Offshore Engineering Private Limited
+              </p>
+              <p>
+                <span class="font-semibold">Account Number:</span>
+                11270200019699
+              </p>
+              <p>
+                <span class="font-semibold">Bank Name and Branch:</span> Federal
+                Bank, Taliparamba
+              </p>
+              <p><span class="font-semibold">IFSC Code:</span> FDRL0001127</p>
+              <p><span class="font-semibold">Swift Code:</span> FDRLINBB</p>
+            </div>
+
+            <p class="mt-4 text-sm">
+              For <strong>IQEAS Offshore Engineering Private Limited</strong>
+            </p>
+          </div>
+        </div>
+
+
+      </div>
+      <div class="absolute -bottom-74 ">
+        <div
+        class="flex flex-wrap"
+          >
+            <div class="flex items-center space-x-2">
+              <span class="text-blue-500">📍</span>
+              <p>
+                Creche and Dispensary building, Kinfra textile center, Nadukani,
+                Kannur, Kerala, India - 670 142
+              </p>
+            </div>
+            <div class="flex items-center space-x-2 mt-2">
+              <span class="text-blue-500">📧</span>
+              <p>
+                <a
+                  href="mailto:admin@iqeasoffshore.com"
+                  class="text-blue-600 hover:underline"
+                  >admin@iqeasoffshore.com</a
+                >,
+                <a
+                  href="http://www.iqeasoffshore.com"
+                  class="text-blue-600 hover:underline"
+                  >www.iqeasoffshore.com</a
+                >
+              </p>
+            </div>
+            <div class="flex items-center space-x-2 mt-2">
+              <span class="text-blue-500">📞</span>
+              <p>+91 8129250331</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <img src="https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/test/bt_bg.png" alt="footer" class="h-10 w-full mt-80" />
     </footer>
   </body>
 </html>
