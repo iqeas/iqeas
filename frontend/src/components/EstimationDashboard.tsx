@@ -546,10 +546,68 @@ export const EstimationDashboard = () => {
   const createInvoice = async () => {
     // Here you can implement the API call to create the invoice
     console.log("Creating invoice:", invoiceModal.invoiceData);
-    
-    // For now, just show a success message and close the modal
-    toast.success("Invoice created successfully!");
-    closeInvoiceModal();
+    const response = await makeApiCall(
+      "POST",API_ENDPOINT.CREATE_INVOICE(invoiceModal.project.estimation.id),invoiceModal.invoiceData,"application/json",authToken,"createInvoice"
+    )
+    if(response.status==201 || response.status == 200){
+      // check already exist Invoice as uploaded file 
+      const existingInvoiceIndex = invoiceModal.project.estimation.uploaded_files.findIndex(
+        file => file.label?.toLowerCase() === "invoice".toLowerCase()
+      );
+      
+      if (existingInvoiceIndex !== -1) {
+        // Update existing invoice file
+        const updatedFiles = [...invoiceModal.project.estimation.uploaded_files];
+        updatedFiles[existingInvoiceIndex] = {
+          ...updatedFiles[existingInvoiceIndex],
+          file: response.data.file
+        };
+        
+        // Update the project state
+        setProjects((prev) =>
+          prev.map((item) => {
+            if (item.id === invoiceModal.project.id) {
+              return {
+                ...item,
+                estimation: {
+                  ...item.estimation,
+                  uploaded_files: updatedFiles
+                }
+              };
+            }
+            return item;
+          })
+        );
+      } else {
+
+        
+        const updatedFiles = [
+          ...invoiceModal.project.estimation.uploaded_files,
+          response.data
+        ];
+        
+        // Update the project state
+        setProjects((prev) =>
+          prev.map((item) => {
+            if (item.id === invoiceModal.project.id) {
+              return {
+                ...item,
+                estimation: {
+                  ...item.estimation,
+                  uploaded_files: updatedFiles
+                }
+              };
+            }
+            return item;
+          })
+        );
+      }
+      
+      toast.success("Invoice created successfully!");
+      closeInvoiceModal();
+    } else {
+      toast.error("Failed to create invoice");
+    }
   };
   const deleteFile = async (file_id) => {
     const data = new FormData();

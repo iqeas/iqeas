@@ -74,4 +74,5 @@ export const API_ENDPOINT = {
   ACTION_LEAVE: (id) => `${API_URL}/leave/${id}`,
   GET_DOCUMENT_PROJECTS: (page, size, search) =>
     `${API_URL}/document/projects?page=${page}&size=${size}&search=${search}`,
+  CREATE_INVOICE:(id:any)=> `${API_URL}/estimation/invoice/${id}`
 };
