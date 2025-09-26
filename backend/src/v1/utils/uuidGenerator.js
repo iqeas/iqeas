@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 export const uuidGenerator = () => {
-  const uuid = crypto.randomUUID(); // Generates a cryptographically strong UUIDv4
+  const uuid = crypto.randomUUID();
   console.log(uuid);
   return uuid;
 };

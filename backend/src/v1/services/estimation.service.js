@@ -1,5 +1,7 @@
 import pool from "../config/db.js";
 import { generateInvoiceExcel } from "../lib/excel.js";
+import { uploadFile } from "../lib/s3.js";
+import { uuidGenerator } from "../utils/uuidGenerator.js";
 import { updateProjectPartial } from "./projects.service.js";
 export async function createEstimation(data) {
   const {
@@ -59,13 +61,8 @@ export async function createEstimation(data) {
   return estimation;
 }
 
-
-
 export async function createEstimationCorrection(data, client) {
-  const {
-    estimation_id,
-    correction
-  } = data;
+  const { estimation_id, correction } = data;
 
   const query = `
   INSERT INTO estimation_corrections (
@@ -85,8 +82,8 @@ export async function updateEstimation(id, data, client) {
   const fields = [];
   const values = [];
   let index = 1;
-  const uploaded_file_ids = data.uploaded_file_ids;	
-  delete data.uploaded_file_ids
+  const uploaded_file_ids = data.uploaded_file_ids;
+  delete data.uploaded_file_ids;
   for (const key in data) {
     fields.push(`${key} = $${index}`);
     values.push(data[key]);
@@ -104,7 +101,6 @@ export async function updateEstimation(id, data, client) {
     RETURNING *;
   `;
 
-  
   values.push(id);
 
   const result = await client.query(query, values);
@@ -262,6 +258,29 @@ export async function getEstimationById(estimationId, client) {
 }
 
 
-export async function createInvoice(pool,estimationId,data){
-  const file = await generateInvoiceExcel(data)
+export async function createInvoice(client, estimationId, data, currentUserId) {
+  const file = await generateInvoiceExcel(data);
+  const uuid = uuidGenerator();
+  const file_name = `invoice-${uuid}`;
+  const file_url = await uploadFile(file, file_name, "estimation-folder");
+
+  const query = `
+    INSERT INTO estimation_uploaded_files (estimation_id, uploaded_file_id)
+    SELECT $4, id FROM uploaded_files
+    WHERE file = $1
+    UNION ALL
+    SELECT $4, id FROM (
+      INSERT INTO uploaded_files (label, file, uploaded_by_id, status)
+      SELECT $2, $1, $3, 'under_review'
+      WHERE NOT EXISTS (SELECT 1 FROM uploaded_files WHERE file = $1)
+      RETURNING id
+    ) AS new_file
+    ON CONFLICT DO NOTHING
+    RETURNING uploaded_file_id;
+  `;
+
+  const values = [file_url, file_name, currentUserId, estimationId];
+  const result = await client.query(query, values);
+
+  return result.rows[0];
 }
