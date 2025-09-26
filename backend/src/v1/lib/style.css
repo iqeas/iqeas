@@ -1,0 +1,185 @@
+p,
+span {
+  padding: 0px;
+  color: black;
+  font-size: 11pt;
+  font-weight: 400;
+  font-style: normal;
+  text-decoration: none;
+  font-family: "Aptos Narrow", sans-serif;
+}
+
+main {
+  padding: 5px;
+  border: 1px solid black;
+  width: 692px;
+}
+.underline {
+  height: 1px;
+
+  background-color: black;
+}
+.container {
+  margin: 0 10px;
+}
+.top,
+.billing {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: row;
+  gap: 150px;
+}
+.top .left {
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+}
+.top article,
+.billing article {
+  display: flex;
+  align-items: center;
+}
+.top article p,
+.billing article p {
+  width: 140px;
+  color: #104861;
+  font-size: 7pt;
+  font-family: Arial, sans-serif;
+}
+.top .right p {
+  width: 35px;
+}
+.billing .right p {
+  width: 140px;
+}
+.top article span,
+.billing article span {
+  color: rgb(43, 43, 43);
+  font-size: 10pt;
+}
+.billing .right article {
+  height: 25px;
+}
+.billing {
+  gap: 0px;
+}
+
+.billing .left {
+  font-size: 20px;
+}
+.billing .right p {
+  text-align: right;
+}
+.billing .right span {
+  font-size: 10px;
+}
+.billing article {
+  padding: 0px;
+  margin: 0px;
+}
+.billing .left > div {
+  margin-left: 35px;
+}
+.billing .left > div p {
+  font-size: 11px;
+}
+.billing .left .heading,
+.billing .left p span {
+  width: 140px;
+  color: #104861;
+  font-size: 9pt;
+  font-family: Arial, sans-serif;
+}
+
+/* invoice table */
+.invoice-table {
+  margin-top: 20px;
+  font-family: Arial, sans-serif;
+  font-size: 6.8pt;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+.invoice-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.invoice-table th,
+.invoice-table td {
+  border: 1px solid black;
+  padding: 6px 3px;
+  text-align: left;
+  height: 10px;
+}
+
+.invoice-table thead th {
+  background: #215c98;
+  color: white;
+  font-size: 10px;
+  /* min-width: 30px; */
+}
+
+.invoice-table .totals td {
+  text-align: right;
+  padding: 6px 12px;
+  font-size: 10px;
+}
+.invoice-table .totals tr {
+  height: 10px;
+}
+.invoice-table .totals tr td:last-child {
+  width: 90px;
+}
+
+.invoice-table .grand-total td {
+  font-weight: bold;
+}
+
+.invoice-table .highlight-row {
+  background-color: #e8e8e8 !important;
+}
+.invoice-table .totals tr .total-words {
+  text-align: left !important;
+  padding-left: 100px; /* optional for spacing */
+  font-size: 12px;
+}
+
+.total-col {
+  width: 98px;
+  text-align: left !important;
+}
+.sl-col {
+  width: 30px;
+}
+.table-bottom {
+  padding: 10px 0;
+  color: #104861;
+  font-size: 8.5pt;
+  font-family: Arial, sans-serif;
+  mso-font-charset: 0;
+  text-align: left;
+  vertical-align: middle;
+  border-top: 0.5pt solid #104861;
+  border-right: none;
+  border-bottom: 1pt solid #215c98;
+  border-left: none;
+  white-space: normal;
+}
+
+.background-image {
+  position: absolute;
+  z-index: 1;
+  margin-left: 48px;
+  margin-top: 22%;
+  width: 566px;
+  height: 505px;
+}
+.background-image img {
+  width: 566px;
+  height: 505px;
+  aspect-ratio: auto 566 / 505;
+}
