@@ -300,7 +300,7 @@ export async function addDeliveryFilesController(req, res) {
     await client.query("BEGIN");
 
     const files = await addProjectDeliveryFiles(projectId, file_ids, client);
-
+    
     await client.query("COMMIT");
 
     res.status(201).json(

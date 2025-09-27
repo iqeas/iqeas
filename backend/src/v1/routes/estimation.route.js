@@ -21,10 +21,10 @@ router.post(
 router.get("/get/estimation/:id", getEstimationHandler);
 router.patch("/patch/estimation/:id", updateEstimationHandler);
 
-router.get("/estimation/pm", getPMProjects);
-router.get("/estimation/approves", getApproved); // This is the new route
-router.get("/estimation/draft", getDraft); // This is the new route
+router.get("/estimation/pm",authenticateToken, getPMProjects);
+router.get("/estimation/approves",authenticateToken, getApproved); // This is the new route
+router.get("/estimation/draft",authenticateToken, getDraft); // This is the new route
 
 
-router.post("/estimation/invoice/:id", createInvoiceController);
+router.post("/estimation/invoice/:id",authenticateToken, createInvoiceController);
 export default router;

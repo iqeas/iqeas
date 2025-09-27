@@ -966,6 +966,14 @@ export async function addProjectDeliveryFiles(projectId, fileIds, client) {
     [fileIds]
   );
 
+  // update the project status
+  console.log("updating project");
+  updateProjectPartial(
+    projectId,
+    { status: "delivered", progress: 100 },
+    client
+  );
+
   return rows;
 }
 

@@ -4,97 +4,285 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Invoice</title>
-    <link rel="stylesheet" href="https://jumpshare.com/s/HSzl7mFlEzVYt7aKOhNM" />
+    <style>
+      p,
+      span {
+        padding: 0px;
+        color: black;
+        font-size: 11pt;
+        font-weight: 400;
+        font-style: normal;
+        text-decoration: none;
+        font-family: "Aptos Narrow", sans-serif;
+      }
+
+      main {
+        padding: 5px;
+        border: 1px solid black;
+        width: 692px;
+        transform: scale(1);
+        margin: 0 auto;
+      }
+      .underline {
+        height: 1px;
+
+        background-color: black;
+      }
+      .container {
+        margin: 0 10px;
+      }
+      .top,
+      .billing {
+        padding-top: 20px;
+        display: flex;
+        flex-direction: row;
+        gap: 150px;
+      }
+      .top .left {
+        display: flex;
+        flex-direction: column;
+        gap: 0px;
+      }
+      .top article,
+      .billing article {
+        display: flex;
+        align-items: center;
+      }
+      .top article p,
+      .billing article p {
+        width: 140px;
+        color: #104861;
+        font-size: 7pt;
+        font-family: Arial, sans-serif;
+      }
+      .top .right p {
+        width: 35px;
+      }
+      .billing .right p {
+        width: 140px;
+      }
+      .top article span,
+      .billing article span {
+        color: rgb(43, 43, 43);
+        font-size: 10pt;
+      }
+      .billing .right article {
+        height: 25px;
+      }
+      .billing {
+        gap: 0px;
+        justify-content: space-between;
+      }
+      .billing {
+        padding-top: 10px;
+      }
+      .billing .left {
+        font-size: 20px;
+      }
+      .billing .right p {
+        text-align: right;
+      }
+      .billing .right span {
+        font-size: 10px;
+      }
+      .billing article {
+        padding: 0px;
+        margin: 0px;
+      }
+      .billing .left > div {
+        margin-left: 35px;
+      }
+      .billing .left > div p {
+        font-size: 11px;
+      }
+      .billing .left .heading,
+      .billing .left p span {
+        width: 140px;
+        color: #104861;
+        font-size: 9pt;
+        font-family: Arial, sans-serif;
+      }
+
+      /* invoice table */
+      .invoice-table {
+        margin-top: 10px;
+        font-family: Arial, sans-serif;
+        font-size: 6.8pt;
+        border: 1px solid #ccc;
+        text-align: left;
+      }
+
+      .invoice-table table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        padding-bottom: 0;
+        margin-bottom: 0;
+      }
+
+      .invoice-table th,
+      .invoice-table td {
+        border: 1px solid black;
+        padding: 6px 3px;
+        text-align: left;
+        height: 10px;
+      }
+
+      .invoice-table thead th {
+        background: #215c98;
+        color: white;
+        font-size: 10px;
+        /* min-width: 30px; */
+      }
+
+      .invoice-table .totals td {
+        text-align: right;
+        padding: 6px 12px;
+        font-size: 10px;
+      }
+      .invoice-table .totals tr {
+        height: 10px;
+      }
+      .invoice-table .totals tr td:last-child {
+        width: 90px;
+      }
+
+      .invoice-table .grand-total td {
+        font-weight: bold;
+      }
+
+      .invoice-table .highlight-row {
+        background-color: #e8e8e8 !important;
+      }
+      .invoice-table .totals tr .total-words {
+        text-align: left !important;
+        padding-left: 100px; /* optional for spacing */
+        font-size: 12px;
+      }
+
+      .total-col {
+        width: 98px;
+        text-align: left !important;
+      }
+      .sl-col {
+        width: 30px;
+      }
+      .table-bottom {
+        padding: 10px 0;
+        color: #104861;
+        font-size: 8.5pt;
+        font-family: Arial, sans-serif;
+        mso-font-charset: 0;
+        text-align: left;
+        vertical-align: middle;
+        border-top: 0.5pt solid #104861;
+        border-right: none;
+        border-bottom: 1pt solid #215c98;
+        border-left: none;
+        white-space: normal;
+      }
+
+      .background-image {
+        position: absolute;
+        z-index: 1;
+        margin-left: 48px;
+        margin-top: 22%;
+        width: 566px;
+        height: 505px;
+      }
+      .background-image img {
+        width: 566px;
+        height: 505px;
+        aspect-ratio: auto 566 / 505;
+      }
+    </style>
   </head>
 
   <body>
     <main>
       <span class="background-image">
-        <img src="https://i.ibb.co/7f8QLwx/backgroun-image.png" alt="" />
+        <img src="https://i.postimg.cc/Kj1FM0VL/backgroun-image.png" alt="" />
       </span>
-
-      <!-- Header -->
       <div>
         <img
-          src="https://i.ibb.co/v5CtxcT/header.png"
+          src="https://i.postimg.cc/vH1HgmwR/header.png"
+          style="object-fit: contain"
           width="689"
           height="177"
           alt=""
         />
       </div>
-
       <div class="container">
         <div class="underline"></div>
-
-        <!-- Top Section -->
         <div class="top">
           <div class="left">
             <article>
               <p>Invoice Reference</p>
-              <span>: {{invoiceReference}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;&nbsp;{{invoiceReference}}</span>
             </article>
             <article>
               <p>Payment Application No</p>
-              <span>: {{paymentApplicationNo}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;&nbsp;{{paymentApplicationNo}}</span>
             </article>
             <article>
               <p>Buyer P.O/Quotation Ref</p>
-              <span>: {{buyerPO}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;&nbsp;{{quotationRef}}</span>
             </article>
           </div>
           <div class="right">
             <article>
-              <p>Invoice Date</p>
-              <span>: {{invoiceDate}}</span>
+              <p>Date</p>
+              <span>:&nbsp;&nbsp;&nbsp;{{invoiceDate}}</span>
             </article>
             <article>
-              <p>Payment Application Date</p>
-              <span>: {{paymentApplicationDate}}</span>
+              <p>Date</p>
+              <span>:&nbsp;&nbsp;&nbsp;{{paymentApplicationDate}}</span>
+            </article>
+            <article>
+              <p>Date</p>
+              <span>:&nbsp;&nbsp;&nbsp;{{quotationRefDate}}</span>
             </article>
           </div>
         </div>
-
         <div class="underline" style="margin-top: 10px"></div>
-
-        <!-- Billing Section -->
         <div class="billing">
           <div class="left">
             <p class="heading">Bill To :</p>
             <div>
               <p><strong>{{clientName}}</strong></p>
-              <p>{{clientAddress}}</p>
+              <p>{{clientAddress1}}</p>
+              <p>{{clientAddress2}}</p>
               <p>Email : {{clientEmail}}</p>
-              <p>GSTN / TRN : {{clientGSTN}}</p>
+              <p><span> GSTN / TRN : </span>{{clientGSTN}}</p>
             </div>
           </div>
           <div class="right">
             <article>
               <p>Line / Type of Business</p>
-              <span>: {{businessType}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;{{lineOfBusiness}}</span>
             </article>
             <article>
               <p>State / Country of Origin</p>
-              <span>: {{originCountry}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;{{stateCountryOfOrigin}}</span>
             </article>
             <article>
               <p>Country of Consignee/Buyer</p>
-              <span>: {{buyerCountry}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;{{countryOfConsignee}}</span>
             </article>
             <article>
               <p>Mode of material & transport</p>
-              <span>: {{transportMode}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;{{modeOfMaterialTransport}}</span>
             </article>
             <article>
               <p>Project No</p>
-              <span>: {{projectNo}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;{{projectNo}}</span>
             </article>
             <article>
               <p>Project Name</p>
-              <span>: {{projectName}}</span>
+              <span>:&nbsp;&nbsp;&nbsp;{{projectName}}</span>
             </article>
           </div>
         </div>
-
         <!-- Invoice Table -->
         <div class="invoice-table">
           <table>
@@ -114,7 +302,6 @@
             </tbody>
           </table>
 
-          <!-- Totals -->
           <table class="totals">
             <tr>
               <td>Net Total</td>
@@ -126,14 +313,14 @@
             </tr>
             <tr>
               <td>SGST / UTGST - (9%)</td>
-              <td>{{sgst}}</td>
+              <td>{[sgst]}</td>
             </tr>
             <tr>
               <td>IGST - (18%)</td>
               <td>{{igst}}</td>
             </tr>
-            <tr class="highlight-row grand-total">
-              <td>Grand Total</td>
+            <tr class="highlight-row" class="grand-total">
+              <td>Grant Total</td>
               <td><strong>{{grandTotal}}</strong></td>
             </tr>
             <tr class="highlight-row">
@@ -143,18 +330,19 @@
             </tr>
           </table>
         </div>
-
-        <!-- Footer Note -->
         <div class="table-bottom">
-          We declare that: This Invoice reflects the actual service price,
+          We declare that : This Invoice reflects the actual service price,
           complies with contract terms, confirms all particulars are accurate,
-          and being digitally generated, does not require signature.
+          and being digitally generated, does not require signature
         </div>
       </div>
-
-      <!-- Footer -->
       <div>
-        <img src="https://i.ibb.co/7dckmCpn/footer.png" width="689" alt="" />
+        <img
+          src="https://i.postimg.cc/ncQpVwBP/footer.png"
+          width="689"
+          height="250"
+          alt=""
+        />
       </div>
     </main>
   </body>

@@ -3,6 +3,8 @@ import { generateInvoiceExcel } from "../lib/excel.js";
 import { uploadFile } from "../lib/s3.js";
 import { uuidGenerator } from "../utils/uuidGenerator.js";
 import { updateProjectPartial } from "./projects.service.js";
+const is_production = process.env.PRODUCTION === "true";
+
 export async function createEstimation(data) {
   const {
     project_id,
@@ -257,29 +259,57 @@ export async function getEstimationById(estimationId, client) {
   return result.rows[0];
 }
 
-
 export async function createInvoice(client, estimationId, data, currentUserId) {
   const file = await generateInvoiceExcel(data);
   const uuid = uuidGenerator();
-  const file_name = `invoice-${uuid}`;
-  const file_url = await uploadFile(file, file_name, "estimation-folder");
+  const file_name = "invoice";
+  let file_url;
+
+  if (is_production) {
+    file_url = await uploadFile(file, file_name, "estimation-folder");
+  } else {
+    file_url = file_name;
+  }
 
   const query = `
-    INSERT INTO estimation_uploaded_files (estimation_id, uploaded_file_id)
-    SELECT $4, id FROM uploaded_files
-    WHERE file = $1
-    UNION ALL
-    SELECT $4, id FROM (
+    WITH existing AS (
+      SELECT uf.id
+      FROM uploaded_files uf
+      JOIN estimation_uploaded_files euf
+        ON euf.uploaded_file_id = uf.id
+      WHERE euf.estimation_id = $4::int
+        AND uf.label = $2
+    ),
+    new_file AS (
       INSERT INTO uploaded_files (label, file, uploaded_by_id, status)
-      SELECT $2, $1, $3, 'under_review'
-      WHERE NOT EXISTS (SELECT 1 FROM uploaded_files WHERE file = $1)
+      SELECT $2, $1::varchar, $3, 'under_review'
+      WHERE NOT EXISTS (SELECT 1 FROM existing)
       RETURNING id
-    ) AS new_file
-    ON CONFLICT DO NOTHING
-    RETURNING uploaded_file_id;
+    ),
+    ins AS (
+      INSERT INTO estimation_uploaded_files (estimation_id, uploaded_file_id)
+      SELECT $4::int, id FROM new_file
+      ON CONFLICT DO NOTHING
+      RETURNING uploaded_file_id
+    ),
+    upd AS (
+      UPDATE uploaded_files
+      SET file = $1::varchar,
+          updated_at = NOW()
+      WHERE id IN (SELECT id FROM existing)
+      RETURNING id AS uploaded_file_id
+    )
+    SELECT uploaded_file_id FROM ins
+    UNION
+    SELECT uploaded_file_id FROM upd;
   `;
 
-  const values = [file_url, file_name, currentUserId, estimationId];
+  const values = [
+    file_url,
+    file_name,
+    currentUserId,
+    parseInt(estimationId, 10),
+  ];
   const result = await client.query(query, values);
 
   return result.rows[0];

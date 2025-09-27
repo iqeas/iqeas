@@ -283,7 +283,7 @@ export const createInvoiceController = async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params; 
-    const { invoiceData } = req.body;
+    const invoiceData = req.body;
     const currentUserId = req.user.id;
 
     await client.query("BEGIN");

@@ -85,30 +85,50 @@ export const EstimationDashboard = () => {
     open: false,
     project: null,
     invoiceData: {
+      // Top Section
+      invoiceReference: "",
       paymentApplicationNo: "",
       paymentApplicationDate: "",
-      invoiceReference: "",
       invoiceDate: "",
+      quotationRef: "",
+      quotationRefDate: "",
+
+      // Business Information Section
+      lineOfBusiness: "",
+      stateCountryOfOrigin: "",
+      countryOfConsignee: "",
+      modeOfMaterialTransport: "",
+
+      // Client / Billing Section
       clientName: "",
-      clientAddress: "",
+      clientAddress1: "",
+      clientAddress2: "",
       clientEmail: "",
       clientGSTN: "",
-      projectNo: "",
-      projectName: "",
-      projectValue: "",
-      variationAmount: "",
-      billingPeriod: "",
-      totalTaxAmount: "",
-      totalPOAmount: "",
+
+      // Project Section
+        projectNo: "",
+        projectName: "",
+
+
+        // Totals Section
+      netTotal: "",
+      cgst: "",
+      sgst: "",
+      igst: "",
+      grandTotal: "",
+      totalInWords: "",
+
+      // Dynamic Items Table
       items: [
         {
           slNo: 1,
           description: "",
-          previousProgress: "",
-          receivedAmount: "",
-          currentProgress: "",
-          currentAmount: "",
-          currentTax: "",
+          hsn: "",
+          qty: "",
+          unit: "",
+          projectValue: "",
+          totalAmount: "",
         },
       ],
     },
@@ -423,30 +443,49 @@ export const EstimationDashboard = () => {
       open: true,
       project,
       invoiceData: {
+        // Top Section
+        invoiceReference: "",
         paymentApplicationNo: "",
         paymentApplicationDate: today,
-        invoiceReference: "",
         invoiceDate: today,
+
+        // Client / Billing Section
         clientName: project.client_name || "",
         clientAddress: project.location || "",
+        clientAddress2: "",
         clientEmail: project.contact_person_email || "",
         clientGSTN: "",
+
+        // Project Section
         projectNo: project.project_id || "",
         projectName: project.name || "",
-        projectValue: project.estimation?.cost ? `₹${project.estimation.cost}` : "",
-        variationAmount: "",
-        billingPeriod: "",
-        totalTaxAmount: "",
-        totalPOAmount: "",
+        quotationRef: "",
+        quotationRefDate: today,
+
+        // Business Information Section
+        lineOfBusiness: "",
+        stateCountryOfOrigin: "",
+        countryOfConsignee: "",
+        modeOfMaterialTransport: "",
+
+        // Totals Section
+        netTotal: "",
+        cgst: "",
+        sgst: "",
+        igst: "",
+        grandTotal: "",
+        totalInWords: "",
+
+        // Dynamic Items Table
         items: [
           {
             slNo: 1,
             description: "",
-            previousProgress: "",
-            receivedAmount: "",
-            currentProgress: "",
-            currentAmount: "",
-            currentTax: "",
+            hsn: "",
+            qty: "",
+            unit: "",
+            projectValue: "",
+            totalAmount: "",
           },
         ],
       },
@@ -458,30 +497,43 @@ export const EstimationDashboard = () => {
       open: false,
       project: null,
       invoiceData: {
+        // Top Section
+        invoiceReference: "",
         paymentApplicationNo: "",
         paymentApplicationDate: "",
-        invoiceReference: "",
         invoiceDate: "",
+
+        // Client / Billing Section
         clientName: "",
         clientAddress: "",
+        clientAddress2: "",
         clientEmail: "",
         clientGSTN: "",
+
+        // Project Section
         projectNo: "",
         projectName: "",
-        projectValue: "",
-        variationAmount: "",
-        billingPeriod: "",
-        totalTaxAmount: "",
-        totalPOAmount: "",
+        quotationRef: "",
+        quotationRefDate: "",
+
+        // Totals Section
+        netTotal: "",
+        cgst: "",
+        sgst: "",
+        igst: "",
+        grandTotal: "",
+        totalInWords: "",
+
+        // Dynamic Items Table
         items: [
           {
             slNo: 1,
             description: "",
-            previousProgress: "",
-            receivedAmount: "",
-            currentProgress: "",
-            currentAmount: "",
-            currentTax: "",
+            hsn: "",
+            qty: "",
+            unit: "",
+            projectValue: "",
+            totalAmount: "",
           },
         ],
       },
@@ -511,24 +563,28 @@ export const EstimationDashboard = () => {
   };
 
   const addInvoiceItem = () => {
-    setInvoiceModal((modal) => ({
-      ...modal,
-      invoiceData: {
-        ...modal.invoiceData,
-        items: [
-          ...modal.invoiceData.items,
-          {
-            slNo: modal.invoiceData.items.length + 1,
-            description: "",
-            previousProgress: "",
-            receivedAmount: "",
-            currentProgress: "",
-            currentAmount: "",
-            currentTax: "",
-          },
-        ],
-      },
-    }));
+    if (invoiceModal.invoiceData.items.length < 5) {
+      setInvoiceModal((modal) => ({
+        ...modal,
+        invoiceData: {
+          ...modal.invoiceData,
+          items: [
+            ...modal.invoiceData.items,
+            {
+              slNo: modal.invoiceData.items.length + 1,
+              description: "",
+              hsn: "",
+              qty: "",
+              unit: "",
+              projectValue: "",
+              totalAmount: "",
+            },
+          ],
+        },
+      }));
+    } else {
+      toast.error("Maximum 5 items allowed");
+    }
   };
 
   const removeInvoiceItem = (index) => {
@@ -605,6 +661,8 @@ export const EstimationDashboard = () => {
       
       toast.success("Invoice created successfully!");
       closeInvoiceModal();
+      window.location.reload();
+
     } else {
       toast.error("Failed to create invoice");
     }
@@ -2023,54 +2081,73 @@ export const EstimationDashboard = () => {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-6 p-6">
-            {/* Basic Information */}
-            <div className="grid grid-cols-2 gap-4">
+           <div className="space-y-6 p-6">
+             {/* Top Section */}
+             <div className="grid grid-cols-2 gap-4">
+               <div>
+                 <label className="block text-sm font-medium mb-1">
+                   Invoice Reference
+                 </label>
+                 <Input
+                   value={invoiceModal.invoiceData.invoiceReference}
+                   onChange={(e) => handleInvoiceFieldChange("invoiceReference", e.target.value)}
+                   placeholder="Enter invoice reference"
+                 />
+               </div>
+                 
+               <div>
+                 <label className="block text-sm font-medium mb-1">
+                   Invoice Date
+                 </label>
+                 <Input
+                   type="date"
+                   value={invoiceModal.invoiceData.invoiceDate}
+                   onChange={(e) => handleInvoiceFieldChange("invoiceDate", e.target.value)}
+                 />
+               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Payment Application No
-                </label>
-                <Input
-                  value={invoiceModal.invoiceData.paymentApplicationNo}
-                  onChange={(e) => handleInvoiceFieldChange("paymentApplicationNo", e.target.value)}
-                  placeholder="Enter payment application number"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Payment Application Date
-                </label>
-                <Input
-                  type="date"
-                  value={invoiceModal.invoiceData.paymentApplicationDate}
-                  onChange={(e) => handleInvoiceFieldChange("paymentApplicationDate", e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Invoice Reference
-                </label>
-                <Input
-                  value={invoiceModal.invoiceData.invoiceReference}
-                  onChange={(e) => handleInvoiceFieldChange("invoiceReference", e.target.value)}
-                  placeholder="Enter invoice reference"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Invoice Date
-                </label>
-                <Input
-                  type="date"
-                  value={invoiceModal.invoiceData.invoiceDate}
-                  onChange={(e) => handleInvoiceFieldChange("invoiceDate", e.target.value)}
-                />
-              </div>
-            </div>
+                 <label className="block text-sm font-medium mb-1">
+                   Payment Application No
+                 </label>
+                 <Input
+                   value={invoiceModal.invoiceData.paymentApplicationNo}
+                   onChange={(e) => handleInvoiceFieldChange("paymentApplicationNo", e.target.value)}
+                   placeholder="Enter payment application number"
+                 />
+               </div>
+              
+              
+                <div>
+                 <label className="block text-sm font-medium mb-1">
+                   Payment Application Date
+                 </label>
+                 <Input
+                   type="date"
+                   value={invoiceModal.invoiceData.paymentApplicationDate}
+                   onChange={(e) => handleInvoiceFieldChange("paymentApplicationDate", e.target.value)}
+                 />
+               </div>
+                 <div>
+                  <label className="block text-sm font-medium mb-1">QuotationRef</label>
+                  <Input
+                    value={invoiceModal.invoiceData.quotationRef}
+                    onChange={(e) => handleInvoiceFieldChange("quotationRef", e.target.value)}
+                    placeholder="Enter quotation reference"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">QuotationRefDate</label>
+                  <Input
+                    type="date"
+                    value={invoiceModal.invoiceData.quotationRefDate}
+                    onChange={(e) => handleInvoiceFieldChange("quotationRefDate", e.target.value)}
+                  />
+                </div>
+             </div>
 
-            {/* Client Information */}
+            {/* Client / Billing Section */}
             <div className="border-t pt-4">
-              <h3 className="text-lg font-semibold mb-3 text-slate-700">Client Information</h3>
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">Client / Billing Information</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Client Name</label>
@@ -2078,15 +2155,33 @@ export const EstimationDashboard = () => {
                     value={invoiceModal.invoiceData.clientName}
                     onChange={(e) => handleInvoiceFieldChange("clientName", e.target.value)}
                     placeholder="Enter client name"
+                    maxLength={50}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Client Address</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Address Line 1 <span className="text-red-500">*</span>
+                  </label>
                   <Textarea
-                    value={invoiceModal.invoiceData.clientAddress}
-                    onChange={(e) => handleInvoiceFieldChange("clientAddress", e.target.value)}
-                    placeholder="Enter client address"
+                    value={invoiceModal.invoiceData.clientAddress1}
+                    onChange={(e) => handleInvoiceFieldChange("clientAddress1", e.target.value)}
+                    placeholder="Enter client address1"
                     rows={2}
+                    maxLength={60}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Address Line 2 <span className="text-red-500">*</span>
+                  </label>
+                  <Textarea
+                    value={invoiceModal.invoiceData.clientAddress2}
+                    onChange={(e) => handleInvoiceFieldChange("clientAddress2", e.target.value)}
+                    placeholder="Enter client address2"
+                    rows={2}
+                    maxLength={60}
+                    required
                   />
                 </div>
                 <div>
@@ -2096,6 +2191,7 @@ export const EstimationDashboard = () => {
                     value={invoiceModal.invoiceData.clientEmail}
                     onChange={(e) => handleInvoiceFieldChange("clientEmail", e.target.value)}
                     placeholder="Enter client email"
+                    maxLength={50}
                   />
                 </div>
                 <div>
@@ -2109,12 +2205,12 @@ export const EstimationDashboard = () => {
               </div>
             </div>
 
-            {/* Project Information */}
+            {/* Project Section */}
             <div className="border-t pt-4">
               <h3 className="text-lg font-semibold mb-3 text-slate-700">Project Information</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Project No. / Quotation Reference</label>
+                  <label className="block text-sm font-medium mb-1">Project No.</label>
                   <Input
                     value={invoiceModal.invoiceData.projectNo}
                     onChange={(e) => handleInvoiceFieldChange("projectNo", e.target.value)}
@@ -2127,46 +2223,49 @@ export const EstimationDashboard = () => {
                     value={invoiceModal.invoiceData.projectName}
                     onChange={(e) => handleInvoiceFieldChange("projectName", e.target.value)}
                     placeholder="Enter project name"
+                    maxLength={40}
+                  />
+                </div>
+              
+              </div>
+            </div>
+
+            {/* Business Information Section */}
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">Business Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Line / Type of Business</label>
+                  <Input
+                    value={invoiceModal.invoiceData.lineOfBusiness}
+                    onChange={(e) => handleInvoiceFieldChange("lineOfBusiness", e.target.value)}
+                    placeholder="Enter line of business"
+                    maxLength={40}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Project Value</label>
+                  <label className="block text-sm font-medium mb-1">State / Country of Origin</label>
                   <Input
-                    value={invoiceModal.invoiceData.projectValue}
-                    onChange={(e) => handleInvoiceFieldChange("projectValue", e.target.value)}
-                    placeholder="Enter project value"
+                    value={invoiceModal.invoiceData.stateCountryOfOrigin}
+                    onChange={(e) => handleInvoiceFieldChange("stateCountryOfOrigin", e.target.value)}
+                    placeholder="Enter state/country of origin"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Variation Amount & Reference</label>
+                  <label className="block text-sm font-medium mb-1">Country of Consignee/Buyer</label>
                   <Input
-                    value={invoiceModal.invoiceData.variationAmount}
-                    onChange={(e) => handleInvoiceFieldChange("variationAmount", e.target.value)}
-                    placeholder="Enter variation amount"
+                    value={invoiceModal.invoiceData.countryOfConsignee}
+                    onChange={(e) => handleInvoiceFieldChange("countryOfConsignee", e.target.value)}
+                    placeholder="Enter country of consignee/buyer"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Billing Period</label>
+                  <label className="block text-sm font-medium mb-1">Mode of material & transport</label>
                   <Input
-                    value={invoiceModal.invoiceData.billingPeriod}
-                    onChange={(e) => handleInvoiceFieldChange("billingPeriod", e.target.value)}
-                    placeholder="Enter billing period"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Total Tax Amount</label>
-                  <Input
-                    value={invoiceModal.invoiceData.totalTaxAmount}
-                    onChange={(e) => handleInvoiceFieldChange("totalTaxAmount", e.target.value)}
-                    placeholder="Enter total tax amount"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Total PO Amount</label>
-                  <Input
-                    value={invoiceModal.invoiceData.totalPOAmount}
-                    onChange={(e) => handleInvoiceFieldChange("totalPOAmount", e.target.value)}
-                    placeholder="Enter total PO amount"
+                    value={invoiceModal.invoiceData.modeOfMaterialTransport}
+                    onChange={(e) => handleInvoiceFieldChange("modeOfMaterialTransport", e.target.value)}
+                    placeholder="Enter mode of material & transport"
+                    maxLength={40}
                   />
                 </div>
               </div>
@@ -2180,9 +2279,10 @@ export const EstimationDashboard = () => {
                   size="sm"
                   variant="outline"
                   onClick={addInvoiceItem}
-                  className="text-green-600 border-green-600 hover:bg-green-50"
+                  disabled={invoiceModal.invoiceData.items.length >= 5}
+                  className="text-green-600 border-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  + Add Item
+                  + Add Item ({invoiceModal.invoiceData.items.length}/5)
                 </Button>
               </div>
               
@@ -2203,70 +2303,128 @@ export const EstimationDashboard = () => {
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Description of Work</label>
-                        <Textarea
-                          value={item.description}
-                          onChange={(e) => handleInvoiceItemChange(index, "description", e.target.value)}
-                          placeholder="Enter work description"
-                          rows={2}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Previous Progress (%) or Amount</label>
-                        <Input
-                          value={item.previousProgress}
-                          onChange={(e) => handleInvoiceItemChange(index, "previousProgress", e.target.value)}
-                          placeholder="Enter previous progress"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Received Amount with Tax</label>
-                        <Input
-                          value={item.receivedAmount}
-                          onChange={(e) => handleInvoiceItemChange(index, "receivedAmount", e.target.value)}
-                          placeholder="Enter received amount"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Current Progress (%) or Amount</label>
-                        <Input
-                          value={item.currentProgress}
-                          onChange={(e) => handleInvoiceItemChange(index, "currentProgress", e.target.value)}
-                          placeholder="Enter current progress"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Current Amount without Tax</label>
-                        <Input
-                          value={item.currentAmount}
-                          onChange={(e) => handleInvoiceItemChange(index, "currentAmount", e.target.value)}
-                          placeholder="Enter current amount"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Current Tax (CGST + SGST)</label>
-                        <Input
-                          value={item.currentTax}
-                          onChange={(e) => handleInvoiceItemChange(index, "currentTax", e.target.value)}
-                          placeholder="Enter current tax"
-                        />
-                      </div>
-                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Description</label>
+                         <Textarea
+                           value={item.description}
+                           onChange={(e) => handleInvoiceItemChange(index, "description", e.target.value)}
+                           placeholder="Enter work description"
+                           rows={2}
+                           maxLength={100}
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium mb-1">HSN</label>
+                         <Input
+                           value={item.hsn}
+                           onChange={(e) => handleInvoiceItemChange(index, "hsn", e.target.value)}
+                           placeholder="Enter HSN code"
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Qty</label>
+                         <Input
+                           value={item.qty}
+                           onChange={(e) => handleInvoiceItemChange(index, "qty", e.target.value)}
+                           placeholder="Enter quantity"
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Unit</label>
+                         <Input
+                           value={item.unit}
+                           onChange={(e) => handleInvoiceItemChange(index, "unit", e.target.value)}
+                           placeholder="Enter unit"
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Project Value</label>
+                         <Input
+                           value={item.projectValue}
+                           onChange={(e) => handleInvoiceItemChange(index, "projectValue", e.target.value)}
+                           placeholder="Enter project value"
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Total Amount</label>
+                         <Input
+                           value={item.totalAmount}
+                           onChange={(e) => handleInvoiceItemChange(index, "totalAmount", e.target.value)}
+                           placeholder="Enter total amount"
+                         />
+                       </div>
+                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Totals Section */}
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">Totals</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Net Total</label>
+                  <Input
+                    value={invoiceModal.invoiceData.netTotal}
+                    onChange={(e) => handleInvoiceFieldChange("netTotal", e.target.value)}
+                    placeholder="Enter net total"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">CGST</label>
+                  <Input
+                    value={invoiceModal.invoiceData.cgst}
+                    onChange={(e) => handleInvoiceFieldChange("cgst", e.target.value)}
+                    placeholder="Enter CGST"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">SGST</label>
+                  <Input
+                    value={invoiceModal.invoiceData.sgst}
+                    onChange={(e) => handleInvoiceFieldChange("sgst", e.target.value)}
+                    placeholder="Enter SGST"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">IGST</label>
+                  <Input
+                    value={invoiceModal.invoiceData.igst}
+                    onChange={(e) => handleInvoiceFieldChange("igst", e.target.value)}
+                    placeholder="Enter IGST"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Grand Total</label>
+                  <Input
+                    value={invoiceModal.invoiceData.grandTotal}
+                    onChange={(e) => handleInvoiceFieldChange("grandTotal", e.target.value)}
+                    placeholder="Enter grand total"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Total in Words</label>
+                  <Input
+                    value={invoiceModal.invoiceData.totalInWords}
+                    onChange={(e) => handleInvoiceFieldChange("totalInWords", e.target.value)}
+                    placeholder="Enter total in words"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           <DialogFooter className="pt-6 px-8 py-5">
-            <Button variant="outline" onClick={closeInvoiceModal}>
+            <Button variant="outline" onClick={closeInvoiceModal} disabled={fetching && fetchType == "createInvoice"} >
               Cancel
             </Button>
             <Button
               className="bg-green-600 hover:bg-green-700 text-white"
               onClick={createInvoice}
+              loading={fetching && fetchType == "createInvoice"}
+              disabled={fetching && fetchType == "createInvoice"}
             >
               Create Invoice
             </Button>
