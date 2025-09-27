@@ -141,6 +141,7 @@ CREATE TABLE estimations (
     cost NUMERIC(10, 2),
     deadline DATE,
     approval_date DATE,
+    log TEXT,
     approved BOOLEAN DEFAULT FALSE NOT NULL,
     sent_to_pm BOOLEAN DEFAULT FALSE NOT NULL,
     notes TEXT,

@@ -266,7 +266,7 @@ export async function createInvoice(client, estimationId, data, currentUserId) {
   let file_url;
 
   if (is_production) {
-    file_url = await uploadFile(file, file_name, "estimation-folder");
+    file_url = (await uploadFile(file, file_name, "estimation-folder")).url;
   } else {
     file_url = file_name;
   }
