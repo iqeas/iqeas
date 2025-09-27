@@ -58,7 +58,7 @@ export async function uploadFile(fileBuffer, fileName, folder = "") {
   };
 
   await s3.send(new PutObjectCommand(putParams));
-  console.log({ key, url: buildPublicUrl(key) });
+  console.log({ key, url: buildPublicUrl(key) },folder,fileName);
   return { key, url: buildPublicUrl(key) };
 }
 
