@@ -49,9 +49,10 @@ const ProjectTrack: React.FC = () => {
   );
   const [showCorrectionDialog, setShowCorrectionDialog] = useState(false);
   const [correctionText, setCorrectionText] = useState("");
-  useEffect(() => {
-    document.getElementsByTagName("main")[0].style.overflowY = "hidden";
-  }, []);
+  // useEffect(() => {
+  //   document.getElementsByTagName("main")[0].style.overflowY = "hidden";
+
+  // }, []);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -873,50 +874,49 @@ const ProjectTrack: React.FC = () => {
         </div>
       </div>
       <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
-        <DialogContent >
+        <DialogContent>
           <DialogHeader className="px-6 py-4">
             <DialogTitle>Select Files for Delivery</DialogTitle>
           </DialogHeader>
           <div className="p-6">
-
-          <div className="space-y-4 max-h-80 overflow-y-auto">
-            {files.length === 0 ? (
-              <div className="text-slate-500 text-center">
-                No files available for delivery.
-              </div>
-            ) : (
-              files.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center gap-3 border rounded p-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedDeliveryFiles.includes(file.id)}
-                    onChange={() => handleFileToggle(file.id)}
-                    className="accent-blue-600"
-                  />
-                  <ShowFile label={file.label} url={file.url} />
+            <div className="space-y-4 max-h-80 overflow-y-auto">
+              {files.length === 0 ? (
+                <div className="text-slate-500 text-center">
+                  No files available for delivery.
                 </div>
-              ))
-            )}
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setShowDeliveryDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={handleDeliverySubmit}
-              loading={fetching && fetchType == "addDeliverySubmit"}
-              disabled={fetching && fetchType == "addDeliverySubmit"}
-            >
-              Submit Delivery
-            </Button>
-          </div>
+              ) : (
+                files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center gap-3 border rounded p-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedDeliveryFiles.includes(file.id)}
+                      onChange={() => handleFileToggle(file.id)}
+                      className="accent-blue-600"
+                    />
+                    <ShowFile label={file.label} url={file.url} />
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeliveryDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleDeliverySubmit}
+                loading={fetching && fetchType == "addDeliverySubmit"}
+                disabled={fetching && fetchType == "addDeliverySubmit"}
+              >
+                Submit Delivery
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

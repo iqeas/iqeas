@@ -18,6 +18,7 @@ import {
   getPMProjectsCards,
   getProjectDetailsById,
   getPublicProjectDetails,
+  getProjectShortDetailsById,
 } from "../services/projects.service.js";
 import pool from "../config/db.js";
 
@@ -37,12 +38,12 @@ export const createNewProject = async (req, res) => {
     }
 
     await client.query("COMMIT");
-
+    const responseProject = await getProjectShortDetailsById(project.id,client);
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
         detail: "Project created successfully",
-        data: project,
+        data: responseProject,
       })
     );
   } catch (error) {
@@ -142,7 +143,7 @@ export const getEstimationProjects = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const size = parseInt(req.query.size) || 10;
-    const query = req.query.search || "";
+    const query = req.query.query || "";
     console.log(page, size, query);
     const projects = await getProjectsEstimationProjects({ page, size, query });
     const cards = await getEstimationCardData();

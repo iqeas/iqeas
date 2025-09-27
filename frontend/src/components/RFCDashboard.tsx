@@ -256,7 +256,8 @@ export const RFCDashboard = () => {
 
   // Refactor submitMoreInfo to upload files and send the correct payload
   const submitMoreInfo = async () => {
-    if (!moreInfoProject) return;
+    try {
+       if (!moreInfoProject) return;
     console.log(validateRequiredFields(moreInfoForm, ["enquiry", "notes"]));
     if (validateRequiredFields(moreInfoForm, ["enquiry", "notes"]).length > 0) {
       toast.error("Fill all the required fields");
@@ -296,10 +297,18 @@ export const RFCDashboard = () => {
       setProjects((prev) =>
         prev.map((item) => {
           if (item.id === moreInfoProject.id) {
-            return {
-              ...item,
-              add_more_infos: [response.data, ...item.add_more_infos],
-            };
+            if(item.add_more_infos){
+
+              return {
+                ...item,
+                add_more_infos: [response.data, ...item.add_more_infos],
+              };
+            }else{
+              return {
+                ...item,
+                add_more_infos: [response.data],
+              };
+            }
           }
           return item;
         })
@@ -313,6 +322,10 @@ export const RFCDashboard = () => {
     } else {
       toast.error("Failed to add more info");
     }
+    } catch (error) {
+      window.location.reload();
+    }
+   
   };
 
   const uploadFile = async (file: File, label: string) => {

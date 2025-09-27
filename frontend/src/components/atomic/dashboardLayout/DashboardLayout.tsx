@@ -123,7 +123,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   // Disable background scroll on mobile menu open
   useEffect(() => {
     document.body.style.overflow = openMenu ? "hidden" : "";
+    
   }, [openMenu]);
+  
 
   return (
     <div className="flex h-screen overflow-hidden">

@@ -451,7 +451,7 @@ export const EstimationDashboard = () => {
 
         // Client / Billing Section
         clientName: project.client_name || "",
-        clientAddress: project.location || "",
+        clientAddress1: project.location || "",
         clientAddress2: "",
         clientEmail: project.contact_person_email || "",
         clientGSTN: "",
@@ -505,7 +505,7 @@ export const EstimationDashboard = () => {
 
         // Client / Billing Section
         clientName: "",
-        clientAddress: "",
+        clientAddress1: "",
         clientAddress2: "",
         clientEmail: "",
         clientGSTN: "",
@@ -515,6 +515,12 @@ export const EstimationDashboard = () => {
         projectName: "",
         quotationRef: "",
         quotationRefDate: "",
+
+        // Business Information Section
+        lineOfBusiness: "",
+        stateCountryOfOrigin: "",
+        countryOfConsignee: "",
+        modeOfMaterialTransport: "",
 
         // Totals Section
         netTotal: "",
