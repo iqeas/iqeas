@@ -5,9 +5,10 @@ const is_production = process.env.PRODUCTION === "true";
 
 export const uploadFileHandler = async (req, res) => {
   try {
-    const { label, role } = req.body;
+    const { label } = req.body;
     const file = req.file;
     const uploaded_by = req.user.id;
+    const { role } = req.user;
 
     if (!file) {
       return res
