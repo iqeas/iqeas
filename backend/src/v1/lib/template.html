@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Invoice</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
       p,
       span {
@@ -15,7 +16,20 @@
         text-decoration: none;
         font-family: "Aptos Narrow", sans-serif;
       }
-
+      .download-btn {
+        display: block;
+        margin: 20px auto;
+        padding: 10px 20px;
+        background: #215c98;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .download-btn:hover {
+        background: #104861;
+      }
       main {
         padding: 5px;
         border: 1px solid black;
@@ -199,6 +213,7 @@
   </head>
 
   <body>
+    <button class="download-btn" onclick="downloadInvoice()">Download as PDF</button>
     <main>
       <span class="background-image">
         <img src="https://i.postimg.cc/Kj1FM0VL/backgroun-image.png" alt="" />
@@ -345,5 +360,18 @@
         />
       </div>
     </main>
+     <script>
+      function downloadInvoice() {
+        const invoice = document.getElementById("invoice");
+        const options = {
+          margin: 5,
+          filename: "Invoice.pdf",
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+        };
+        html2pdf().set(options).from(invoice).save();
+      }
+    </script>
   </body>
 </html>

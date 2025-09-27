@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice PDF Download</title>
+  <!-- html2pdf.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    #invoice {
+      width: 600px;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #000;
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Invoice Section -->
+  <div id="invoice">
+    <h2>Invoice</h2>
+    <p><strong>Invoice No:</strong> 12345</p>
+    <p><strong>Date:</strong> 28-09-2025</p>
+    <hr>
+    <p>Item: Web Development Services</p>
+    <p>Amount: ₹50,000</p>
+    <hr>
+    <h3>Total: ₹50,000</h3>
+  </div>
+
+  <!-- Download Button -->
+  <button onclick="downloadInvoice()">Download as PDF</button>
+
+  <script>
+    function downloadInvoice() {
+      const invoice = document.getElementById("invoice");
+      const options = {
+        margin: 10,
+        filename: "Invoice.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+      };
+      html2pdf().set(options).from(invoice).save();
+    }
+    downloadInvoice()
+  </script>
+
+</body>
+</html>
