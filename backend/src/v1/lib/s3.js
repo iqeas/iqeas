@@ -40,13 +40,13 @@ function buildPublicUrl(key) {
  */
 export async function uploadFile(fileBuffer, fileName, folder = "") {
   const timestamp = Date.now();
-  const cleanFolder = folder.replace(/^\/|\/$/g, ""); // remove leading/trailing slash
+  const cleanFolder = folder.replace(/^\/|\/$/g, ""); 
   const extension = path.extname(fileName) || "";
   const baseName = path.basename(fileName, extension);
   const key =
     (cleanFolder ? `${cleanFolder}/` : "") +
     `${timestamp}_${baseName}${extension}`;
-
+  console.log(timestamp,cleanFolder,extension,baseName,key)
   const contentType = mime.lookup(extension) || "application/octet-stream";
 
   const putParams = {

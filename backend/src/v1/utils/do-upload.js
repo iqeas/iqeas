@@ -25,6 +25,7 @@ export async function uploadFileToDO(file, label, role) {
   const buffer = await fs.readFile(file.path);
   const extension = mime.extension(file.mimetype) || "bin";
   const filename = `${label}.${extension}`;
+  console.log("role",role)
   const folder = getFolderByRole(role);
   const url = await uploadFile(buffer, label,filename, folder);
   return url.url;
