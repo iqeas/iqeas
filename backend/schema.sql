@@ -5,7 +5,7 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    name VARCHAR(100) NOT NULL,grer
+    name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(15),
     user_id VARCHAR(1024),
@@ -27,7 +27,7 @@ CREATE TABLE teams (
     description TEXT DEFAULT '',
     users JSONB DEFAULT '[]',         
     active BOOLEAN DEFAULT TRUE,
-    role TEXT DEFAULT ''
+    role TEXT DEFAULT '',
     leader_id INTEGER NOT NULL
 );
 
@@ -169,13 +169,13 @@ CREATE TABLE estimation_uploaded_files (
 CREATE TABLE stages (
     id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    name VARCHAR(20) NOT NULL CHECK (name IN ('IDC', 'IFR', 'IFA', 'AFC')),
-    weight NUMERIC(5,2) NOT NULL,          -- % contribution to progress
-    allocated_hours INT NOT NULL,         -- time allocated for the stage
+    name VARCHAR(20) NOT NULL ,
+    weight NUMERIC(5,2) NOT NULL,   
+    allocated_hours INT NOT NULL,      
     created_at TIMESTAMPTZ DEFAULT NOW(),
     status VARCHAR(20),
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    revision VARCHAR(50),
+    revision VARCHAR(50)
 );
 
 CREATE TABLE drawings (

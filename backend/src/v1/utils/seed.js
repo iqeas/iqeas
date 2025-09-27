@@ -17,12 +17,12 @@ async function createInitialAdmin() {
 
     // create new admin
     const { user, password } = await createUser(
-      "admin@iqeasoffshore.com", 
-      "9999999999", 
-      "Super Admin", 
-      "admin", 
-      true, 
-      0, 
+      "suresh@iqeasoffshore.com",
+      "9999999999",
+      "Super Admin",
+      "admin",
+      true,
+      0,
       client
     );
 
