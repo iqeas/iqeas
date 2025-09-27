@@ -38,31 +38,30 @@ function buildPublicUrl(key) {
  * @param {string} folder - optional folder path
  * @returns {Promise<{ key: string, url: string }>}
  */
-export async function uploadFile(
-  fileBuffer,
-  // downloadLabel,
-  fileName,
-  folder = ""
-) {
+export async function uploadFile(fileBuffer, fileName, folder = "") {
   const timestamp = Date.now();
   const cleanFolder = folder.replace(/^\/|\/$/g, ""); // remove leading/trailing slash
+  const extension = path.extname(fileName) || "";
+  const baseName = path.basename(fileName, extension);
   const key =
     (cleanFolder ? `${cleanFolder}/` : "") +
-    `${timestamp}_${path.basename(fileName)}`;
-  const contentType = mime.lookup(fileName) || "application/octet-stream";
+    `${timestamp}_${baseName}${extension}`;
+
+  const contentType = mime.lookup(extension) || "application/octet-stream";
 
   const putParams = {
     Bucket: SPACE,
     Key: key,
     Body: fileBuffer,
     ContentType: contentType,
-    ACL: PUBLIC ? "public-read" : undefined,
+    ACL: "public-read", // force public access
   };
 
   await s3.send(new PutObjectCommand(putParams));
   console.log({ key, url: buildPublicUrl(key) });
   return { key, url: buildPublicUrl(key) };
 }
+
 
 /**
  * Delete a file by key or public URL
