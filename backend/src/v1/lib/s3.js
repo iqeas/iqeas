@@ -60,7 +60,7 @@ export async function uploadFile(
   };
 
   await s3.send(new PutObjectCommand(putParams));
-
+  console.log({ key, url: buildPublicUrl(key) });
   return { key, url: buildPublicUrl(key) };
 }
 
