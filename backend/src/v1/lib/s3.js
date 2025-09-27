@@ -40,13 +40,16 @@ function buildPublicUrl(key) {
  */
 export async function uploadFile(fileBuffer, fileName, folder = "") {
   const timestamp = Date.now();
-  const cleanFolder = folder.replace(/^\/|\/$/g, ""); 
+  const cleanFolder = folder.replace(/^\/|\/$/g, "");
   const extension = path.extname(fileName) || "";
   const baseName = path.basename(fileName, extension);
+
   const key =
     (cleanFolder ? `${cleanFolder}/` : "") +
     `${timestamp}_${baseName}${extension}`;
-  console.log(timestamp,cleanFolder,extension,baseName,key)
+
+  console.log("DEBUG:", { timestamp, cleanFolder, extension, baseName, key });
+
   const contentType = mime.lookup(extension) || "application/octet-stream";
 
   const putParams = {
@@ -54,11 +57,10 @@ export async function uploadFile(fileBuffer, fileName, folder = "") {
     Key: key,
     Body: fileBuffer,
     ContentType: contentType,
-    ACL: "public-read", // force public access
+    ACL: "public-read",
   };
 
   await s3.send(new PutObjectCommand(putParams));
-  console.log({ key, url: buildPublicUrl(key) },folder,fileName);
   return { key, url: buildPublicUrl(key) };
 }
 

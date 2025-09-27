@@ -21,15 +21,15 @@ function getFolderByRole(role) {
       return "others";
   }
 }
+
 export async function uploadFileToDO(file, label, role) {
   const buffer = await fs.readFile(file.path);
   const extension = mime.extension(file.mimetype) || "bin";
   const filename = `${label}.${extension}`;
-  console.log("role",role)
-  const folder = getFolderByRole(role);
-  const url = await uploadFile(buffer, label,filename, folder);
+  const folder = getFolderByRole(role) || ""; // make sure role gives proper folder
+  const url = await uploadFile(buffer, filename, folder);
   return url.url;
-} 
+}
 
 export async function deleteFileFromDO(file) {
   const url = file.file;
