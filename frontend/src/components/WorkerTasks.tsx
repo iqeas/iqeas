@@ -1066,7 +1066,7 @@ export const WorkerTasks = () => {
                       <ShowFile
                         key={"in-" + idx}
                         label={file.label}
-                        url={file.file ? `/uploads/${file.file}` : ""}
+                        url={file.file}
                         size="medium"
                       />
                     ))
@@ -1088,7 +1088,7 @@ export const WorkerTasks = () => {
                       <ShowFile
                         key={"out-" + idx}
                         label={file.label}
-                        url={file.file ? `/uploads/${file.file}` : ""}
+                        url={file.file}
                         size="medium"
                       />
                     ))

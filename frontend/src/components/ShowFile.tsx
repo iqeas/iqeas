@@ -31,6 +31,10 @@ export const ShowFile: React.FC<ShowFileProps> = ({
   size = "medium",
 }) => {
   const handleDownload = async (url: string, label: string) => {
+    if (label.toLocaleLowerCase() === "invoice") {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
     try {
       const response = await fetch(url, { mode: "cors" });
       const blob = await response.blob();
