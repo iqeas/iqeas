@@ -213,8 +213,10 @@
   </head>
 
   <body>
-    <button class="download-btn" onclick="downloadInvoice()">Download as PDF</button>
-    <main>
+    <button class="download-btn" onclick="downloadInvoice()">
+      Download as PDF
+    </button>
+    <main id="invoice">
       <span class="background-image">
         <img src="https://i.postimg.cc/Kj1FM0VL/backgroun-image.png" alt="" />
       </span>
@@ -360,15 +362,15 @@
         />
       </div>
     </main>
-     <script>
+    <script>
       function downloadInvoice() {
         const invoice = document.getElementById("invoice");
         const options = {
           margin: 5,
           filename: "Invoice.pdf",
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         };
         html2pdf().set(options).from(invoice).save();
       }
