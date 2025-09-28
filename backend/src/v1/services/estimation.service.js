@@ -261,11 +261,11 @@ export async function getEstimationById(estimationId, client) {
 
 export async function createInvoice(client, estimationId, data, currentUserId) {
   const file = await generateInvoiceExcel(data);
-  const file_name = "invoice.pdf";
+  const file_name = "invoice";
   let file_url;
 
   if (is_production) {
-    file_url = (await uploadFile(file, file_name, "estimation-folder")).url;
+    file_url = (await uploadFile(file, "invoice.html", "estimation-folder")).url;
   } else {
     file_url = file_name;
   }
