@@ -261,8 +261,7 @@ export async function getEstimationById(estimationId, client) {
 
 export async function createInvoice(client, estimationId, data, currentUserId) {
   const file = await generateInvoiceExcel(data);
-  const uuid = uuidGenerator();
-  const file_name = "invoice";
+  const file_name = "invoice.pdf";
   let file_url;
 
   if (is_production) {
